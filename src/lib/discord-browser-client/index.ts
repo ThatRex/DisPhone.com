@@ -40,6 +40,14 @@ export async function net() {
 
 				vRTC = new VoiceWebRTCSocket({ debug: true })
 				vRTC.on('error', console.error)
+				vRTC.on('track', (t) => {
+					const ms = new MediaStream()
+					ms.addTrack(t)
+					const mediaElement = new Audio()
+					mediaElement.autoplay = true
+					mediaElement.srcObject = ms
+					mediaElement.play()
+				})
 
 				// const stream = await navigator.mediaDevices.getUserMedia({
 				// 	audio: true,
@@ -47,8 +55,8 @@ export async function net() {
 				// })
 
 				const stream = await playAudioToRemote()
-				
-				await vRTC.openConnection(stream)
+
+				await vRTC.openConnection(stream.getTracks()[0])
 				const offer = await vRTC.createOffer()
 
 				voice = new VoiceWebSocket({
@@ -78,7 +86,6 @@ export async function net() {
 						}
 						case VoiceOpcodes.SessionDescription: {
 							await vRTC.handleAnswer(p.d.sdp)
-							await wait(200)
 							voice.sendPacket({
 								op: VoiceOpcodes.Speaking,
 								d: {
@@ -109,9 +116,9 @@ export async function net() {
 	})
 
 	wait(120_000).then(() => {
-		gateway.destroy(true)
-		voice.destroy(true)
 		vRTC.destroy()
+		voice.destroy(true)
+		gateway.destroy(true)
 	})
 }
 
