@@ -21,10 +21,8 @@ const REQUIRED_EXTMAP_ATTRIBUTES = [
 ]
 
 export interface VoiceWebRTCSocket extends EventEmitter {
-	on(event: 'packet', listener: (event: any) => void): this
+	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
 	on(event: 'error', listener: (event: MessageEvent<any>) => void): this
-	on(event: 'open', listener: (event: MessageEvent<any>) => void): this
-	on(event: 'close', listener: (event: MessageEvent<any>) => void): this
 }
 
 export class VoiceWebRTCSocket extends EventEmitter {
@@ -39,21 +37,22 @@ export class VoiceWebRTCSocket extends EventEmitter {
 		this.debug = params.debug ? (...args) => console.debug(`[WebRTC Scoket]`, ...args) : null
 	}
 
-	public async openConnection(stream: MediaStream) {
+	public async openConnection(audioTrack: MediaStreamTrack) {
 		if (this.pc) {
 			this.emit('error', 'Unable to open connection; Connection is already open.')
 			return
 		}
 
-		const tracks = stream.getAudioTracks()
-
-		if (!tracks.length) {
-			this.emit('error', 'Unable to open connection; Media Stream must contain at least one track.')
+		if (audioTrack.kind !== 'audio') {
+			this.emit('error', 'Unable to open connection; Video tracks not supported.')
 			return
 		}
 
 		this.pc = new RTCPeerConnection()
-		this.pc.addTrack(tracks[0])
+		this.pc.addTrack(audioTrack)
+		this.pc.ontrack = ({ track }) => {
+			this.emit('track', track)
+		}
 	}
 
 	public async createOffer() {
