@@ -40,6 +40,11 @@ export class VoiceWebRTCSocket extends EventEmitter {
 	}
 
 	public async openConnection(stream: MediaStream) {
+		if (this.pc) {
+			this.emit('error', 'Unable to open connection; Connection is already open.')
+			return
+		}
+
 		const tracks = stream.getAudioTracks()
 
 		if (!tracks.length) {
@@ -135,5 +140,6 @@ export class VoiceWebRTCSocket extends EventEmitter {
 		}
 
 		this.pc.close()
+		this.pc === undefined
 	}
 }
