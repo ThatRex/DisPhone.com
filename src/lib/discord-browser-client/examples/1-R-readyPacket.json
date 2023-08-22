@@ -1,0 +1,28 @@
+{
+	"op": 2,
+	"d": {
+		"streams": [
+			{
+				"type": "video",
+				"ssrc": 243808,
+				"rtx_ssrc": 243809,
+				"rid": "100",
+				"quality": 100,
+				"active": false
+			}
+		],
+		"ssrc": 243807,
+		"port": 50027,
+		"modes": [
+			"aead_aes256_gcm_rtpsize",
+			"aead_aes256_gcm",
+			"aead_xchacha20_poly1305_rtpsize",
+			"xsalsa20_poly1305_lite_rtpsize",
+			"xsalsa20_poly1305_lite",
+			"xsalsa20_poly1305_suffix",
+			"xsalsa20_poly1305"
+		],
+		"ip": "66.22.241.6",
+		"experiments": ["fixed_keyframe_interval"]
+	}
+}
