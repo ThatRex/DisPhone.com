@@ -40,8 +40,6 @@ export class VoiceWebRTCSocket extends EventEmitter {
 	}
 
 	public async openConnection(stream: MediaStream) {
-		this.pc = new RTCPeerConnection()
-
 		const tracks = stream.getAudioTracks()
 
 		if (!tracks.length) {
@@ -49,6 +47,7 @@ export class VoiceWebRTCSocket extends EventEmitter {
 			return
 		}
 
+		this.pc = new RTCPeerConnection()
 		this.pc.addTrack(tracks[0])
 	}
 
