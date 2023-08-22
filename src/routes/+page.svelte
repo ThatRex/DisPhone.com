@@ -15,13 +15,13 @@
 		// 	})
 		// })
 
-		const fr = await fetch('http://localhost:5173/test.mp3')
-		const fb = await fr.blob()
+		// const fr = await fetch('http://localhost:5173/test.mp3')
+		// const fb = await fr.blob()
 
 		const fd = new FormData()
-		fd.append('file', fb, 'test.mp3')
-		// fd.append('file', new Blob(['Hello world!'], { type: 'text/plain' }), 'test.txt')
+		// fd.append('file', fb, 'test.mp3')
 		fd.append('payload_json', JSON.stringify({ username: 'DBFPOC', content: 'hi' }))
+		fd.append('file', new Blob(['Hello world!'], { type: 'text/plain' }), 'test.txt')
 
 		const res = await fetch(url, {
 			method: 'POST',
@@ -34,8 +34,6 @@
 		const response = await fetch('http://localhost:5173/test.mp3')
 		const arrayBuffer = await response.arrayBuffer()
 		const audioBuffer = await context.decodeAudioData(arrayBuffer)
-		console.log(audioBuffer.numberOfChannels)
-
 		const destination = context.createMediaStreamDestination()
 		const bufferSource = context.createBufferSource()
 		bufferSource.buffer = audioBuffer
@@ -46,7 +44,6 @@
 
 	async function testMP3stream() {
 		const mp3stream = await playAudioToRemote()
-
 		const mediaElement = new Audio()
 		mediaElement.autoplay = true
 		mediaElement.srcObject = mp3stream

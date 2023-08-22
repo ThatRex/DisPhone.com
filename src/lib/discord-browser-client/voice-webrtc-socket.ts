@@ -65,13 +65,13 @@ export class VoiceWebRTCSocket extends EventEmitter {
 			return
 		}
 
-		this.debug?.('SDP Offer Raw:\n', sdp)
+		this.debug?.(`SDP Offer Raw:\n${sdp}`)
 		this.payloadType = sdp.match(/a=rtpmap:(\d+) opus/)![1]
 		const ssrc = Number(sdp.match(/a=ssrc:(\d+) cname/)![1])
 
 		sdp = await this.buildSDP('offer', sdp, this.payloadType!)
 
-		this.debug?.('SDP Offer Parsed:\n', sdp)
+		this.debug?.(`SDP Offer Parsed:\n${sdp}`)
 
 		await this.pc.setLocalDescription({ type: 'offer', sdp })
 
@@ -89,7 +89,7 @@ export class VoiceWebRTCSocket extends EventEmitter {
 
 		sdp = await this.buildSDP('answer', sdp, this.payloadType!)
 
-		this.debug?.('SDP Answer Parsed:\n', sdp)
+		this.debug?.(`SDP Answer Parsed:\n${sdp}`)
 
 		await this.pc.setRemoteDescription({ type: 'answer', sdp })
 	}
@@ -101,20 +101,15 @@ export class VoiceWebRTCSocket extends EventEmitter {
 		newSDP.add('a', 'group:BUNDLE 0')
 		newSDP.add('m', `audio 9 RTP/SAVPF ${payloadType}`)
 
-		const extMapAttributes = new Set([...REQUIRED_EXTMAP_ATTRIBUTES])
+		const extMapAttributes = new Set(REQUIRED_EXTMAP_ATTRIBUTES)
 
-		DESIRED_ATTRIBUTES.a.push(`fmtp:${payloadType}`)
-		const attKeys = [...Object.keys(DESIRED_ATTRIBUTES), `fmtp:${payloadType}`]
+		const attKeys = Object.keys(DESIRED_ATTRIBUTES)
 		const attVals = Object.values(DESIRED_ATTRIBUTES).flat()
 
-		oldSDP.parsed.map((line) => {
-			const [char, val] = line
+		oldSDP.parsed.map(([char, val]) => {
 			if (attKeys.includes(char) && attVals.filter((a) => val.includes(a)).length) {
-				if (val.match(/extmap:/)) {
-					extMapAttributes.add(val.replace(/extmap:\d+/, ''))
-				} else {
-					newSDP.add(char, val)
-				}
+				if (val.match(/extmap:/)) extMapAttributes.add(val.replace(/extmap:\d+/, ''))
+				else newSDP.add(char, val)
 			}
 		})
 
