@@ -140,6 +140,6 @@ export class VoiceWebRTCSocket extends EventEmitter {
 		}
 
 		this.pc.close()
-		this.pc === undefined
+		this.pc = undefined
 	}
 }
