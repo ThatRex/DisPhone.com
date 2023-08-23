@@ -1,24 +1,5 @@
 import EventEmitter from 'eventemitter3'
-import { SDP, type ParsedSDP } from './SDP'
-
-const SDP_START = [
-	['v', '0'],
-	['o', '- 1234567890123456789 0 IN IP4 0.0.0.0'],
-	['s', '-'],
-	['t', '0 0']
-] as ParsedSDP
-
-const DESIRED_ATTRIBUTES = {
-	a: ['fingerprint', 'extmap', 'ice-pwd', 'ice-ufrag', 'ice-options', 'candidate', 'ssrc'],
-	c: ['IN IP4']
-}
-
-const REQUIRED_EXTMAP_ATTRIBUTES = [
-	' http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
-	' urn:ietf:params:rtp-hdrext:toffset',
-	'/recvonly http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
-	' http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01'
-]
+import { SDP } from './SDP'
 
 export interface VoiceWebRTCSocket extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -50,9 +31,7 @@ export class VoiceWebRTCSocket extends EventEmitter {
 
 		this.pc = new RTCPeerConnection()
 		this.pc.addTrack(audioTrack)
-		this.pc.ontrack = ({ track }) => {
-			this.emit('track', track)
-		}
+		this.pc.ontrack = ({ track }) => this.emit('track', track)
 	}
 
 	public async createOffer() {
@@ -79,7 +58,7 @@ export class VoiceWebRTCSocket extends EventEmitter {
 		await this.pc.setLocalDescription({ type: 'offer', sdp })
 
 		return {
-			sdp,
+			sdp: sdp.trim().replaceAll('\r', ''),
 			ssrc
 		}
 	}
@@ -90,6 +69,8 @@ export class VoiceWebRTCSocket extends EventEmitter {
 			return
 		}
 
+		this.debug?.(`SDP Answer Raw:\n${sdp}`)
+
 		sdp = await this.buildSDP('answer', sdp, this.payloadType!)
 
 		this.debug?.(`SDP Answer Parsed:\n${sdp}`)
@@ -98,30 +79,55 @@ export class VoiceWebRTCSocket extends EventEmitter {
 	}
 
 	private async buildSDP(type: 'offer' | 'answer', sdp: string, payloadType: string) {
+		const DESIRED_ATTRIBUTES = {
+			a: [
+				'fingerprint',
+				'extmap',
+				'ice-pwd',
+				'ice-ufrag',
+				'ice-options',
+				'candidate',
+				'ssrc',
+				'msid-semantic'
+			],
+			c: ['IN IP4']
+		}
+
 		const oldSDP = new SDP(sdp)
-		const newSDP = new SDP(SDP_START)
+		const newSDP = new SDP()
 
-		newSDP.add('a', 'group:BUNDLE 0')
-		newSDP.add('m', `audio 9 RTP/SAVPF ${payloadType}`)
-
-		const extMapAttributes = new Set(REQUIRED_EXTMAP_ATTRIBUTES)
+		const extMapAttributes = new Set([
+			' http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01'
+		])
 
 		const attKeys = Object.keys(DESIRED_ATTRIBUTES)
 		const attVals = Object.values(DESIRED_ATTRIBUTES).flat()
 
-		oldSDP.parsed.map(([char, val]) => {
-			if (attKeys.includes(char) && attVals.filter((a) => val.includes(a)).length) {
-				if (val.match(/extmap:/)) extMapAttributes.add(val.replace(/extmap:\d+/, ''))
-				else newSDP.add(char, val)
-			}
-		})
+		const mediaPort = sdp.match(/m=audio (\d+) /)![1]
 
-		newSDP.add('a', `rtpmap:${payloadType} opus/48000/2`)
-		newSDP.add('a', 'sendrecv')
-		newSDP.add('a', 'setup:passive')
-		newSDP.add('a', 'mid:0')
-		newSDP.add('a', `rtcp-${payloadType}`)
-		newSDP.add('a', 'rtcp-mux')
+		newSDP.concat([
+			['v', '0'],
+			['o', '- 0000000000000000000 0 IN IP4 0.0.0.0'],
+			['s', '-'],
+			['t', '0 0'],
+			['a', 'group:BUNDLE 0'],
+			['m', `audio ${mediaPort} RTP/SAVPF ${payloadType}`]
+		])
+
+		for (const [char, val] of oldSDP.parsed) {
+			if (!attKeys.includes(char) || !attVals.filter((a) => val.includes(a)).length) continue
+
+			if (val.match(/extmap:/)) extMapAttributes.add(val.replace(/extmap:\d+/, ''))
+			else newSDP.add(char, val)
+		}
+
+		newSDP.concat([
+			['a', `rtpmap:${payloadType} opus/48000/2`],
+			['a', 'sendrecv'],
+			['a', `setup:${type === 'answer' ? 'passive' : 'actpass'}`],
+			['a', 'mid:0'],
+			['a', 'rtcp-mux']
+		])
 
 		let extmapCount = 0
 		for (const ema of extMapAttributes) {

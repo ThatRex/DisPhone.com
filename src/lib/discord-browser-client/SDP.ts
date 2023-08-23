@@ -17,8 +17,8 @@ export class SDP {
 
 	private stringify(data: ParsedSDP) {
 		let sdp = ''
-		for (const [chr, val] of data) sdp += `${chr}=${val}\n`
-		return sdp.trim()
+		for (const [chr, val] of data) sdp += `${chr}=${val}\r\n`
+		return sdp.trim() + '\r\n'
 	}
 
 	private pars(data: string): ParsedSDP {
