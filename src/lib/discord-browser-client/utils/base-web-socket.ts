@@ -1,10 +1,11 @@
 import EventEmitter from 'eventemitter3'
+import { BaseWebSocketClosedError, BaseWebSocketOpenError } from './errors'
 
 export interface BaseWebSocket extends EventEmitter {
 	on(event: 'packet', listener: (event: any) => void): this
-	on(event: 'error', listener: (event: MessageEvent<any>) => void): this
-	on(event: 'open', listener: (event: MessageEvent<any>) => void): this
-	on(event: 'close', listener: (event: MessageEvent<any>) => void): this
+	on(event: 'error', listener: (event: Event) => void): this
+	on(event: 'open', listener: (event: Event) => void): this
+	on(event: 'close', listener: (event: CloseEvent) => void): this
 }
 
 export enum SocketState {
@@ -14,13 +15,13 @@ export enum SocketState {
 
 export class BaseWebSocket extends EventEmitter {
 	private ws?: WebSocket
-	private _wsState = SocketState.CLOSED
+	private _state = SocketState.CLOSED
 
 	private readonly name: string
 	public readonly debug: ((...args: any) => void) | null
 
-	public get wsState() {
-		return this._wsState
+	public get state() {
+		return this._state
 	}
 
 	constructor(params: { address: string; name: string; debug?: boolean }) {
@@ -43,9 +44,8 @@ export class BaseWebSocket extends EventEmitter {
 	}
 
 	public sendPacket(packet: { op: number; d: any; [key: string]: any }) {
-		if (this._wsState === SocketState.CLOSED) {
-			this.emit('error', 'Unable to send packet because socket is not open.')
-			return
+		if (this._state === SocketState.CLOSED) {
+			throw new BaseWebSocketClosedError('Unable to send packet.')
 		}
 		try {
 			this.debug?.('Sending Packet:', packet)
@@ -56,28 +56,26 @@ export class BaseWebSocket extends EventEmitter {
 	}
 
 	public openSocket(address: string) {
-		if (this._wsState === SocketState.OPEN) {
-			this.emit('error', 'Unable to open socket because socket is not closed.')
-			return
+		if (this._state === SocketState.OPEN) {
+			throw new BaseWebSocketOpenError('Socket is already open.')
 		}
 		this.debug?.('Opening')
 		this.ws = new WebSocket(address)
 		this.ws.onmessage = (e) => this.onMessage(e)
 		this.ws.onerror = (e) => this.emit('error', e)
 		this.ws.onopen = (e) => {
-			this._wsState = SocketState.OPEN
+			this._state = SocketState.OPEN
 			this.emit('open', e)
 		}
 		this.ws.onclose = (e) => {
-			this._wsState = SocketState.CLOSED
+			this._state = SocketState.CLOSED
 			this.emit('close', e)
 		}
 	}
 
 	public closeSocket(code?: number, reason?: string) {
-		if (this._wsState === SocketState.CLOSED) {
-			this.emit('error', 'Unable to close socket because socket is not open.')
-			return
+		if (this._state === SocketState.CLOSED) {
+			throw new BaseWebSocketClosedError('Socket is already closed.')
 		}
 		this.debug?.('Closing')
 		this.ws?.close(code, reason)

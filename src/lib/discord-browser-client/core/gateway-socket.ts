@@ -1,4 +1,4 @@
-import { BaseWebSocket } from './base-web-socket'
+import { BaseWebSocket, SocketState } from '../utils/base-web-socket'
 import type {
 	GatewayHeartbeat,
 	GatewayIdentify,
@@ -8,12 +8,34 @@ import type {
 import { GatewayOpcodes } from 'discord-api-types/gateway'
 import {
 	PresenceUpdateStatus,
-	GatewayIntentBits,
 	type GatewayDispatchPayload,
-	GatewayDispatchEvents
+	GatewayDispatchEvents,
+	GatewayCloseCodes,
+	type GatewayIdentifyProperties,
+	type GatewayPresenceUpdateData
 } from 'discord-api-types/v10'
+import { GatewayResumeError } from '../utils/errors'
 
-export class GatewayWebSocket extends BaseWebSocket {
+const RECONNECTABLE_CLOSE_CODES = [
+	GatewayCloseCodes.UnknownError,
+	GatewayCloseCodes.UnknownOpcode,
+	GatewayCloseCodes.DecodeError,
+	GatewayCloseCodes.NotAuthenticated,
+	GatewayCloseCodes.AlreadyAuthenticated,
+	GatewayCloseCodes.InvalidSeq,
+	GatewayCloseCodes.RateLimited,
+	GatewayCloseCodes.SessionTimedOut
+]
+
+export interface GatewaySocket extends BaseWebSocket {
+	on(event: 'packet', listener: (event: any) => void): this
+	on(event: 'error', listener: (event: Event) => void): this
+	on(event: 'open', listener: (event: Event) => void): this
+	on(event: 'close', listener: (event: CloseEvent) => void): this
+	on(event: 'ready', listener: () => void): this
+}
+
+export class GatewaySocket extends BaseWebSocket {
 	private hartbeatInterval?: number
 	private lastSequenceNumber: number | null = null
 	private missedHeartbeats = 0
@@ -24,13 +46,32 @@ export class GatewayWebSocket extends BaseWebSocket {
 		initial_gateway_url?: string
 		resume_gateway_url?: string
 		session_id?: string
-	} = { token: '' }
+		intents: number
+		properties: GatewayIdentifyProperties
+	} = {
+		token: '',
+		intents: 0,
+		properties: {
+			os: 'linux',
+			browser: 'dbc',
+			device: 'dbc'
+		}
+	}
+
+	private initalPresence: GatewayPresenceUpdateData = {
+		since: Date.now(),
+		activities: [],
+		status: PresenceUpdateStatus.Online,
+		afk: false
+	}
 
 	private _identity: {
 		id?: string
 		username?: string
 		discriminator?: string
 	} = {}
+
+	private _ready = false
 
 	public get session_id() {
 		return this.connectionData.session_id
@@ -40,17 +81,36 @@ export class GatewayWebSocket extends BaseWebSocket {
 		return this._identity
 	}
 
-	constructor(params: { address: string; token: string; debug?: boolean }) {
+	public get ready() {
+		return this._ready
+	}
+
+	constructor(params: {
+		address: string
+		token: string
+		intents: number
+		properties?: GatewayIdentifyProperties
+		presence?: GatewayPresenceUpdateData
+		debug?: boolean
+	}) {
+		const { address, token, intents, properties, presence, debug } = params
+
 		super({
-			address: `wss://${params.address}/?v=10&encoding=json`,
+			address: `wss://${address}/?v=10&encoding=json`,
 			name: 'Gateway Socket',
-			debug: params.debug
+			debug
 		})
 
-		this.connectionData.token = params.token
+		this.connectionData.token = token
+		this.connectionData.intents = intents
+		if (properties) this.connectionData.properties = properties
+		if (presence) this.initalPresence = presence
 
 		this.on('packet', (p) => this.onPacket(p))
-		this.on('close', () => this.destroy(false))
+		this.on('close', (e) => {
+			if (RECONNECTABLE_CLOSE_CODES.includes(e.code)) this.doResume()
+			else this.destroy()
+		})
 	}
 
 	private onPacket(packet: GatewayReceivePayload) {
@@ -71,6 +131,11 @@ export class GatewayWebSocket extends BaseWebSocket {
 				break
 			}
 
+			case GatewayOpcodes.InvalidSession: {
+				if (packet.d === true) this.doResume()
+				else this.destroy()
+				break
+			}
 			case GatewayOpcodes.Reconnect: {
 				this.doResume()
 				break
@@ -88,8 +153,6 @@ export class GatewayWebSocket extends BaseWebSocket {
 
 		switch (packet.t) {
 			case GatewayDispatchEvents.Ready: {
-				this.indentified = true
-
 				const {
 					resume_gateway_url,
 					session_id,
@@ -100,6 +163,9 @@ export class GatewayWebSocket extends BaseWebSocket {
 				this.connectionData.session_id = session_id
 				this._identity = { id, username, discriminator }
 
+				this.indentified = true
+				this._ready = true
+				this.emit('ready')
 				break
 			}
 		}
@@ -117,7 +183,10 @@ export class GatewayWebSocket extends BaseWebSocket {
 		this.debug?.('Starting Heartbeat')
 		interval = interval * Math.random()
 		this.hartbeatInterval = setInterval(() => {
-			if (this.missedHeartbeats > 1) return this.destroy(false)
+			if (this.missedHeartbeats > 1) {
+				this.debug?.('Too many missed heartbeats.')
+				return this.destroy()
+			}
 			this.sendHeartbeat()
 		}, interval)
 	}
@@ -129,18 +198,9 @@ export class GatewayWebSocket extends BaseWebSocket {
 			op: GatewayOpcodes.Identify,
 			d: {
 				token: this.connectionData.token,
-				intents: GatewayIntentBits.GuildVoiceStates,
-				properties: {
-					os: 'linux',
-					browser: 'bk',
-					device: 'bk'
-				},
-				presence: {
-					since: Date.now(),
-					activities: [],
-					status: PresenceUpdateStatus.Online,
-					afk: false
-				}
+				intents: this.connectionData.intents,
+				properties: this.connectionData.properties,
+				presence: this.initalPresence
 			}
 		} satisfies GatewayIdentify)
 	}
@@ -148,13 +208,12 @@ export class GatewayWebSocket extends BaseWebSocket {
 	private doResume() {
 		this.debug?.('Resuming')
 
-		this.destroy(false)
+		this.destroy()
 
 		const { resume_gateway_url, session_id } = this.connectionData
 
 		if (!this.lastSequenceNumber || !resume_gateway_url || !session_id) {
-			this.emit('error', 'Unable to resume; lacking necessary data.')
-			return
+			throw new GatewayResumeError('Lacking necessary data.')
 		}
 
 		this.closeSocket()
@@ -165,13 +224,14 @@ export class GatewayWebSocket extends BaseWebSocket {
 			d: {
 				token: this.connectionData.token,
 				seq: this.lastSequenceNumber,
-				session_id: session_id
+				session_id
 			}
 		} satisfies GatewayResume)
 	}
 
-	public destroy(clean: boolean) {
+	public destroy(clean?: boolean) {
+		this._ready = false
 		if (this.hartbeatInterval) clearInterval(this.hartbeatInterval)
-		this.closeSocket(clean ? 1_000 : undefined)
+		if (this.state === SocketState.OPEN) this.closeSocket(clean ? 1_000 : undefined)
 	}
 }

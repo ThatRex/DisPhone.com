@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { testDiscordVoiceCon } from '$lib/discord-browser-client'
 	import { testPhone } from '$lib/phone'
+	import { playAudioFromUrls } from '$lib/utils/play-audio-from-urls'
 
 	async function testWebhook() {
 		const url =
@@ -29,23 +30,9 @@
 		})
 	}
 
-	async function playAudioToRemote() {
-		const context = new AudioContext()
-		const response = await fetch('http://localhost:5173/test.mp3')
-		const arrayBuffer = await response.arrayBuffer()
-		const audioBuffer = await context.decodeAudioData(arrayBuffer)
-		const destination = context.createMediaStreamDestination()
-		const bufferSource = context.createBufferSource()
-		bufferSource.buffer = audioBuffer
-		bufferSource.start(0)
-		bufferSource.connect(destination)
-		return destination.stream
-	}
-
 	async function testMP3stream() {
-		const mp3stream = await playAudioToRemote()
+		const mp3stream = await playAudioFromUrls(['test.mp3'])
 		const mediaElement = new Audio()
-		mediaElement.autoplay = true
 		mediaElement.srcObject = mp3stream
 		mediaElement.play()
 	}
