@@ -63,8 +63,8 @@ export class GatewaySocket extends Socket {
 		intents: 0,
 		properties: {
 			os: 'linux',
-			browser: 'dbc',
-			device: 'dbc'
+			browser: 'dbvc',
+			device: 'dbvc'
 		}
 	}
 
