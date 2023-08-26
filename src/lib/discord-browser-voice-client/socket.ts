@@ -1,19 +1,19 @@
 import EventEmitter from 'eventemitter3'
-import { BaseWebSocketClosedError, BaseWebSocketOpenError } from './errors'
-
-export interface BaseWebSocket extends EventEmitter {
-	on(event: 'packet', listener: (event: any) => void): this
-	on(event: 'error', listener: (event: Event) => void): this
-	on(event: 'open', listener: (event: Event) => void): this
-	on(event: 'close', listener: (event: CloseEvent) => void): this
-}
+import { SocketClosedError, SocketOpenError } from './errors'
 
 export enum SocketState {
 	CLOSED,
 	OPEN
 }
 
-export class BaseWebSocket extends EventEmitter {
+export interface Socket extends EventEmitter {
+	on(event: 'packet', listener: (event: any) => void): this
+	on(event: 'error', listener: (event: Event) => void): this
+	on(event: 'open', listener: (event: Event) => void): this
+	on(event: 'close', listener: (event: CloseEvent) => void): this
+}
+
+export class Socket extends EventEmitter {
 	private ws?: WebSocket
 	private _state = SocketState.CLOSED
 
@@ -45,7 +45,7 @@ export class BaseWebSocket extends EventEmitter {
 
 	public sendPacket(packet: { op: number; d: any; [key: string]: any }) {
 		if (this._state === SocketState.CLOSED) {
-			throw new BaseWebSocketClosedError('Unable to send packet.')
+			throw new SocketClosedError('Unable to send packet.')
 		}
 		try {
 			this.debug?.('Sending Packet:', packet)
@@ -57,7 +57,7 @@ export class BaseWebSocket extends EventEmitter {
 
 	public openSocket(address: string) {
 		if (this._state === SocketState.OPEN) {
-			throw new BaseWebSocketOpenError('Socket is already open.')
+			throw new SocketOpenError('Socket is already open.')
 		}
 		this.debug?.('Opening')
 		this.ws = new WebSocket(address)
@@ -75,7 +75,7 @@ export class BaseWebSocket extends EventEmitter {
 
 	public closeSocket(code?: number, reason?: string) {
 		if (this._state === SocketState.CLOSED) {
-			throw new BaseWebSocketClosedError('Socket is already closed.')
+			throw new SocketClosedError('Socket is already closed.')
 		}
 		this.debug?.('Closing')
 		this.ws?.close(code, reason)

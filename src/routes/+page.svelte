@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { testDiscordVoiceCon } from '$lib/discord-browser-client'
 	import { testPhone } from '$lib/phone'
 	import { playAudioFromUrls } from '$lib/utils/play-audio-from-urls'
 
@@ -40,6 +39,5 @@
 
 <h1>Discord Browser Phone POC</h1>
 <button on:click={testPhone}>Test Phone</button>
-<button on:click={testDiscordVoiceCon}>Test Discord Voice Con</button>
 <button on:click={testWebhook}>Test Discord Webhook</button>
 <button on:click={testMP3stream}>Test MP3 Stream</button>

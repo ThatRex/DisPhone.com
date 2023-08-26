@@ -1,9 +1,9 @@
 import { UserAgent, Registerer, Inviter, Session, SessionState, Web } from 'sip.js'
-import { conf } from '../conf'
-import { wait } from '$lib/utils'
+import { wait } from '$lib/utils/wait'
+import { env } from '$env/dynamic/private'
 
 export const testPhone = async () => {
-	const uri = UserAgent.makeURI(conf.sipURI)
+	const uri = UserAgent.makeURI(env.SIP_URI)
 
 	const theMediaStreamFactory: Web.MediaStreamFactory = (
 		constraints: MediaStreamConstraints,
@@ -30,10 +30,10 @@ export const testPhone = async () => {
 
 	const ua = new UserAgent({
 		sessionDescriptionHandlerFactory: theSessionDescriptionHandlerFactory,
-		authorizationPassword: conf.pass,
-		authorizationUsername: conf.user,
+		authorizationPassword: env.PASS,
+		authorizationUsername: env.USER,
 		transportOptions: {
-			server: conf.wsServer
+			server: env.WS_SERVER
 		},
 		uri
 	})
@@ -48,10 +48,7 @@ export const testPhone = async () => {
 
 	const inviter = new Inviter(ua, target, {
 		sessionDescriptionHandlerOptions: {
-			constraints: {
-				audio: true,
-				video: false
-			}
+			constraints: { audio: true }
 		}
 	})
 

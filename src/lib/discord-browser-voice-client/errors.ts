@@ -1,27 +1,27 @@
 /* 
-BASE WEBSOCKET
+SOCKET
 */
 
-export class BaseWebSocketError extends Error {
+export class SocketError extends Error {
 	constructor(message: string) {
 		super(message)
-		this.name = 'BaseWebSocketError'
+		this.name = 'SocketError'
 	}
 }
 
-export class BaseWebSocketClosedError extends Error {
+export class SocketClosedError extends Error {
 	/** The socket was closed when it needed to be open. */
 	constructor(message: string) {
 		super(message)
-		this.name = 'BaseWebSocketError'
+		this.name = 'SocketError'
 	}
 }
 
-export class BaseWebSocketOpenError extends Error {
+export class SocketOpenError extends Error {
 	/** The socket was open when it needed to be closed. */
 	constructor(message: string) {
 		super(message)
-		this.name = 'BaseWebSocketError'
+		this.name = 'SocketError'
 	}
 }
 

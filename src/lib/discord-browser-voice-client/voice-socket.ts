@@ -1,4 +1,4 @@
-import { BaseWebSocket, SocketState } from '../utils/base-web-socket'
+import { Socket, SocketState } from './socket'
 import { VoiceOpcodes } from 'discord-api-types/voice'
 
 export type Codecs = {
@@ -9,7 +9,7 @@ export type Codecs = {
 	rtx_payload_type: number | null
 }[]
 
-export class VoiceSocket extends BaseWebSocket {
+export class VoiceSocket extends Socket {
 	private hartbeatInterval?: number
 	private missedHeartbeats = 0
 	private indentified = false
@@ -47,18 +47,21 @@ export class VoiceSocket extends BaseWebSocket {
 
 	private onPacket(packet: any) {
 		switch (packet.op) {
-			case VoiceOpcodes.Hello:
+			case VoiceOpcodes.Hello: {
 				this.startHartbeat(packet.d.heartbeat_interval)
 				if (!this.indentified) this.sendIdentification()
 				break
+			}
 
-			case VoiceOpcodes.Resumed:
+			case VoiceOpcodes.Resumed: {
 				this.resumed = true
 				break
+			}
 
-			case VoiceOpcodes.HeartbeatAck:
+			case VoiceOpcodes.HeartbeatAck: {
 				this.missedHeartbeats = 0
 				break
+			}
 		}
 	}
 
@@ -73,9 +76,10 @@ export class VoiceSocket extends BaseWebSocket {
 	private startHartbeat(interval: number) {
 		this.debug?.('Starting Heartbeat')
 		this.hartbeatInterval = setInterval(() => {
-			if (this.missedHeartbeats > 1) {
+			if (this.missedHeartbeats > 2) {
 				this.debug?.('Too many missed heartbeats.')
-				return this.destroy()
+				this.destroy()
+				return
 			}
 			this.sendHeartbeat()
 		}, interval)
@@ -100,13 +104,13 @@ export class VoiceSocket extends BaseWebSocket {
 		this.resumed = false
 		setTimeout(() => {
 			if (!this.resumed) {
-				this.debug?.('Failed to resume. Closing.')
+				this.debug?.('Failed to resume.')
 				this.destroy()
 			}
 		}, 250)
 	}
 
-	private sendIdentification(video?: boolean) {
+	private sendIdentification() {
 		this.debug?.('Sending Identification')
 		const { guild_id: server_id, session_id, token, user_id } = this.connectionData
 		this.sendPacket({
@@ -116,7 +120,7 @@ export class VoiceSocket extends BaseWebSocket {
 				user_id,
 				session_id,
 				token,
-				video: video ?? false
+				video: false
 			}
 		})
 	}

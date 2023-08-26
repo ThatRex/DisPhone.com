@@ -4,11 +4,22 @@ import type { GatewaySocket } from './gateway-socket'
 import { VoiceSocket, type Codecs } from './voice-socket'
 import { VoiceRTC, type AudioSettings } from './voice-rtc'
 import { VoiceOpcodes } from 'discord-api-types/voice'
-import { VoiceConnectionError, VoiceSpeakingError } from '../utils/errors'
+import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 
 export enum VoiceState {
 	DISCONNECTED,
 	CONNECTED
+}
+
+export type ConnectionParams = {
+	guild_id: string
+	channel_id: string
+	audio_track: MediaStreamTrack
+	audio_settings?: {
+		initial_speaking?: boolean
+		self_mute?: boolean
+		self_deaf?: boolean
+	} & AudioSettings
 }
 
 export interface VoiceManager extends EventEmitter {
@@ -24,6 +35,7 @@ export interface VoiceManager extends EventEmitter {
 }
 
 export class VoiceManager extends EventEmitter {
+	private guild_id?: string
 	private gateway: GatewaySocket
 	private voice?: VoiceSocket
 	private rtc?: VoiceRTC
@@ -33,10 +45,10 @@ export class VoiceManager extends EventEmitter {
 	private audioSettings?: AudioSettings
 	private debug = false
 
-	private _voiceState = VoiceState.DISCONNECTED
+	private _state = VoiceState.DISCONNECTED
 
-	public get voiceState() {
-		return this._voiceState
+	public get state() {
+		return this._state
 	}
 
 	constructor(params: { gatewaySocket: GatewaySocket; debug?: boolean }) {
@@ -47,22 +59,12 @@ export class VoiceManager extends EventEmitter {
 		this.debug = debug ?? false
 	}
 
-	public connect(params: {
-		guild_id: string
-		channel_id: string
-		audio_track: MediaStreamTrack
-		audio_settings?: {
-			initial_speaking?: boolean
-			self_mute?: boolean
-			self_deaf?: boolean
-		} & AudioSettings
-	}) {
-		if (!this.gateway.ready) {
-			throw new VoiceConnectionError('Gateway not ready.')
-		}
+	public connect(params: ConnectionParams) {
+		if (!this.gateway.ready) throw new VoiceConnectionError('Gateway not ready.')
 
 		const { guild_id, channel_id, audio_track, audio_settings } = params
 
+		this.guild_id = guild_id
 		this.initial_speaking = audio_settings?.initial_speaking ?? false
 		this.track = audio_track
 		this.audioSettings = audio_settings
@@ -101,6 +103,7 @@ export class VoiceManager extends EventEmitter {
 					debug: this.debug
 				})
 				this.voice.on('packet', (p) => this.handleVoicePacket(p, sdp, codecs))
+				this.voice.on('close', () => this.emit('disconnected'))
 			}
 		}
 	}
@@ -111,20 +114,20 @@ export class VoiceManager extends EventEmitter {
 				await this.voice!.sendSelectProtocol(sdp, codecs)
 				break
 			}
+
 			case VoiceOpcodes.SessionDescription: {
 				await this.rtc!.handleAnswer(packet.d.sdp)
 				this.setSpeaking(this.initial_speaking)
 				this.emit('connected')
-				this._voiceState = VoiceState.CONNECTED
+				this._state = VoiceState.CONNECTED
 				break
 			}
 		}
 	}
 
 	public setSpeaking(speaking: boolean) {
-		if (!this.voice) {
-			throw new VoiceSpeakingError('Voice socket not open.')
-		}
+		if (!this.voice) throw new VoiceSpeakingError('Voice socket not open.')
+
 		this.voice.sendPacket({
 			op: VoiceOpcodes.Speaking,
 			d: {
@@ -136,7 +139,16 @@ export class VoiceManager extends EventEmitter {
 	}
 
 	public disconnect() {
-		this._voiceState = VoiceState.DISCONNECTED
+		this._state = VoiceState.DISCONNECTED
+		this.gateway.sendPacket({
+			op: GatewayOpcodes.VoiceStateUpdate,
+			d: {
+				guild_id: this.guild_id,
+				channel_id: null,
+				self_mute: false,
+				self_deaf: false
+			}
+		})
 		this.rtc?.destroy()
 		this.voice?.destroy(true)
 	}

@@ -1,11 +1,11 @@
 import EventEmitter from 'eventemitter3'
-import { SDP } from '../utils/sdp'
+import { SDP } from './sdp'
 import {
 	VoiceRTCAnswerError,
 	VoiceRTCConnectionError,
 	VoiceRTCDestroyError,
 	VoiceRTCOfferError
-} from '../utils/errors'
+} from './errors'
 
 export type AudioSettings = {
 	bitrate_kbps?: number
@@ -16,6 +16,10 @@ export type AudioSettings = {
 export interface VoiceRTC extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
 	on(event: RTCPeerConnectionState, listener: () => void): this
+	once(event: 'track', listener: (event: MediaStreamTrack) => void): this
+	once(event: RTCPeerConnectionState, listener: () => void): this
+	emit(event: 'track', track: MediaStreamTrack): boolean
+	emit(event: RTCPeerConnectionState): boolean
 }
 
 export class VoiceRTC extends EventEmitter {
@@ -28,45 +32,35 @@ export class VoiceRTC extends EventEmitter {
 	constructor(params: { debug?: boolean }) {
 		super()
 
-		this.debug = !params.debug ? null : (...args) => console.debug(`[WebRTC Scoket]`, ...args)
+		this.debug = !params.debug ? null : (...args) => console.debug(`[Voice RTC]`, ...args)
 	}
 
 	public async openConnection(audioTrack: MediaStreamTrack, audioSettings?: AudioSettings) {
-		if (this.pc) {
-			throw new VoiceRTCConnectionError('Peer Connection is already open.')
-		}
-
-		if (audioTrack.kind !== 'audio') {
+		if (this.pc) throw new VoiceRTCConnectionError('Peer Connection is already open.')
+		if (audioTrack.kind !== 'audio')
 			throw new VoiceRTCConnectionError('Video tracks not supported.')
-		}
 
 		this.audioSettings = audioSettings
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
+		this.pc.onconnectionstatechange = () => this.emit(this.pc!.connectionState)
 		this.pc.addTrack(audioTrack)
 		this.pc.ontrack = ({ track }) => {
-			this.debug?.('Track: ', track.id)
-			this.emit('track', track)
+			this.debug?.(`Track: (${track.kind}) ${track.id}`)
+			if (track.kind === 'audio') this.emit('track', track)
 		}
-		this.pc.onconnectionstatechange = () => this.emit(this.pc!.connectionState)
 	}
 
 	public async createOffer() {
-		if (!this.pc) {
-			throw new VoiceRTCOfferError('Peer connection is not open.')
-		}
+		if (!this.pc) throw new VoiceRTCOfferError('Peer connection is not open.')
 
 		let { sdp } = await this.pc.createOffer()
-
-		if (!sdp) {
-			throw new VoiceRTCOfferError('No SDP was created.')
-		}
-
+		if (!sdp) throw new VoiceRTCOfferError('No SDP was created.')
 		this.debug?.(`SDP Offer Raw:\n${sdp}`)
+
 		this.payloadType = Number(sdp.match(/a=rtpmap:(\d+) opus/)![1])
 		const ssrc = Number(sdp.match(/a=ssrc:(\d+) cname/)![1])
 
 		sdp = await this.buildSDP('offer', sdp, this.payloadType!, this.audioSettings)
-
 		this.debug?.(`SDP Offer Parsed:\n${sdp}`)
 
 		await this.pc.setLocalDescription({ type: 'offer', sdp })
@@ -87,14 +81,10 @@ export class VoiceRTC extends EventEmitter {
 	}
 
 	public async handleAnswer(sdp: string) {
-		if (!this.pc) {
-			throw new VoiceRTCAnswerError('Peer connection is not open.')
-		}
+		if (!this.pc) throw new VoiceRTCAnswerError('Peer connection is not open.')
 
 		this.debug?.(`SDP Answer Raw:\n${sdp}`)
-
 		sdp = await this.buildSDP('answer', sdp, this.payloadType!, this.audioSettings)
-
 		this.debug?.(`SDP Answer Parsed:\n${sdp}`)
 
 		await this.pc.setRemoteDescription({ type: 'answer', sdp })
@@ -148,7 +138,7 @@ export class VoiceRTC extends EventEmitter {
 			else newSDP.add(char, val)
 		}
 
-		const bitrate = (audioSettings?.bitrate_kbps ?? 64) * 1000
+		const bitrate = (audioSettings?.bitrate_kbps ?? 64) * 1_000
 		const stereo = audioSettings?.stereo ? 1 : 0
 		const offerMode = audioSettings?.mode ?? 'sendonly'
 		const answerMode =
@@ -176,10 +166,7 @@ export class VoiceRTC extends EventEmitter {
 	}
 
 	public destroy() {
-		if (!this.pc) {
-			throw new VoiceRTCDestroyError('Peer connection is not open.')
-		}
-
+		if (!this.pc) throw new VoiceRTCDestroyError('Peer connection is not open.')
 		this.pc.close()
 		this.pc = undefined
 	}
