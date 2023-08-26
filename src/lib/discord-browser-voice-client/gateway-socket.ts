@@ -1,4 +1,4 @@
-import { BaseWebSocket, SocketState } from '../utils/base-web-socket'
+import { Socket, SocketState } from './socket'
 import type {
 	GatewayHeartbeat,
 	GatewayIdentify,
@@ -14,7 +14,7 @@ import {
 	type GatewayIdentifyProperties,
 	type GatewayPresenceUpdateData
 } from 'discord-api-types/v10'
-import { GatewayResumeError } from '../utils/errors'
+import { GatewayResumeError } from './errors'
 
 const RECONNECTABLE_CLOSE_CODES = [
 	GatewayCloseCodes.UnknownError,
@@ -27,15 +27,25 @@ const RECONNECTABLE_CLOSE_CODES = [
 	GatewayCloseCodes.SessionTimedOut
 ]
 
-export interface GatewaySocket extends BaseWebSocket {
+export interface GatewaySocket extends Socket {
 	on(event: 'packet', listener: (event: any) => void): this
 	on(event: 'error', listener: (event: Event) => void): this
 	on(event: 'open', listener: (event: Event) => void): this
 	on(event: 'close', listener: (event: CloseEvent) => void): this
 	on(event: 'ready', listener: () => void): this
+	once(event: 'packet', listener: (event: any) => void): this
+	once(event: 'error', listener: (event: Event) => void): this
+	once(event: 'open', listener: (event: Event) => void): this
+	once(event: 'close', listener: (event: CloseEvent) => void): this
+	once(event: 'ready', listener: () => void): this
+	emit(event: 'packet'): boolean
+	emit(event: 'error'): boolean
+	emit(event: 'open'): boolean
+	emit(event: 'close'): boolean
+	emit(event: 'ready'): boolean
 }
 
-export class GatewaySocket extends BaseWebSocket {
+export class GatewaySocket extends Socket {
 	private hartbeatInterval?: number
 	private lastSequenceNumber: number | null = null
 	private missedHeartbeats = 0
@@ -183,9 +193,10 @@ export class GatewaySocket extends BaseWebSocket {
 		this.debug?.('Starting Heartbeat')
 		interval = interval * Math.random()
 		this.hartbeatInterval = setInterval(() => {
-			if (this.missedHeartbeats > 1) {
+			if (this.missedHeartbeats > 2) {
 				this.debug?.('Too many missed heartbeats.')
-				return this.destroy()
+				this.destroy()
+				return
 			}
 			this.sendHeartbeat()
 		}, interval)
@@ -212,9 +223,8 @@ export class GatewaySocket extends BaseWebSocket {
 
 		const { resume_gateway_url, session_id } = this.connectionData
 
-		if (!this.lastSequenceNumber || !resume_gateway_url || !session_id) {
+		if (!this.lastSequenceNumber || !resume_gateway_url || !session_id)
 			throw new GatewayResumeError('Lacking necessary data.')
-		}
 
 		this.closeSocket()
 		this.openSocket(`wss://${resume_gateway_url}/?v=10&encoding=json`)
