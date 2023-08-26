@@ -2,9 +2,10 @@
 	import { playAudioFromUrls } from '$lib/utils/play-audio-from-urls'
 	import Bot from '$lib/discord-browser-voice-client'
 	import { env } from '$env/dynamic/private'
+	import { dev } from '$app/environment'
 
-	export async function testDiscordVoiceCon() {
-		const bot = new Bot({ token: env.DISCORD_TOKEN, debug: true })
+	export async function init() {
+		const bot = new Bot({ token: env.DISCORD_TOKEN, debug: dev })
 
 		bot.on('ready', async () => {
 			const stream_ = await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -44,3 +45,5 @@
 		})
 	}
 </script>
+
+<button on:click={() => init()} />
