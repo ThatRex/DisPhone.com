@@ -7,8 +7,9 @@ import {
 	GatewayOpcodes
 } from 'discord-api-types/v10'
 import { GatewaySocket } from './gateway-socket'
-import { VoiceManager, type ConnectionParams } from './voice-manager'
+import { VoiceManager } from './voice-manager'
 import EventEmitter from 'eventemitter3'
+import type { AudioSettings } from './voice-rtc'
 
 function getBrowserName() {
 	for (const [matcher, name] of [
@@ -75,13 +76,25 @@ class Client extends EventEmitter {
 		})
 	}
 
-	public connect(params: ConnectionParams) {
+	public connect(params: {
+		guild_id: string
+		channel_id: string
+		audio_track: MediaStreamTrack
+		initial_speaking?: boolean
+		self_mute?: boolean
+		self_deaf?: boolean
+		audio_settings?: AudioSettings
+	}) {
+		const { audio_track, audio_settings, ...rest_settings } = params
+
 		this._voice = new VoiceManager({
 			gatewaySocket: this._gateway,
-			debug: this._debug
+			debug: this._debug,
+			audio_track: audio_track,
+			audio_settings: audio_settings
 		})
 
-		this._voice.connect(params)
+		this._voice.connect(rest_settings)
 
 		return this._voice
 	}
