@@ -11,16 +11,6 @@ import { VoiceRTC, type AudioSettings } from './voice-rtc'
 import { VoiceOpcodes } from 'discord-api-types/voice'
 import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 
-export type ConnectionParams = {
-	guild_id: string
-	channel_id: string
-	audio_track: MediaStreamTrack
-	audio_settings?: {
-		initial_speaking?: boolean
-		self_mute?: boolean
-		self_deaf?: boolean
-	} & AudioSettings
-}
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
 	on(event: 'connected', listener: () => void): this
@@ -50,30 +40,54 @@ export class VoiceManager extends EventEmitter {
 	private initial_speaking = false
 	private debug = false
 
-	constructor(params: { gatewaySocket: GatewaySocket; debug?: boolean }) {
+	constructor(params: {
+		gatewaySocket: GatewaySocket
+		audio_track: MediaStreamTrack
+		audio_settings?: AudioSettings
+		debug?: boolean
+	}) {
 		super()
 
-		const { gatewaySocket, debug } = params
+		const { gatewaySocket, debug, audio_track, audio_settings } = params
 
 		this.gateway = gatewaySocket
 		this.gateway.on('packet', (p) => this.handleGatewayPacket(p))
 
+		this.track = audio_track
+		this.audio_settings = audio_settings
+
 		this.debug = debug ?? false
 	}
 
-	public connect(params: ConnectionParams) {
+	public connect(params: {
+		guild_id: string
+		channel_id: string
+		audio_track?: MediaStreamTrack
+		initial_speaking?: boolean
+		self_mute?: boolean
+		self_deaf?: boolean
+		audio_settings?: AudioSettings
+	}) {
 		if (!this.gateway.ready) throw new VoiceConnectionError('Gateway not ready.')
 
-		const { guild_id, channel_id, audio_track, audio_settings } = params
+		const {
+			guild_id,
+			channel_id,
+			audio_track,
+			audio_settings,
+			initial_speaking,
+			self_deaf,
+			self_mute
+		} = params
 
 		this.guild_id = guild_id
 		this.channel_id = channel_id
-		this.self_mute = audio_settings?.self_mute ?? false
-		this.self_deaf = audio_settings?.self_deaf ?? false
+		this.self_mute = self_mute ?? false
+		this.self_deaf = self_deaf ?? false
 
 		this.track = audio_track ?? this.track
 		this.audio_settings = audio_settings ?? this.audio_settings
-		this.initial_speaking = audio_settings?.initial_speaking ?? false
+		this.initial_speaking = initial_speaking ?? this.initial_speaking
 
 		this.gateway.sendPacket({
 			op: GatewayOpcodes.VoiceStateUpdate,
