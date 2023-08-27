@@ -146,6 +146,7 @@ export class GatewaySocket extends Socket {
 				else this.destroy()
 				break
 			}
+
 			case GatewayOpcodes.Reconnect: {
 				this.doResume()
 				break

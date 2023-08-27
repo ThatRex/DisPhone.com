@@ -9,6 +9,59 @@ export type Codecs = {
 	rtx_payload_type: number | null
 }[]
 
+export type VoiceServerUpdate = {
+	t: 'VOICE_SERVER_UPDATE'
+	s: number
+	op: number
+	d: {
+		token: string
+		guild_id: string
+		endpoint: string
+	}
+}
+
+export type VoiceStateUpdate = {
+	t: 'VOICE_STATE_UPDATE'
+	s: number
+	op: number
+	d: {
+		member: {
+			user: {
+				username: string
+				public_flags: number
+				id: string
+				global_name: null
+				display_name: null
+				discriminator: string
+				bot: boolean
+				avatar_decoration_data: null
+				avatar: null
+			}
+			roles: string[]
+			premium_since: null
+			pending: boolean
+			nick: null
+			mute: boolean
+			joined_at: string
+			flags: number
+			deaf: boolean
+			communication_disabled_until: null
+			avatar: null
+		}
+		user_id: string
+		suppress: boolean
+		session_id: string
+		self_video: boolean
+		self_mute: boolean
+		self_deaf: boolean
+		request_to_speak_timestamp: null | number
+		mute: boolean
+		guild_id: string
+		deaf: boolean
+		channel_id: string | null
+	}
+}
+
 export class VoiceSocket extends Socket {
 	private hartbeatInterval?: number
 	private missedHeartbeats = 0

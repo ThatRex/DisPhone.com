@@ -40,7 +40,7 @@ export class VoiceRTC extends EventEmitter {
 		if (audioTrack.kind !== 'audio')
 			throw new VoiceRTCConnectionError('Video tracks not supported.')
 
-		this.audioSettings = audioSettings
+		this.audioSettings = audioSettings ?? this.audioSettings
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
 		this.pc.onconnectionstatechange = () => this.emit(this.pc!.connectionState)
 		this.pc.addTrack(audioTrack)
@@ -167,7 +167,7 @@ export class VoiceRTC extends EventEmitter {
 
 	public destroy() {
 		if (!this.pc) throw new VoiceRTCDestroyError('Peer connection is not open.')
+		this.debug?.('Closing')
 		this.pc.close()
-		this.pc = undefined
 	}
 }

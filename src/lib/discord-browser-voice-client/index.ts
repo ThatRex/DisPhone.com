@@ -3,7 +3,8 @@ import {
 	GatewayIntentBits,
 	PresenceUpdateStatus,
 	type GatewayIdentifyProperties,
-	type GatewayPresenceUpdateData
+	type GatewayPresenceUpdateData,
+	GatewayOpcodes
 } from 'discord-api-types/v10'
 import { GatewaySocket } from './gateway-socket'
 import { VoiceManager, type ConnectionParams } from './voice-manager'
@@ -28,8 +29,8 @@ function getBrowserName() {
 
 class Client extends EventEmitter {
 	private _gateway: GatewaySocket
+	private _voice?: VoiceManager
 	private _debug: boolean
-	public onready: ((...args: any) => any) | null = null
 
 	public get gateway() {
 		return this._gateway
@@ -67,15 +68,27 @@ class Client extends EventEmitter {
 		this._gateway.on('ready', () => this.emit('ready'))
 	}
 
+	public setPresence(params: GatewayPresenceUpdateData) {
+		this._gateway.sendPacket({
+			op: GatewayOpcodes.PresenceUpdate,
+			d: params
+		})
+	}
+
 	public connect(params: ConnectionParams) {
-		const voice = new VoiceManager({
+		this._voice = new VoiceManager({
 			gatewaySocket: this._gateway,
 			debug: this._debug
 		})
 
-		voice.connect(params)
+		this._voice.connect(params)
 
-		return voice
+		return this._voice
+	}
+
+	public shutdown() {
+		this._voice?.disconnect()
+		this._gateway.destroy(true)
 	}
 }
 
