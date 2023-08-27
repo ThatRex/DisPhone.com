@@ -108,8 +108,6 @@ export class VoiceManager extends EventEmitter {
 				const { endpoint, guild_id, token } = packet.d as VoiceServerUpdate['d']
 
 				this.rtc?.destroy()
-				this.voice?.destroy()
-
 				this.rtc = new VoiceRTC({ debug: this.debug })
 				this.rtc.on('track', (t) => this.emit('track', t))
 
@@ -118,6 +116,7 @@ export class VoiceManager extends EventEmitter {
 
 				this.ssrc = ssrc
 
+				this.voice?.destroy()
 				this.voice = new VoiceSocket({
 					user_id: this.gateway.identity.id!,
 					session_id: this.gateway.session_id!,

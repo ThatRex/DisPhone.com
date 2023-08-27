@@ -26,6 +26,7 @@ export class VoiceRTC extends EventEmitter {
 	private pc?: RTCPeerConnection
 	private payloadType?: number
 	private audioSettings?: AudioSettings
+	private track?: RTCRtpSender
 
 	public readonly debug: ((...args: any) => void) | null
 
@@ -43,7 +44,7 @@ export class VoiceRTC extends EventEmitter {
 		this.audioSettings = audioSettings ?? this.audioSettings
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
 		this.pc.onconnectionstatechange = () => this.emit(this.pc!.connectionState)
-		this.pc.addTrack(audioTrack)
+		this.track = this.pc.addTrack(audioTrack)
 		this.pc.ontrack = ({ track }) => {
 			this.debug?.(`Track: (${track.kind}) ${track.id}`)
 			if (track.kind === 'audio') this.emit('track', track)
@@ -167,7 +168,14 @@ export class VoiceRTC extends EventEmitter {
 
 	public destroy() {
 		if (!this.pc) throw new VoiceRTCDestroyError('Peer connection is not open.')
+
 		this.debug?.('Closing')
-		this.pc.close()
+		if (this.pc.connectionState !== 'closed') {
+			if (this.track) {
+				this.pc.removeTrack(this.track)
+				this.track = undefined
+			}
+			this.pc.close()
+		}
 	}
 }
