@@ -57,6 +57,9 @@ devDependencies:
   svelte-check:
     specifier: ^3.4.3
     version: 3.4.4(postcss@8.4.24)(svelte@4.0.1)
+  svelte-local-storage-store:
+    specifier: ^0.6.0
+    version: 0.6.0(svelte@4.0.1)
   tslib:
     specifier: ^2.4.1
     version: 2.6.0
@@ -2016,6 +2019,15 @@ packages:
     engines: {node: ^12.20 || ^14.13.1 || >= 16}
     peerDependencies:
       svelte: ^3.19.0 || ^4.0.0-next.0
+    dependencies:
+      svelte: 4.0.1
+    dev: true
+
+  /svelte-local-storage-store@0.6.0(svelte@4.0.1):
+    resolution: {integrity: sha512-UbCY/yT/YUadU5IX/gZkoRQnA+ebFZHKKQjlJvfWHnBj3CPe9sNn8ndxYz/xy4LUzGjuBLq8+wH5RYK54ba3wA==}
+    engines: {node: '>=0.14'}
+    peerDependencies:
+      svelte: ^3.48.0 || ^4.0.0
     dependencies:
       svelte: 4.0.1
     dev: true
