@@ -18,7 +18,6 @@ export const testPhone = async () => {
 		}
 
 		const mediaElement = new Audio()
-		mediaElement.autoplay = true
 		mediaElement.srcObject = sessionDescriptionHandler.remoteMediaStream
 		mediaElement.play()
 
@@ -43,7 +42,7 @@ export const testPhone = async () => {
 	const registerer = new Registerer(ua)
 	await registerer.register()
 
-	const target = UserAgent.makeURI('sip:5000@pbx.rexslab.com')
+	const target = UserAgent.makeURI('sip:2001@pbx.rexslab.com')
 	if (!target) return
 
 	const inviter = new Inviter(ua, target, {
