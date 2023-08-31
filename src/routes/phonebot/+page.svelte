@@ -1,12 +1,12 @@
 <script lang="ts">
 	import VoiceBot from '$lib/discord-browser-voice-client'
-	import { env } from '$env/dynamic/public'
 	import { dev } from '$app/environment'
 	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
-	import { UserAgent, Registerer, Inviter, Session, SessionState, Web } from 'sip.js'
+	import { UserAgent, Inviter, Session, SessionState, Web } from 'sip.js'
 
-    
+	let phoneSender: RTCRtpSender
+	let botSender: RTCRtpSender
 
 	const config = persisted('config', {
 		// bot
@@ -35,15 +35,39 @@
 			return Promise.reject(new Error('Media devices not available in insecure contexts.'))
 		}
 
-		const mediaElement = new Audio()
-		mediaElement.srcObject = sessionDescriptionHandler.remoteMediaStream
-		mediaElement.play()
+		sessionDescriptionHandler.peerConnectionDelegate = {
+			ontrack: (e) => {
+				console.log('New Track: ', e)
+				console.log('Senders: ', sessionDescriptionHandler.peerConnection?.getSenders())
+				for (const sender of sessionDescriptionHandler.peerConnection?.getSenders() ?? []) {
+					if (sender.track?.kind === 'audio') {
+						phoneSender = sender
 
-		return navigator.mediaDevices.getUserMedia.call(navigator.mediaDevices, constraints)
+						const check4sender = () => {
+							if (botSender) {
+								console.log('Found Bot Sender')
+								botSender.replaceTrack(
+									sessionDescriptionHandler.remoteMediaStream.getAudioTracks()[0]
+								)
+							} else {
+								console.log('Checking For Bot Sender')
+								setTimeout(check4sender, 500)
+							}
+						}
+						check4sender()
+						return
+					}
+				}
+			}
+		}
+
+		const ac = new AudioContext()
+		const dest = ac.createMediaStreamDestination()
+		const bufferSource = ac.createBufferSource()
+		bufferSource.buffer = ac.createBuffer(2, ac.sampleRate * 1, ac.sampleRate)
+		bufferSource.connect(dest)
+		return Promise.resolve(dest.stream)
 	}
-
-	const theSessionDescriptionHandlerFactory =
-		Web.defaultSessionDescriptionHandlerFactory(theMediaStreamFactory)
 
 	let ua: UserAgent
 	let phoneReady = false
@@ -52,13 +76,14 @@
 
 	async function initPhone() {
 		ua = new UserAgent({
-			sessionDescriptionHandlerFactory: theSessionDescriptionHandlerFactory,
-			authorizationPassword: env.PUBLIC_PASS,
-			authorizationUsername: env.PUBLIC_USER,
+			sessionDescriptionHandlerFactory:
+				Web.defaultSessionDescriptionHandlerFactory(theMediaStreamFactory),
+			authorizationPassword: $config.pass,
+			authorizationUsername: $config.user,
 			transportOptions: {
-				server: env.PUBLIC_WS_SERVER
+				server: $config.wsServer
 			},
-			uri: UserAgent.makeURI(env.PUBLIC_SIP_URI)
+			uri: UserAgent.makeURI($config.sipURI!)
 		})
 
 		await ua.start()
@@ -77,7 +102,7 @@
 
 		outgoingSession = inviter
 
-		outgoingSession.stateChange.addListener(async (newState: SessionState) => {
+		outgoingSession.stateChange.addListener((newState: SessionState) => {
 			switch (newState) {
 				case SessionState.Establishing: {
 					console.log('Session is establishing')
@@ -89,8 +114,8 @@
 					break
 				}
 				case SessionState.Terminated: {
-					console.log('Session has terminated')
 					oncall = false
+					console.log('Session has terminated')
 					break
 				}
 				default: {
@@ -99,7 +124,7 @@
 			}
 		})
 
-        await inviter.invite()
+		await inviter.invite()
 	}
 
 	let bot: VoiceBot
@@ -108,12 +133,19 @@
 	let connected = false
 
 	function initBot() {
-		bot = new VoiceBot({ token: env.PUBLIC_DISCORD_TOKEN, debug: dev })
+		bot = new VoiceBot({ token: $config.discordToken!, debug: dev })
 		bot.on('ready', () => (botReady = true))
 	}
 
 	async function connect() {
-		const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+		const ac = new AudioContext()
+		const dest = ac.createMediaStreamDestination()
+		const bufferSource = ac.createBufferSource()
+		bufferSource.buffer = ac.createBuffer(2, ac.sampleRate * 1, ac.sampleRate)
+		bufferSource.connect(dest)
+		const stream = dest.stream
+
+		const stream1 = await navigator.mediaDevices.getUserMedia({ audio: true })
 
 		const audio_track = stream.getTracks()[0]
 
@@ -137,12 +169,21 @@
 				console.log('Disconnected')
 			})
 
+			voice.on('sender', (s) => {
+				botSender = s
+			})
+
 			voice.on('track', async (t) => {
-				const stream = new MediaStream()
-				const mediaElement = new Audio()
-				stream.addTrack(t)
-				mediaElement.srcObject = stream
-				await mediaElement.play()
+				const check4sender = () => {
+					if (phoneSender) {
+						console.log('Found Phone Sender')
+						phoneSender.replaceTrack(t)
+					} else {
+						console.log('Checking For Phone Sender')
+						setTimeout(check4sender, 500)
+					}
+				}
+				check4sender()
 			})
 		} else {
 			voice.connect({
@@ -193,9 +234,9 @@
 
 {#if phoneReady}
 	<div style="margin: 10px 0; padding: 10px ; border: 1px solid">
-        <h1>Phone</h1>
+		<h1>Phone</h1>
 		<label>
-			<input type="text" placeholder="8885554444" bind:value={$config.phoneNum} disabled={oncall} />
+			<input type="text" placeholder="2484345508" bind:value={$config.phoneNum} disabled={oncall} />
 		</label>
 		{#if oncall}
 			<button on:click={async () => await outgoingSession.bye()}>HANGUP</button>

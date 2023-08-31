@@ -15,10 +15,13 @@ export type AudioSettings = {
 
 export interface VoiceRTC extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
+	on(event: 'sender', listener: (event: RTCRtpSender) => void): this
 	on(event: RTCPeerConnectionState, listener: () => void): this
 	once(event: 'track', listener: (event: MediaStreamTrack) => void): this
+	once(event: 'sender', listener: (event: RTCRtpSender) => void): this
 	once(event: RTCPeerConnectionState, listener: () => void): this
 	emit(event: 'track', track: MediaStreamTrack): boolean
+	emit(event: 'sender', sender: RTCRtpSender): boolean
 	emit(event: RTCPeerConnectionState): boolean
 }
 
@@ -45,6 +48,7 @@ export class VoiceRTC extends EventEmitter {
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
 		this.pc.onconnectionstatechange = () => this.emit(this.pc!.connectionState)
 		this.track = this.pc.addTrack(audioTrack)
+		this.emit('sender', this.track)
 		this.pc.ontrack = ({ track }) => {
 			this.debug?.(`Track: (${track.kind}) ${track.id}`)
 			if (track.kind === 'audio') this.emit('track', track)

@@ -13,12 +13,15 @@ import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
+	on(event: 'sender', listener: (event: RTCRtpSender) => void): this
 	on(event: 'connected', listener: () => void): this
 	on(event: 'disconnected', listener: () => void): this
 	once(event: 'track', listener: (event: MediaStreamTrack) => void): this
+	once(event: 'sender', listener: (event: RTCRtpSender) => void): this
 	once(event: 'connected', listener: () => void): this
 	once(event: 'disconnected', listener: () => void): this
 	emit(event: 'track', track: MediaStreamTrack): boolean
+	emit(event: 'sender', sender: RTCRtpSender): boolean
 	emit(event: 'connected'): boolean
 	emit(event: 'disconnected'): boolean
 }
@@ -124,6 +127,7 @@ export class VoiceManager extends EventEmitter {
 				this.rtc?.destroy()
 				this.rtc = new VoiceRTC({ debug: this.debug })
 				this.rtc.on('track', (t) => this.emit('track', t))
+				this.rtc.on('sender', (t) => this.emit('sender', t))
 
 				await this.rtc.openConnection(this.track!, this.audio_settings)
 				const { sdp, codecs, ssrc } = await this.rtc.createOffer()

@@ -56,7 +56,7 @@ export type VoiceStateUpdate = {
 		self_deaf: boolean
 		request_to_speak_timestamp: null | number
 		mute: boolean
-		guild_id: string
+		guild_id: string | null
 		deaf: boolean
 		channel_id: string | null
 	}
