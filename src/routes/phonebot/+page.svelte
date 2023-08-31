@@ -5,8 +5,8 @@
 	import { persisted } from 'svelte-local-storage-store'
 	import { UserAgent, Inviter, Session, SessionState, Web } from 'sip.js'
 
-	let phoneSender: RTCRtpSender
-	let botSender: RTCRtpSender
+	let phoneSender: RTCRtpSender | undefined
+	let botSender: RTCRtpSender | undefined
 
 	const config = persisted('config', {
 		// bot
@@ -36,25 +36,25 @@
 		}
 
 		sessionDescriptionHandler.peerConnectionDelegate = {
-			ontrack: (e) => {
+			ontrack: async (e) => {
 				console.log('New Track: ', e)
 				console.log('Senders: ', sessionDescriptionHandler.peerConnection?.getSenders())
 				for (const sender of sessionDescriptionHandler.peerConnection?.getSenders() ?? []) {
 					if (sender.track?.kind === 'audio') {
 						phoneSender = sender
 
-						const check4sender = () => {
+						const check4sender = async () => {
 							if (botSender) {
 								console.log('Found Bot Sender')
-								botSender.replaceTrack(
+								await botSender.replaceTrack(
 									sessionDescriptionHandler.remoteMediaStream.getAudioTracks()[0]
 								)
 							} else {
 								console.log('Checking For Bot Sender')
-								setTimeout(check4sender, 500)
+								setTimeout(async () => await check4sender(), 500)
 							}
 						}
-						check4sender()
+						await check4sender()
 						return
 					}
 				}
@@ -115,10 +115,8 @@
 				}
 				case SessionState.Terminated: {
 					oncall = false
+					phoneSender = undefined
 					console.log('Session has terminated')
-					break
-				}
-				default: {
 					break
 				}
 			}
@@ -169,21 +167,19 @@
 				console.log('Disconnected')
 			})
 
-			voice.on('sender', (s) => {
-				botSender = s
-			})
+			voice.on('sender', (s) => (botSender = s))
 
 			voice.on('track', async (t) => {
-				const check4sender = () => {
+				const check4sender = async () => {
 					if (phoneSender) {
 						console.log('Found Phone Sender')
-						phoneSender.replaceTrack(t)
+						await phoneSender.replaceTrack(t)
 					} else {
 						console.log('Checking For Phone Sender')
-						setTimeout(check4sender, 500)
+						setTimeout(async () => await check4sender(), 500)
 					}
 				}
-				check4sender()
+				await check4sender()
 			})
 		} else {
 			voice.connect({
@@ -206,6 +202,7 @@
 			voice = undefined
 			bot.shutdown()
 			botReady = false
+			botSender = undefined
 		}}
 	>
 		Stop Bot
@@ -253,8 +250,10 @@
 			<a
 				target="_blank"
 				href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
-					.id}&permissions=0&scope=bot%20applications.commands">Invite Bot</a
+					.id}&permissions=0&scope=bot%20applications.commands"
 			>
+				Invite Bot
+			</a>
 		</div>
 		<div><b>Status:</b> {connected}</div>
 		<div>
