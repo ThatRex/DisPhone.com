@@ -1,6 +1,5 @@
 <script lang="ts">
-	import { testPhone } from '$lib/phone'
-	import { playAudioFromUrls } from '$lib/utils/play-audio-from-urls'
+	import { playAudioFromUrls } from '$lib/utils'
 
 	async function testWebhook() {
 		const url =
@@ -15,11 +14,11 @@
 		// 	})
 		// })
 
-		// const fr = await fetch('http://localhost:5173/test.mp3')
+		// const fr = await fetch('http://localhost:5173/audio/test.mp3')
 		// const fb = await fr.blob()
 
 		const fd = new FormData()
-		// fd.append('file', fb, 'test.mp3')
+		// fd.append('file', fb, 'audio/test.mp3')
 		fd.append('payload_json', JSON.stringify({ username: 'DBFPOC', content: 'hi' }))
 		fd.append('file', new Blob(['Hello world!'], { type: 'text/plain' }), 'test.txt')
 
@@ -30,7 +29,7 @@
 	}
 
 	async function testMP3stream() {
-		const mp3stream = await playAudioFromUrls(['test.mp3'])
+		const mp3stream = await playAudioFromUrls(['audio/test.mp3'])
 		const mediaElement = new Audio()
 		mediaElement.srcObject = mp3stream
 		mediaElement.play()
@@ -38,6 +37,5 @@
 </script>
 
 <h1>Discord Browser Phone POC</h1>
-<button on:click={testPhone}>Test Phone</button>
 <button on:click={testWebhook}>Test Discord Webhook</button>
 <button on:click={testMP3stream}>Test MP3 Stream</button>
