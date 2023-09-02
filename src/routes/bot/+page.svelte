@@ -9,6 +9,13 @@
 
 	let phoneSender: RTCRtpSender | undefined
 	let botSender: RTCRtpSender | undefined
+	let phoneTrack: MediaStreamTrack | undefined
+	let botTrack: MediaStreamTrack | undefined
+
+	$: console.debug('phoneSender ', phoneSender)
+	$: console.debug('botSender ', botSender)
+	$: console.debug('phoneTrack ', phoneTrack)
+	$: console.debug('botTrack ', botTrack)
 
 	const config = persisted('config', {
 		// bot
@@ -30,36 +37,38 @@
 	let outgoingSession: Session
 
 	async function initPhone() {
+		await navigator.mediaDevices.getUserMedia({ audio: true })
 		phone = new PhoneClient({
 			username: $config.user,
 			password: $config.pass,
 			sipServer: $config.sipServer
 		})
 
-		phone.on('sender', (s) => (phoneSender = s))
-		phone.on('track', async (t) => {
-			const check4sender = async () => {
-				if (botSender) {
-					console.log('Found Bot Sender')
-					await botSender.replaceTrack(t)
-				} else {
-					console.log('Checking For Bot Sender')
-					setTimeout(async () => await check4sender(), 500)
-				}
+		phone.on('sender', async (s) => {
+			phoneSender = s
+			if (botTrack) {
+				console.debug('phone sender updated to new bot track')
+				await phoneSender.replaceTrack(botTrack)
 			}
-			await check4sender()
+		})
+		phone.on('track', async (t) => {
+			phoneTrack = t
+			if (botSender) {
+				console.debug('bot sender updated to new phone track')
+				await botSender.replaceTrack(phoneTrack)
+			}
 		})
 
 		phoneReady = true
 	}
 
 	async function makeCall() {
-		const inviter = await phone.makeInviter($config.phoneNum)
+		const inviter = phone.makeInviter($config.phoneNum)
 
 		outgoingSession = inviter
 
-		outgoingSession.stateChange.addListener((newState: SessionState) => {
-			switch (newState) {
+		outgoingSession.stateChange.addListener((state: SessionState) => {
+			switch (state) {
 				case SessionState.Establishing: {
 					console.log('Session is establishing')
 					break
@@ -72,6 +81,7 @@
 				case SessionState.Terminated: {
 					oncall = false
 					phoneSender = undefined
+					phoneTrack = undefined
 					console.log('Session has terminated')
 					break
 				}
@@ -89,14 +99,14 @@
 	function initBot() {
 		bot = new VoiceBot({
 			token: $config.discordToken!,
-			debug: dev
+			debug: false
 		})
 		bot.on('ready', () => (botReady = true))
 	}
 
 	async function connect() {
+		await navigator.mediaDevices.getUserMedia({ audio: true })
 		const stream = generateDummyStream()
-		const stream1 = await navigator.mediaDevices.getUserMedia({ audio: true })
 
 		const [audio_track] = stream.getAudioTracks()
 
@@ -116,22 +126,25 @@
 
 			voice.on('disconnected', () => {
 				connected = false
+				botSender = undefined
+				botTrack = undefined
 				console.log('Disconnected')
 			})
 
-			voice.on('sender', (s) => (botSender = s))
+			voice.on('sender', async (s) => {
+				botSender = s
+				if (phoneTrack) {
+					console.debug('bot sender updated to new phone track')
+					await botSender.replaceTrack(phoneTrack)
+				}
+			})
 
 			voice.on('track', async (t) => {
-				const check4sender = async () => {
-					if (phoneSender) {
-						console.log('Found Phone Sender')
-						await phoneSender.replaceTrack(t)
-					} else {
-						console.log('Checking For Phone Sender')
-						setTimeout(async () => await check4sender(), 500)
-					}
+				botTrack = t
+				if (phoneSender) {
+					console.debug('phone sender updated to new bot track')
+					await phoneSender.replaceTrack(botTrack)
 				}
-				await check4sender()
 			})
 		} else {
 			voice.connect({
@@ -164,9 +177,7 @@
 {#if !phoneReady}
 	<button
 		disabled={!$config.sipServer || !$config.user || !$config.pass}
-		on:click={async () => {
-			await initPhone()
-		}}
+		on:click={async () => await initPhone()}
 	>
 		Start Phone
 	</button>
@@ -182,7 +193,7 @@
 {/if}
 
 {#if phoneReady}
-	<div style="margin: 10px 0; padding: 10px ; border: 1px solid">
+	<div style="margin: 10px 0; padding: 10px; border: 1px solid">
 		<h1>Phone</h1>
 		<label>
 			<input type="text" placeholder="2484345508" bind:value={$config.phoneNum} disabled={oncall} />
@@ -196,7 +207,7 @@
 {/if}
 
 {#if botReady}
-	<div style="margin: 10px 0; padding: 10px ; border: 1px solid">
+	<div style="margin: 10px 0; padding: 10px; border: 1px solid">
 		<h1>Bot</h1>
 		<div>
 			<a
@@ -207,7 +218,7 @@
 				Invite Bot
 			</a>
 		</div>
-		<div><b>Status:</b> {connected}</div>
+		<div><b>Connected:</b> {connected}</div>
 		<div>
 			{#if !connected}
 				<div style="display: flex; flex-direction: column;">
@@ -232,7 +243,7 @@
 {/if}
 
 {#if !$config.hideConfig}
-	<div style="margin: 10px 0; padding: 10px ; border: 1px solid">
+	<div style="margin: 10px 0; padding: 10px; border: 1px solid">
 		<h1>Config</h1>
 		<div>
 			<h2>Discord Bot</h2>
