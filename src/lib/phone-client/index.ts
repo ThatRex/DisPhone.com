@@ -1,6 +1,6 @@
 import EventEmitter from 'eventemitter3'
 import { UserAgent, Registerer, Inviter, Web } from 'sip.js'
-import { generateDummyStream } from '$lib/utils/generate-dummy-stream'
+import { generateDummyStream } from '$lib/utils'
 
 interface PhoneClient extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -50,7 +50,7 @@ class PhoneClient extends EventEmitter {
 		this.ua.stop()
 	}
 
-	public async makeInviter(number: string) {
+	public makeInviter(number: string) {
 		const target = UserAgent.makeURI(`sip:${number}@${this.sipServer}`)
 		if (!target) throw Error('Target Was Undefined')
 
