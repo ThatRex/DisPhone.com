@@ -1,9 +1,8 @@
 <script lang="ts">
-	import { dev } from '$app/environment'
 	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
 	import { Session, SessionState } from 'sip.js'
-	import { generateDummyStream, playAudioFromUrls, wait } from '$lib/utils'
+	import { generateDummyStream, getUserMedia, playAudioFromUrls, startMediaFlow } from '$lib/utils'
 	import { PhoneClient } from '$lib/phone-client'
 	import VoiceBot from '$lib/discord-browser-voice-client'
 
@@ -11,11 +10,6 @@
 	let botSender: RTCRtpSender | undefined
 	let phoneTrack: MediaStreamTrack | undefined
 	let botTrack: MediaStreamTrack | undefined
-
-	$: console.debug('phoneSender ', phoneSender)
-	$: console.debug('botSender ', botSender)
-	$: console.debug('phoneTrack ', phoneTrack)
-	$: console.debug('botTrack ', botTrack)
 
 	const config = persisted('config', {
 		// bot
@@ -37,7 +31,7 @@
 	let outgoingSession: Session
 
 	async function initPhone() {
-		await navigator.mediaDevices.getUserMedia({ audio: true }) // ff compat
+		await getUserMedia({ audio: true })
 
 		phone = new PhoneClient({
 			username: $config.user,
@@ -54,6 +48,7 @@
 		})
 
 		phone.on('track', async (t) => {
+			startMediaFlow(t)
 			phoneTrack = t
 			if (botSender) {
 				console.debug('bot sender updated to new phone track')
@@ -112,7 +107,7 @@
 	}
 
 	async function connect() {
-		await navigator.mediaDevices.getUserMedia({ audio: true })
+		await getUserMedia({ audio: true })
 		const stream = generateDummyStream()
 
 		const [audio_track] = stream.getAudioTracks()
@@ -128,7 +123,7 @@
 
 			voice.on('connected', () => {
 				connected = true
-				console.log('Connected')
+				console.debug('Connected')
 			})
 
 			voice.on('disconnected', async () => {
@@ -142,8 +137,7 @@
 							'/music/07. The Demon-Haunted World.mp3',
 							'/music/03. Body & Symphony.mp3',
 							'/music/03. Shades Of Hell - Kuolleet Sielut.mp3'
-						].sort(() => Math.random() - 0.5),
-						100
+						].sort(() => Math.random() - 0.5)
 					)
 					const [track] = stream.getAudioTracks()
 					phoneSender.replaceTrack(track)
@@ -159,6 +153,7 @@
 			})
 
 			voice.on('track', async (t) => {
+				startMediaFlow(t)
 				botTrack = t
 				if (phoneSender) {
 					console.debug('phone sender updated to new bot track')
@@ -203,7 +198,6 @@
 {:else}
 	<button
 		on:click={async () => {
-			if (phoneSender) await phoneSender.replaceTrack(generateDummyStream().getAudioTracks()[0])
 			phone.stop()
 			phoneReady = false
 			oncall = false
@@ -224,7 +218,6 @@
 		{#if oncall}
 			<button
 				on:click={async () => {
-					if (phoneSender) await phoneSender.replaceTrack(generateDummyStream().getAudioTracks()[0])
 					await outgoingSession.bye()
 				}}
 			>

@@ -1,6 +1,6 @@
 import EventEmitter from 'eventemitter3'
 import { UserAgent, Registerer, Inviter, Web } from 'sip.js'
-import { generateDummyStream } from '$lib/utils'
+import { generateDummyStream, getUserMedia } from '$lib/utils'
 
 interface PhoneClient extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -75,7 +75,28 @@ class PhoneClient extends EventEmitter {
 			return Promise.reject(new Error('Media devices not available in insecure contexts.'))
 		}
 
-		await navigator.mediaDevices.getUserMedia({ audio: true }) // ff compat
+		await getUserMedia({ audio: true })
+
+		sessionDescriptionHandler.close = () => {
+			const { peerConnection, dataChannel } = sessionDescriptionHandler
+
+			if (peerConnection === undefined) return
+
+			for (const receiver of peerConnection.getReceivers()) {
+				receiver.track && receiver.track.stop()
+			}
+
+			// We don't want to stop the tracks on the sender because otherwise the track coming from the bot will be ended.
+			// for (const sender of peerConnection.getSenders()) {
+			//     sender.track && sender.track.stop()
+			// }
+
+			dataChannel?.close()
+			peerConnection.close()
+
+			// ! Can't do this but the default close function does so keep that in mind...
+			// peerConnection = undefined
+		}
 
 		sessionDescriptionHandler.peerConnectionDelegate = {
 			ontrack: () => {

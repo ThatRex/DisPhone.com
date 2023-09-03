@@ -1,3 +1,5 @@
 export * from './wait'
 export * from './generate-dummy-stream'
 export * from './play-audio-from-urls'
+export * from './start-media-flow'
+export * from './get-user-media'
