@@ -3,7 +3,7 @@
 	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
 	import { Session, SessionState } from 'sip.js'
-	import { generateDummyStream } from '$lib/utils'
+	import { generateDummyStream, playAudioFromUrls, wait } from '$lib/utils'
 	import { PhoneClient } from '$lib/phone-client'
 	import VoiceBot from '$lib/discord-browser-voice-client'
 
@@ -37,7 +37,8 @@
 	let outgoingSession: Session
 
 	async function initPhone() {
-		await navigator.mediaDevices.getUserMedia({ audio: true })
+		await navigator.mediaDevices.getUserMedia({ audio: true }) // ff compat
+
 		phone = new PhoneClient({
 			username: $config.user,
 			password: $config.pass,
@@ -51,6 +52,7 @@
 				await phoneSender.replaceTrack(botTrack)
 			}
 		})
+
 		phone.on('track', async (t) => {
 			phoneTrack = t
 			if (botSender) {
@@ -67,7 +69,7 @@
 
 		outgoingSession = inviter
 
-		outgoingSession.stateChange.addListener((state: SessionState) => {
+		outgoingSession.stateChange.addListener(async (state: SessionState) => {
 			switch (state) {
 				case SessionState.Establishing: {
 					console.log('Session is establishing')
@@ -79,6 +81,11 @@
 					break
 				}
 				case SessionState.Terminated: {
+					if (botSender) {
+						const stream = await playAudioFromUrls(['/sounds/hangup.wav'], 50)
+						const [track] = stream.getAudioTracks()
+						botSender.replaceTrack(track)
+					}
 					oncall = false
 					phoneSender = undefined
 					phoneTrack = undefined
@@ -124,11 +131,23 @@
 				console.log('Connected')
 			})
 
-			voice.on('disconnected', () => {
+			voice.on('disconnected', async () => {
 				connected = false
 				botSender = undefined
 				botTrack = undefined
 				console.log('Disconnected')
+				if (phoneSender) {
+					const stream = await playAudioFromUrls(
+						[
+							'/music/07. The Demon-Haunted World.mp3',
+							'/music/03. Body & Symphony.mp3',
+							'/music/03. Shades Of Hell - Kuolleet Sielut.mp3'
+						].sort(() => Math.random() - 0.5),
+						100
+					)
+					const [track] = stream.getAudioTracks()
+					phoneSender.replaceTrack(track)
+				}
 			})
 
 			voice.on('sender', async (s) => {
@@ -183,9 +202,13 @@
 	</button>
 {:else}
 	<button
-		on:click={() => {
+		on:click={async () => {
+			if (phoneSender) await phoneSender.replaceTrack(generateDummyStream().getAudioTracks()[0])
 			phone.stop()
 			phoneReady = false
+			oncall = false
+			phoneSender = undefined
+			phoneTrack = undefined
 		}}
 	>
 		Stop Phone
@@ -199,7 +222,14 @@
 			<input type="text" placeholder="2484345508" bind:value={$config.phoneNum} disabled={oncall} />
 		</label>
 		{#if oncall}
-			<button on:click={async () => await outgoingSession.bye()}>HANGUP</button>
+			<button
+				on:click={async () => {
+					if (phoneSender) await phoneSender.replaceTrack(generateDummyStream().getAudioTracks()[0])
+					await outgoingSession.bye()
+				}}
+			>
+				HANGUP
+			</button>
 		{:else}
 			<button on:click={async () => await makeCall()}>CALL</button>
 		{/if}
