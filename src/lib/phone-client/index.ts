@@ -86,7 +86,7 @@ class PhoneClient extends EventEmitter {
 				receiver.track && receiver.track.stop()
 			}
 
-			// We don't want to stop the tracks on the sender because otherwise the track coming from the bot will be ended.
+			// Unlike the defaut function we don't want to stop the tracks on the sender because that ends the sending track that needs to be reused.
 			// for (const sender of peerConnection.getSenders()) {
 			//     sender.track && sender.track.stop()
 			// }
@@ -94,7 +94,7 @@ class PhoneClient extends EventEmitter {
 			dataChannel?.close()
 			peerConnection.close()
 
-			// ! Can't do this but the default close function does so keep that in mind...
+			// ! The default close does this but we can't so keep that in mind...
 			// peerConnection = undefined
 		}
 
