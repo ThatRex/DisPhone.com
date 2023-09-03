@@ -63,7 +63,10 @@ class PhoneClient extends EventEmitter {
 		return inviter
 	}
 
-	private mediaStreamFactory: Web.MediaStreamFactory = (constraints, sessionDescriptionHandler) => {
+	private mediaStreamFactory: Web.MediaStreamFactory = async (
+		constraints,
+		sessionDescriptionHandler
+	) => {
 		if (!constraints.audio && !constraints.video) {
 			return Promise.resolve(new MediaStream())
 		}
@@ -71,6 +74,8 @@ class PhoneClient extends EventEmitter {
 		if (navigator.mediaDevices === undefined) {
 			return Promise.reject(new Error('Media devices not available in insecure contexts.'))
 		}
+
+		await navigator.mediaDevices.getUserMedia({ audio: true }) // ff compat
 
 		sessionDescriptionHandler.peerConnectionDelegate = {
 			ontrack: () => {

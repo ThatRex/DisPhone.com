@@ -1,8 +1,8 @@
-export async function playAudioFromUrls(urls: string[]) {
+export async function playAudioFromUrls(urls: string[], volume?: number) {
 	const context = new AudioContext()
 	const destination = context.createMediaStreamDestination()
 	let i = 0
-	const playNextSong = async () => {
+	const playNextAudio = async () => {
 		if (i >= urls.length) return
 		const url = urls[i]
 		const response = await fetch(url)
@@ -10,11 +10,17 @@ export async function playAudioFromUrls(urls: string[]) {
 		const audioBuffer = await context.decodeAudioData(arrayBuffer)
 		const bufferSource = context.createBufferSource()
 		bufferSource.buffer = audioBuffer
+
+		const gainNode = context.createGain()
+		gainNode.gain.value = (volume ?? 100) / 100
+		bufferSource.connect(gainNode)
+		gainNode.connect(destination)
+
 		bufferSource.start(0)
-		bufferSource.connect(destination)
 		i++
-		bufferSource.onended = playNextSong
+		bufferSource.onended = playNextAudio
 	}
-	playNextSong()
+	playNextAudio()
+
 	return destination.stream
 }
