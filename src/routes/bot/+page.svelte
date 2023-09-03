@@ -131,17 +131,6 @@
 				botSender = undefined
 				botTrack = undefined
 				console.log('Disconnected')
-				if (phoneSender) {
-					const stream = await playAudioFromUrls(
-						[
-							'/music/07. The Demon-Haunted World.mp3',
-							'/music/03. Body & Symphony.mp3',
-							'/music/03. Shades Of Hell - Kuolleet Sielut.mp3'
-						].sort(() => Math.random() - 0.5)
-					)
-					const [track] = stream.getAudioTracks()
-					phoneSender.replaceTrack(track)
-				}
 			})
 
 			voice.on('sender', async (s) => {
@@ -167,6 +156,8 @@
 			})
 		}
 	}
+
+	let dtmf: string
 </script>
 
 <button on:click={() => ($config.hideConfig = !$config.hideConfig)}>
@@ -222,6 +213,23 @@
 				}}
 			>
 				HANGUP
+			</button>
+			<input
+				type="number"
+				name="dtmf"
+				id="dtmd"
+				min="0"
+				max="9"
+				placeholder="0"
+				bind:value={dtmf}
+			/>
+			<button
+				on:click={() => {
+					outgoingSession.sessionDescriptionHandler?.sendDtmf(dtmf)
+					dtmf = ''
+				}}
+			>
+				Send DTMF
 			</button>
 		{:else}
 			<button on:click={async () => await makeCall()}>CALL</button>
