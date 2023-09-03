@@ -42,7 +42,7 @@
 		phone.on('sender', async (s) => {
 			phoneSender = s
 			if (botTrack) {
-				console.debug('phone sender updated to new bot track')
+				console.debug('phone sender updated to bot track')
 				await phoneSender.replaceTrack(botTrack)
 			}
 		})
@@ -64,9 +64,18 @@
 
 		outgoingSession = inviter
 
-		outgoingSession.stateChange.addListener(async (state: SessionState) => {
+		outgoingSession.stateChange.addListener(async (state) => {
 			switch (state) {
 				case SessionState.Establishing: {
+					if (botSender) {
+						const stream = await playAudioFromUrls({
+							urls: ['/sounds/ringing.wav'],
+							volume: 50,
+							loop: true
+						})
+						const [track] = stream.getAudioTracks()
+						botSender.replaceTrack(track)
+					}
 					console.log('Session is establishing')
 					break
 				}
@@ -75,9 +84,15 @@
 					console.log('Session has been established')
 					break
 				}
+				case SessionState.Terminating: {
+					break
+				}
 				case SessionState.Terminated: {
 					if (botSender) {
-						const stream = await playAudioFromUrls(['/sounds/hangup.wav'], 50)
+						const stream = await playAudioFromUrls({
+							urls: ['/sounds/hangup.wav'],
+							volume: 50
+						})
 						const [track] = stream.getAudioTracks()
 						botSender.replaceTrack(track)
 					}
@@ -136,7 +151,7 @@
 			voice.on('sender', async (s) => {
 				botSender = s
 				if (phoneTrack) {
-					console.debug('bot sender updated to new phone track')
+					console.debug('bot sender updated to phone track')
 					await botSender.replaceTrack(phoneTrack)
 				}
 			})
@@ -203,36 +218,41 @@
 {#if phoneReady}
 	<div style="margin: 10px 0; padding: 10px; border: 1px solid">
 		<h1>Phone</h1>
-		<label>
-			<input type="text" placeholder="2484345508" bind:value={$config.phoneNum} disabled={oncall} />
-		</label>
-		{#if oncall}
-			<button
-				on:click={async () => {
+		<form
+			on:submit|preventDefault={async () => {
+				if (oncall) {
 					await outgoingSession.bye()
-				}}
-			>
-				HANGUP
-			</button>
-			<input
-				type="number"
-				name="dtmf"
-				id="dtmd"
-				min="0"
-				max="9"
-				placeholder="0"
-				bind:value={dtmf}
-			/>
-			<button
-				on:click={() => {
+					return
+				}
+				if (!/[a-zA-Z]/.test($config.phoneNum)) {
+					$config.phoneNum = $config.phoneNum.replace(/[^0-9#*+]/g, '')
+				}
+				$config.phoneNum = $config.phoneNum
+				await makeCall()
+			}}
+		>
+			<label>
+				<input
+					type="tel"
+					placeholder="2484345508"
+					bind:value={$config.phoneNum}
+					disabled={oncall}
+				/>
+			</label>
+
+			<button>{oncall ? 'HANGUP' : 'CALL'} </button>
+		</form>
+
+		{#if oncall}
+			<form
+				on:submit|preventDefault={() => {
 					outgoingSession.sessionDescriptionHandler?.sendDtmf(dtmf)
 					dtmf = ''
 				}}
 			>
-				Send DTMF
-			</button>
-		{:else}
-			<button on:click={async () => await makeCall()}>CALL</button>
+				<input type="tel" name="dtmf" id="dtmd" min="0" max="9" placeholder="0" bind:value={dtmf} />
+				<button>Send DTMF</button>
+			</form>
 		{/if}
 	</div>
 {/if}
