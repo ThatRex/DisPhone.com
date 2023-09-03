@@ -86,7 +86,7 @@ class PhoneClient extends EventEmitter {
 				receiver.track && receiver.track.stop()
 			}
 
-			// Unlike the defaut function we don't want to stop the tracks on the sender because that ends the sending track that needs to be reused.
+			// Unlike the default function we don't want to stop the tracks on the sender because that prevents the sending track from being reused.
 			// for (const sender of peerConnection.getSenders()) {
 			//     sender.track && sender.track.stop()
 			// }
