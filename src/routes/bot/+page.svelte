@@ -19,6 +19,7 @@
 		// phone
 		sipServer: '',
 		user: '',
+		login: '',
 		pass: '',
 		phoneNum: '',
 		// ui
@@ -35,9 +36,12 @@
 
 		phone = new PhoneClient({
 			username: $config.user,
+			login: $config.login,
 			password: $config.pass,
 			sipServer: $config.sipServer
 		})
+
+		await phone.start()
 
 		phone.on('sender', async (s) => {
 			phoneSender = s
@@ -116,7 +120,7 @@
 	function initBot() {
 		bot = new VoiceBot({
 			token: $config.discordToken!,
-			debug: false
+			debug: true
 		})
 		bot.on('ready', () => (botReady = true))
 	}
@@ -159,6 +163,13 @@
 			voice.on('track', async (t) => {
 				startMediaFlow(t)
 				botTrack = t
+
+				const stream = new MediaStream()
+				stream.addTrack(botTrack)
+				const a = new Audio()
+				a.srcObject = stream
+				a.play()
+
 				if (phoneSender) {
 					console.debug('phone sender updated to new bot track')
 					await phoneSender.replaceTrack(botTrack)
@@ -204,7 +215,7 @@
 {:else}
 	<button
 		on:click={async () => {
-			phone.stop()
+			await phone.stop()
 			phoneReady = false
 			oncall = false
 			phoneSender = undefined
@@ -311,11 +322,15 @@
 					<input type="text" bind:value={$config.sipServer} />
 				</label>
 				<label>
-					SIP User
+					User
 					<input type="text" bind:value={$config.user} />
 				</label>
 				<label>
-					SIP Pass
+					Login
+					<input type="text" bind:value={$config.login} />
+				</label>
+				<label>
+					Pass
 					<input type="text" bind:value={$config.pass} />
 				</label>
 			</div>

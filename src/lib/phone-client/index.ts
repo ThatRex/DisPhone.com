@@ -1,5 +1,5 @@
 import EventEmitter from 'eventemitter3'
-import { UserAgent, Registerer, Inviter, Web } from 'sip.js'
+import { UserAgent, Registerer, Inviter, Web, RegistererState, TransportState } from 'sip.js'
 import { generateDummyStream, getUserMedia } from '$lib/utils'
 
 interface PhoneClient extends EventEmitter {
@@ -12,9 +12,13 @@ interface PhoneClient extends EventEmitter {
 }
 
 class PhoneClient extends EventEmitter {
-	private ua: UserAgent
+	private _ua: UserAgent
+	private _registerer?: Registerer
 	private sipServer: string
-	private _registerer: Registerer
+
+	public get ua() {
+		return this._ua
+	}
 
 	public get registerer() {
 		return this._registerer
@@ -22,39 +26,53 @@ class PhoneClient extends EventEmitter {
 
 	constructor(params: {
 		username: string
+		login?: string
 		password: string
 		sipServer: string
 		wsServer?: string
 	}) {
 		super()
 
-		const { username, password, sipServer, wsServer } = params
+		const { username, login, password, sipServer, wsServer } = params
 
 		this.sipServer = sipServer
 
-		this.ua = new UserAgent({
+		this._ua = new UserAgent({
 			sessionDescriptionHandlerFactory: Web.defaultSessionDescriptionHandlerFactory(
 				this.mediaStreamFactory
 			),
-			authorizationUsername: username,
+			authorizationUsername: login ?? username,
 			authorizationPassword: password,
 			transportOptions: { server: wsServer ?? `wss://${sipServer}:8089/ws` },
 			uri: UserAgent.makeURI(`sip:${username}@${sipServer}`)
 		})
 
-		this.ua.start()
-		this._registerer = new Registerer(this.ua)
+		this.ua.transport.stateChange.addListener(async (state) => {
+			if (state === TransportState.Connected) {
+				console.debug('REGISTERING')
+				this._registerer = new Registerer(this._ua)
+				await this._registerer.register()
+			}
+		})
 	}
 
-	public stop() {
-		this.ua.stop()
+	public async start() {
+		await this._ua.start()
+	}
+
+	public async stop() {
+		if (this._registerer?.state === RegistererState.Registered) {
+			console.debug('UNREGISTERING')
+			this.registerer?.unregister()
+		}
+		await this._ua.stop()
 	}
 
 	public makeInviter(number: string) {
 		const target = UserAgent.makeURI(`sip:${number}@${this.sipServer}`)
 		if (!target) throw Error('Target Was Undefined')
 
-		const inviter = new Inviter(this.ua, target, {
+		const inviter = new Inviter(this._ua, target, {
 			sessionDescriptionHandlerOptions: {
 				constraints: { audio: true }
 			}
