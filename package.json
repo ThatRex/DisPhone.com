@@ -14,7 +14,6 @@
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^2.1.0",
 		"@sveltejs/kit": "^1.24.0",
-		"@types/libsodium-wrappers": "^0.7.11",
 		"@typescript-eslint/eslint-plugin": "^5.62.0",
 		"@typescript-eslint/parser": "^5.62.0",
 		"discord-api-types": "^0.37.56",

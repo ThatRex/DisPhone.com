@@ -7,9 +7,6 @@ devDependencies:
   '@sveltejs/kit':
     specifier: ^1.24.0
     version: 1.24.0(svelte@4.2.0)(vite@4.4.9)
-  '@types/libsodium-wrappers':
-    specifier: ^0.7.11
-    version: 0.7.11
   '@typescript-eslint/eslint-plugin':
     specifier: ^5.62.0
     version: 5.62.0(@typescript-eslint/parser@5.62.0)(eslint@8.48.0)(typescript@5.2.2)
@@ -594,10 +591,6 @@ packages:
 
   /@types/json-schema@7.0.12:
     resolution: {integrity: sha512-Hr5Jfhc9eYOQNPYO5WLDq/n4jqijdHNlDXjuAQkkt+mWdQR+XJToOHrsD4cPaMXpn6KO7y2+wM8AZEs8VpBLVA==}
-    dev: true
-
-  /@types/libsodium-wrappers@0.7.11:
-    resolution: {integrity: sha512-8avZYJny690B6lFZQEDz4PEdCgC8D8qmGE/mhJBzCwzZvsqne61tCRbtJOhxsjYMItEZd3k4SoR4xKKLnI9Ztg==}
     dev: true
 
   /@types/pug@2.0.6:
