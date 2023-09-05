@@ -11,6 +11,14 @@ import { VoiceRTC, type AudioSettings } from './voice-rtc'
 import { VoiceOpcodes } from 'discord-api-types/voice'
 import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 
+const VoiceOpcodesExtended = {
+	...VoiceOpcodes,
+	/** A user joined the channel */
+	NewReceiveStream: 18,
+	/** A user joined the channel Other */
+	NewReceiveStreamOther: 20
+} as const
+
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
 	on(event: 'sender', listener: (event: RTCRtpSender) => void): this
@@ -154,15 +162,23 @@ export class VoiceManager extends EventEmitter {
 
 	private async handleVoicePacket(packet: any, sdp: string, codecs: Codecs) {
 		switch (packet.op) {
-			case VoiceOpcodes.Ready: {
+			case VoiceOpcodesExtended.Ready: {
 				await this.voice!.sendSelectProtocol(sdp, codecs)
 				break
 			}
 
-			case VoiceOpcodes.SessionDescription: {
+			case VoiceOpcodesExtended.SessionDescription: {
 				await this.rtc!.handleAnswer(packet.d.sdp)
 				this.setSpeaking(this.initial_speaking)
 				this.emit('connected')
+				break
+			}
+
+			case VoiceOpcodesExtended.NewReceiveStream: {
+				// {"op":18,"d":{"user_id":"438008175698903040","flags":2}}
+				// {"op":20,"d":{"user_id":"438008175698903040","platform":0}}
+				// this.rtc!.
+
 				break
 			}
 		}

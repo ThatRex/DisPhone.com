@@ -46,7 +46,9 @@ export class VoiceRTC extends EventEmitter {
 
 		this.audioSettings = audioSettings ?? this.audioSettings
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
-		this.pc.onconnectionstatechange = () => this.emit(this.pc!.connectionState)
+		this.pc.onnegotiationneeded = () => {
+			console.debug('Negotiation Needed')
+		}
 		this.track = this.pc.addTrack(audioTrack)
 		this.emit('sender', this.track)
 		this.pc.ontrack = ({ track }) => {
@@ -119,7 +121,8 @@ export class VoiceRTC extends EventEmitter {
 		const newSDP = new SDP()
 
 		const extMapAttributes = new Set([
-			' http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01'
+			' http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
+			// ' urn:ietf:params:rtp-hdrext:ssrc-audio-level'
 		])
 
 		const attKeys = Object.keys(desiredAttributes)
