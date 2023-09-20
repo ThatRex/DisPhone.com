@@ -1,23 +1,11 @@
 import EventEmitter from 'eventemitter3'
 import { GatewayDispatchEvents, GatewayOpcodes } from 'discord-api-types/v10'
-import type { GatewaySocket } from './gateway-socket'
-import {
-	VoiceSocket,
-	type Codecs,
-	type VoiceStateUpdate,
-	type VoiceServerUpdate
-} from './voice-socket'
-import { VoiceRTC, type AudioSettings } from './voice-rtc'
 import { VoiceOpcodes } from 'discord-api-types/voice'
+import type { GatewaySocket } from './gateway-socket'
+import { VoiceSocket } from './voice-socket'
+import { VoiceRTC } from './voice-rtc'
 import { VoiceConnectionError, VoiceSpeakingError } from './errors'
-
-const VoiceOpcodesExtended = {
-	...VoiceOpcodes,
-	/** A user joined the channel */
-	NewReceiveStream: 18,
-	/** A user joined the channel Other */
-	NewReceiveStreamOther: 20
-} as const
+import type { AudioSettings, VoiceStateUpdate, VoiceServerUpdate, Codecs } from './types'
 
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -47,25 +35,29 @@ export class VoiceManager extends EventEmitter {
 	private track?: MediaStreamTrack
 	private ssrc?: number
 
-	private audio_settings?: AudioSettings
+	private audio_settings: AudioSettings
 	private initial_speaking = false
 	private debug = false
 
 	constructor(params: {
-		gatewaySocket: GatewaySocket
+		gateway_socket: GatewaySocket
 		audio_track: MediaStreamTrack
-		audio_settings?: AudioSettings
+		audio_settings?: Partial<AudioSettings>
 		debug?: boolean
 	}) {
 		super()
 
-		const { gatewaySocket, debug, audio_track, audio_settings } = params
+		const { gateway_socket, debug, audio_track, audio_settings } = params
 
-		this.gateway = gatewaySocket
+		this.gateway = gateway_socket
 		this.gateway.on('packet', (p) => this.handleGatewayPacket(p))
 
 		this.track = audio_track
-		this.audio_settings = audio_settings
+		this.audio_settings = {
+			stereo: audio_settings?.stereo ?? false,
+			bitrate_kbps: audio_settings?.bitrate_kbps ?? 64,
+			mode: audio_settings?.mode ?? 'sendonly'
+		}
 
 		this.debug = debug ?? false
 	}
@@ -79,7 +71,9 @@ export class VoiceManager extends EventEmitter {
 		self_deaf?: boolean
 		audio_settings?: AudioSettings
 	}) {
-		if (!this.gateway.ready) throw new VoiceConnectionError('Gateway not ready.')
+		if (!this.gateway.ready) {
+			throw new VoiceConnectionError('Gateway not ready.')
+		}
 
 		const {
 			guild_id,
@@ -93,12 +87,18 @@ export class VoiceManager extends EventEmitter {
 
 		this.guild_id = guild_id
 		this.channel_id = channel_id
-		this.self_mute = self_mute ?? false
-		this.self_deaf = self_deaf ?? false
+		this.self_mute = self_mute ?? this.self_mute
+		this.self_deaf = self_deaf ?? this.self_deaf
 
 		this.track = audio_track ?? this.track
-		this.audio_settings = audio_settings ?? this.audio_settings
 		this.initial_speaking = initial_speaking ?? this.initial_speaking
+		if (audio_settings) {
+			this.audio_settings = {
+				stereo: audio_settings?.stereo ?? this.audio_settings.stereo,
+				bitrate_kbps: audio_settings?.bitrate_kbps ?? this.audio_settings.bitrate_kbps,
+				mode: audio_settings?.mode ?? this.audio_settings.mode
+			}
+		}
 
 		this.gateway.sendPacket({
 			op: GatewayOpcodes.VoiceStateUpdate,
@@ -137,7 +137,11 @@ export class VoiceManager extends EventEmitter {
 				this.rtc.on('track', (t) => this.emit('track', t))
 				this.rtc.on('sender', (t) => this.emit('sender', t))
 
-				await this.rtc.openConnection(this.track!, this.audio_settings)
+				await this.rtc.openConnection({
+					audio_track: this.track,
+					audio_settings: this.audio_settings
+				})
+
 				const { sdp, codecs, ssrc } = await this.rtc.createOffer()
 
 				this.ssrc = ssrc
@@ -162,30 +166,36 @@ export class VoiceManager extends EventEmitter {
 
 	private async handleVoicePacket(packet: any, sdp: string, codecs: Codecs) {
 		switch (packet.op) {
-			case VoiceOpcodesExtended.Ready: {
+			case VoiceOpcodes.Ready: {
 				await this.voice!.sendSelectProtocol(sdp, codecs)
 				break
 			}
 
-			case VoiceOpcodesExtended.SessionDescription: {
+			case VoiceOpcodes.SessionDescription: {
 				await this.rtc!.handleAnswer(packet.d.sdp)
 				this.setSpeaking(this.initial_speaking)
 				this.emit('connected')
 				break
 			}
 
-			case VoiceOpcodesExtended.NewReceiveStream: {
-				// {"op":18,"d":{"user_id":"438008175698903040","flags":2}}
-				// {"op":20,"d":{"user_id":"438008175698903040","platform":0}}
-				// this.rtc!.
+			case VoiceOpcodes.Speaking: {
+				const { user_id, ssrc } = packet.d
+				await this.rtc!.maybeAddAudioReceiver(user_id, ssrc)
+				break
+			}
 
+			case VoiceOpcodes.ClientDisconnect: {
+				const { user_id } = packet.d
+				await this.rtc!.stopAudioReceiver(user_id)
 				break
 			}
 		}
 	}
 
 	public setSpeaking(speaking: boolean) {
-		if (!this.voice) throw new VoiceSpeakingError('Voice socket not open.')
+		if (!this.voice) {
+			throw new VoiceSpeakingError('Voice socket not open.')
+		}
 
 		this.voice.sendPacket({
 			op: VoiceOpcodes.Speaking,
@@ -226,7 +236,11 @@ export class VoiceManager extends EventEmitter {
 				self_deaf: this.self_deaf
 			}
 		})
+
 		this.rtc?.destroy()
 		this.voice?.destroy(true)
+
+		this.channel_id = null
+		this.guild_id = null
 	}
 }
