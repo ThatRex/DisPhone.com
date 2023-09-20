@@ -25,7 +25,7 @@ const RECONNECTABLE_CLOSE_CODES = [
 	GatewayCloseCodes.InvalidSeq,
 	GatewayCloseCodes.RateLimited,
 	GatewayCloseCodes.SessionTimedOut
-]
+] as const
 
 export interface GatewaySocket extends Socket {
 	on(event: 'packet', listener: (event: any) => void): this
