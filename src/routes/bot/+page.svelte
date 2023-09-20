@@ -6,10 +6,14 @@
 	import { PhoneClient } from '$lib/phone-client'
 	import VoiceBot from '$lib/discord-browser-voice-client'
 
+	let audioElement = new Audio()
+
 	let phoneSender: RTCRtpSender | undefined
-	let botSender: RTCRtpSender | undefined
 	let phoneTrack: MediaStreamTrack | undefined
+
+	let botSender: RTCRtpSender | undefined
 	let botTrack: MediaStreamTrack | undefined
+	let botStreamDestination: MediaStreamAudioDestinationNode | undefined
 
 	const config = persisted('config', {
 		// bot
@@ -137,7 +141,7 @@
 				guild_id: $config.guildId!,
 				channel_id: $config.channelId!,
 				initial_speaking: true,
-				audio_settings: { mode: 'sendrecv' }
+				audio_settings: { mode: 'sendrecv', bitrate_kbps: 320, stereo: true }
 			})
 
 			voice.on('connected', () => {
@@ -149,11 +153,26 @@
 				connected = false
 				botSender = undefined
 				botTrack = undefined
+				botStreamDestination = undefined
 				console.log('Disconnected')
 			})
 
 			voice.on('sender', async (s) => {
 				botSender = s
+
+				// const a = await playAudioFromUrls({
+				// 	urls: [
+				// 		'/music/07. The Demon-Haunted World.mp3'
+				// 		// '/music/03. Shades Of Hell - Kuolleet Sielut.mp3',
+				// 		// '/music/03. Body & Symphony.mp3'
+				// 	].sort(() => Math.random() - 0.5),
+				// 	volume: 100,
+				// 	loop: true
+				// })
+				// startMediaFlow(a)
+				// const tr = a.getAudioTracks()[0]
+				// botSender.replaceTrack(tr)
+
 				if (phoneTrack) {
 					console.debug('bot sender updated to phone track')
 					await botSender.replaceTrack(phoneTrack)
@@ -161,17 +180,32 @@
 			})
 
 			voice.on('track', async (t) => {
-				startMediaFlow(t)
-				botTrack = t
+				// startMediaFlow(t)
+				// botTrack = t
+
+				const ac = new AudioContext()
+				if (!botStreamDestination) {
+					botStreamDestination = new MediaStreamAudioDestinationNode(ac, {
+						channelInterpretation: 'discrete',
+						channelCount: 2,
+						channelCountMode: 'max'
+					})
+
+					audioElement.srcObject = botStreamDestination.stream
+					await audioElement.play()
+				}
 
 				const stream = new MediaStream()
-				stream.addTrack(botTrack)
-				const a = new Audio()
-				a.srcObject = stream
-				a.play()
+				stream.addTrack(t)
+
+				const ss = ac.createMediaStreamSource(stream)
+				botStreamDestination.connect(ss)
 
 				if (phoneSender) {
 					console.debug('phone sender updated to new bot track')
+					botTrack = botStreamDestination.stream.getAudioTracks()[0]
+					startMediaFlow(botTrack)
+
 					await phoneSender.replaceTrack(botTrack)
 				}
 			})

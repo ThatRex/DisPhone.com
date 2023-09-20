@@ -29,7 +29,7 @@
 	}
 
 	async function testMP3stream() {
-		const mp3stream = await playAudioFromUrls(['audio/test.mp3'])
+		const mp3stream = await playAudioFromUrls({urls: ['audio/test.mp3']})
 		const mediaElement = new Audio()
 		mediaElement.srcObject = mp3stream
 		mediaElement.play()
