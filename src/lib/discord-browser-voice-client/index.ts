@@ -9,7 +9,7 @@ import {
 import { GatewaySocket } from './gateway-socket'
 import { VoiceManager } from './voice-manager'
 import EventEmitter from 'eventemitter3'
-import type { AudioSettings } from './voice-rtc'
+import type { AudioSettings } from './types'
 
 function getBrowserName() {
 	for (const [matcher, name] of [
@@ -88,7 +88,7 @@ class Client extends EventEmitter {
 		const { audio_track, audio_settings, ...rest_settings } = params
 
 		this._voice = new VoiceManager({
-			gatewaySocket: this._gateway,
+			gateway_socket: this._gateway,
 			debug: this._debug,
 			audio_track: audio_track,
 			audio_settings: audio_settings

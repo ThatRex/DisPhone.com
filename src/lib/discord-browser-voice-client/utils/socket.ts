@@ -1,5 +1,5 @@
 import EventEmitter from 'eventemitter3'
-import { SocketClosedError, SocketOpenError } from './errors'
+import { SocketClosedError, SocketOpenError } from '../errors'
 
 export enum SocketState {
 	CLOSED,

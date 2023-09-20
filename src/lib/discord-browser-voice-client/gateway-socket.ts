@@ -1,4 +1,4 @@
-import { Socket, SocketState } from './socket'
+import { Socket, SocketState } from './utils/socket'
 import type {
 	GatewayHeartbeat,
 	GatewayIdentify,
@@ -46,12 +46,12 @@ export interface GatewaySocket extends Socket {
 }
 
 export class GatewaySocket extends Socket {
-	private hartbeatInterval?: number
-	private lastSequenceNumber: number | null = null
-	private missedHeartbeats = 0
+	private hartbeat_interval?: number
+	private last_sequence_number: number | null = null
+	private missed_heartbeats = 0
 	private indentified = false
 
-	private connectionData: {
+	private connection_data: {
 		token: string
 		initial_gateway_url?: string
 		resume_gateway_url?: string
@@ -84,7 +84,7 @@ export class GatewaySocket extends Socket {
 	private _ready = false
 
 	public get session_id() {
-		return this.connectionData.session_id
+		return this.connection_data.session_id
 	}
 
 	public get identity() {
@@ -111,9 +111,9 @@ export class GatewaySocket extends Socket {
 			debug
 		})
 
-		this.connectionData.token = token
-		this.connectionData.intents = intents
-		if (properties) this.connectionData.properties = properties
+		this.connection_data.token = token
+		this.connection_data.intents = intents
+		if (properties) this.connection_data.properties = properties
 		if (presence) this.initalPresence = presence
 
 		this.on('packet', (p) => this.onPacket(p))
@@ -137,7 +137,7 @@ export class GatewaySocket extends Socket {
 			}
 
 			case GatewayOpcodes.HeartbeatAck: {
-				this.missedHeartbeats = 0
+				this.missed_heartbeats = 0
 				break
 			}
 
@@ -160,7 +160,7 @@ export class GatewaySocket extends Socket {
 	}
 
 	private onDispatch(packet: GatewayDispatchPayload) {
-		this.lastSequenceNumber = packet.s
+		this.last_sequence_number = packet.s
 
 		switch (packet.t) {
 			case GatewayDispatchEvents.Ready: {
@@ -170,8 +170,8 @@ export class GatewaySocket extends Socket {
 					user: { id, username, discriminator }
 				} = packet.d
 
-				this.connectionData.resume_gateway_url = resume_gateway_url
-				this.connectionData.session_id = session_id
+				this.connection_data.resume_gateway_url = resume_gateway_url
+				this.connection_data.session_id = session_id
 				this._identity = { id, username, discriminator }
 
 				this.indentified = true
@@ -183,18 +183,18 @@ export class GatewaySocket extends Socket {
 	}
 
 	private sendHeartbeat() {
-		this.missedHeartbeats++
+		this.missed_heartbeats++
 		this.sendPacket({
 			op: GatewayOpcodes.Heartbeat,
-			d: this.lastSequenceNumber
+			d: this.last_sequence_number
 		} satisfies GatewayHeartbeat)
 	}
 
 	private startHartbeat(interval: number) {
 		this.debug?.('Starting Heartbeat')
 		interval = interval * Math.random()
-		this.hartbeatInterval = setInterval(() => {
-			if (this.missedHeartbeats > 2) {
+		this.hartbeat_interval = setInterval(() => {
+			if (this.missed_heartbeats > 2) {
 				this.debug?.('Too many missed heartbeats.')
 				this.destroy()
 				return
@@ -209,9 +209,9 @@ export class GatewaySocket extends Socket {
 		this.sendPacket({
 			op: GatewayOpcodes.Identify,
 			d: {
-				token: this.connectionData.token,
-				intents: this.connectionData.intents,
-				properties: this.connectionData.properties,
+				token: this.connection_data.token,
+				intents: this.connection_data.intents,
+				properties: this.connection_data.properties,
 				presence: this.initalPresence
 			}
 		} satisfies GatewayIdentify)
@@ -222,9 +222,9 @@ export class GatewaySocket extends Socket {
 
 		this.destroy()
 
-		const { resume_gateway_url, session_id } = this.connectionData
+		const { resume_gateway_url, session_id } = this.connection_data
 
-		if (!this.lastSequenceNumber || !resume_gateway_url || !session_id)
+		if (!this.last_sequence_number || !resume_gateway_url || !session_id)
 			throw new GatewayResumeError('Lacking necessary data.')
 
 		this.closeSocket()
@@ -233,8 +233,8 @@ export class GatewaySocket extends Socket {
 		this.sendPacket({
 			op: GatewayOpcodes.Resume,
 			d: {
-				token: this.connectionData.token,
-				seq: this.lastSequenceNumber,
+				token: this.connection_data.token,
+				seq: this.last_sequence_number,
 				session_id
 			}
 		} satisfies GatewayResume)
@@ -242,7 +242,7 @@ export class GatewaySocket extends Socket {
 
 	public destroy(clean?: boolean) {
 		this._ready = false
-		if (this.hartbeatInterval) clearInterval(this.hartbeatInterval)
+		if (this.hartbeat_interval) clearInterval(this.hartbeat_interval)
 		if (this.state === SocketState.OPEN) this.closeSocket(clean ? 1_000 : undefined)
 	}
 }

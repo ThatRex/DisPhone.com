@@ -1,67 +1,5 @@
-import { Socket, SocketState } from './socket'
-import { VoiceOpcodes } from 'discord-api-types/voice'
-
-export type Codecs = {
-	name: string
-	type: string
-	priority: number
-	payload_type: number
-	rtx_payload_type: number | null
-}[]
-
-export type VoiceServerUpdate = {
-	t: 'VOICE_SERVER_UPDATE'
-	s: number
-	op: number
-	d: {
-		token: string
-		guild_id: string
-		endpoint: string
-	}
-}
-
-export type VoiceStateUpdate = {
-	t: 'VOICE_STATE_UPDATE'
-	s: number
-	op: number
-	d: {
-		member: {
-			user: {
-				username: string
-				public_flags: number
-				id: string
-				global_name: null
-				display_name: null
-				discriminator: string
-				bot: boolean
-				avatar_decoration_data: null
-				avatar: null
-			}
-			roles: string[]
-			premium_since: null
-			pending: boolean
-			nick: null
-			mute: boolean
-			joined_at: string
-			flags: number
-			deaf: boolean
-			communication_disabled_until: null
-			avatar: null
-		}
-		user_id: string
-		suppress: boolean
-		session_id: string
-		self_video: boolean
-		self_mute: boolean
-		self_deaf: boolean
-		request_to_speak_timestamp: null | number
-		mute: boolean
-		guild_id: string | null
-		deaf: boolean
-		channel_id: string | null
-	}
-}
-
+import { Socket, SocketState } from './utils/socket'
+import { VoiceOpcodesExtended, type Codecs } from './types'
 export class VoiceSocket extends Socket {
 	private hartbeatInterval?: number
 	private missedHeartbeats = 0
@@ -100,18 +38,18 @@ export class VoiceSocket extends Socket {
 
 	private onPacket(packet: any) {
 		switch (packet.op) {
-			case VoiceOpcodes.Hello: {
+			case VoiceOpcodesExtended.Hello: {
 				this.startHartbeat(packet.d.heartbeat_interval)
 				if (!this.indentified) this.sendIdentification()
 				break
 			}
 
-			case VoiceOpcodes.Resumed: {
+			case VoiceOpcodesExtended.Resumed: {
 				this.resumed = true
 				break
 			}
 
-			case VoiceOpcodes.HeartbeatAck: {
+			case VoiceOpcodesExtended.HeartbeatAck: {
 				this.missedHeartbeats = 0
 				break
 			}
@@ -121,7 +59,7 @@ export class VoiceSocket extends Socket {
 	private sendHeartbeat() {
 		this.missedHeartbeats++
 		this.sendPacket({
-			op: VoiceOpcodes.Heartbeat,
+			op: VoiceOpcodesExtended.Heartbeat,
 			d: Math.floor(Math.random() * 100_000_000_000)
 		})
 	}
@@ -146,7 +84,7 @@ export class VoiceSocket extends Socket {
 		this.openSocket(`wss://${address}/?v=7`)
 
 		this.sendPacket({
-			op: VoiceOpcodes.Resume,
+			op: VoiceOpcodesExtended.Resume,
 			d: {
 				server_id,
 				session_id,
@@ -167,7 +105,7 @@ export class VoiceSocket extends Socket {
 		this.debug?.('Sending Identification')
 		const { guild_id: server_id, session_id, token, user_id } = this.connectionData
 		this.sendPacket({
-			op: VoiceOpcodes.Identify,
+			op: VoiceOpcodesExtended.Identify,
 			d: {
 				server_id,
 				user_id,
@@ -181,7 +119,7 @@ export class VoiceSocket extends Socket {
 	public sendSelectProtocol(sdp: string, codecs: Codecs) {
 		this.debug?.('Selecting Protocol')
 		this.sendPacket({
-			op: VoiceOpcodes.SelectProtocol,
+			op: VoiceOpcodesExtended.SelectProtocol,
 			d: {
 				protocol: 'webrtc',
 				data: sdp,
