@@ -1,5 +1,6 @@
 import { Socket, SocketState } from './utils/socket'
-import { VoiceOpcodesExtended, type Codecs } from './types'
+import type { Codecs } from './types'
+import { VoiceOpcodes } from 'discord-api-types/voice'
 export class VoiceSocket extends Socket {
 	private hartbeatInterval?: number
 	private missedHeartbeats = 0
@@ -38,18 +39,18 @@ export class VoiceSocket extends Socket {
 
 	private onPacket(packet: any) {
 		switch (packet.op) {
-			case VoiceOpcodesExtended.Hello: {
+			case VoiceOpcodes.Hello: {
 				this.startHartbeat(packet.d.heartbeat_interval)
 				if (!this.indentified) this.sendIdentification()
 				break
 			}
 
-			case VoiceOpcodesExtended.Resumed: {
+			case VoiceOpcodes.Resumed: {
 				this.resumed = true
 				break
 			}
 
-			case VoiceOpcodesExtended.HeartbeatAck: {
+			case VoiceOpcodes.HeartbeatAck: {
 				this.missedHeartbeats = 0
 				break
 			}
@@ -59,7 +60,7 @@ export class VoiceSocket extends Socket {
 	private sendHeartbeat() {
 		this.missedHeartbeats++
 		this.sendPacket({
-			op: VoiceOpcodesExtended.Heartbeat,
+			op: VoiceOpcodes.Heartbeat,
 			d: Math.floor(Math.random() * 100_000_000_000)
 		})
 	}
@@ -84,7 +85,7 @@ export class VoiceSocket extends Socket {
 		this.openSocket(`wss://${address}/?v=7`)
 
 		this.sendPacket({
-			op: VoiceOpcodesExtended.Resume,
+			op: VoiceOpcodes.Resume,
 			d: {
 				server_id,
 				session_id,
@@ -105,7 +106,7 @@ export class VoiceSocket extends Socket {
 		this.debug?.('Sending Identification')
 		const { guild_id: server_id, session_id, token, user_id } = this.connectionData
 		this.sendPacket({
-			op: VoiceOpcodesExtended.Identify,
+			op: VoiceOpcodes.Identify,
 			d: {
 				server_id,
 				user_id,
@@ -119,7 +120,7 @@ export class VoiceSocket extends Socket {
 	public sendSelectProtocol(sdp: string, codecs: Codecs) {
 		this.debug?.('Selecting Protocol')
 		this.sendPacket({
-			op: VoiceOpcodesExtended.SelectProtocol,
+			op: VoiceOpcodes.SelectProtocol,
 			d: {
 				protocol: 'webrtc',
 				data: sdp,

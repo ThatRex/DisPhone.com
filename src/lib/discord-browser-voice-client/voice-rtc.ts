@@ -93,10 +93,10 @@ export class VoiceRTC extends EventEmitter {
 			transceiver
 		})
 
-		this.emit('track', transceiver.receiver.track)
-
 		await this.createOffer()
 		await this.handleAnswer(this.discord_sdp!)
+
+		this.emit('track', transceiver.receiver.track)
 	}
 
 	public async stopAudioReceiver(user_id: string) {
@@ -114,9 +114,9 @@ export class VoiceRTC extends EventEmitter {
 		await this.createOffer()
 		await this.handleAnswer(this.discord_sdp!)
 
-		this.receivers = this.receivers.filter(
-			({ transceiver }) => transceiver.currentDirection !== 'inactive'
-		)
+		this.receivers = this.receivers.filter(({ transceiver }) => {
+			return transceiver.currentDirection !== 'inactive'
+		})
 	}
 
 	public async createOffer() {
