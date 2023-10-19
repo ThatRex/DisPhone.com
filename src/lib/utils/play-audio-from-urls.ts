@@ -7,12 +7,16 @@ export async function playAudioFromUrls(params: {
 
 	const context = new AudioContext()
 	const destination = context.createMediaStreamDestination()
+	const stream = destination.stream
 
 	let i = 0
 	const playNextAudio = async () => {
 		if (i >= urls.length) {
 			if (loop) i = 0
-			else return
+			else {
+				for (const track of stream.getTracks()) track.stop()
+				return
+			}
 		}
 
 		const url = urls[i]
@@ -34,5 +38,5 @@ export async function playAudioFromUrls(params: {
 
 	playNextAudio()
 
-	return destination.stream
+	return stream
 }
