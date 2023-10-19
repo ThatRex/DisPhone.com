@@ -12,6 +12,39 @@ export type Codecs = {
 	rtx_payload_type: number | null
 }[]
 
+export const ReceiverToDo = {
+	Nothing: 0,
+	Add: 1,
+	Remove: 2
+} as const
+
+export const TransceiverType = {
+	Sender: 0,
+	Receiver: 1
+} as const
+
+export type Transceiver = Sender | Receiver
+
+export type Sender = {
+	type: typeof TransceiverType.Sender
+	transceiver: RTCRtpTransceiver
+}
+
+export type Receiver = {
+	type: typeof TransceiverType.Receiver
+	ssrc: number
+	user_id: string
+} & (
+	| {
+			todo: typeof ReceiverToDo.Add | typeof ReceiverToDo.Nothing
+			transceiver?: RTCRtpTransceiver
+	  }
+	| {
+			todo: typeof ReceiverToDo.Remove
+			transceiver: RTCRtpTransceiver
+	  }
+)
+
 export type VoiceServerUpdate = {
 	t: 'VOICE_SERVER_UPDATE'
 	s: number

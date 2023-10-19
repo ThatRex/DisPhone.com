@@ -6,7 +6,13 @@ import {
 	VoiceRTCDestroyError,
 	VoiceRTCOfferError
 } from './errors'
-import type { AudioSettings } from './types'
+import {
+	ReceiverToDo,
+	type AudioSettings,
+	type Receiver,
+	TransceiverType,
+	type Transceiver
+} from './types'
 
 export interface VoiceRTC extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -22,19 +28,10 @@ export interface VoiceRTC extends EventEmitter {
 
 export class VoiceRTC extends EventEmitter {
 	private pc?: RTCPeerConnection
-
-	private payload_type?: number
 	private audio_settings?: AudioSettings
 	private discord_sdp?: string
-
-	private sender?: RTCRtpSender
-	private receivers: {
-		ssrc: number
-		user_id: string
-		transceiver: RTCRtpTransceiver
-	}[] = []
-
-	private last_offer_sdp?: string
+	private processing = false
+	private transceivers: Transceiver[] = []
 
 	public readonly debug: ((...args: any) => void) | null
 
@@ -44,82 +41,16 @@ export class VoiceRTC extends EventEmitter {
 		this.debug = !params.debug ? null : (...args) => console.debug(`[Voice RTC]`, ...args)
 	}
 
-	private findActiveReceiver(user_id: string) {
-		return this.receivers.find(({ user_id: u, transceiver: t }) => {
-			return user_id === u && !t.stopped
-		})
+	private buildSelectProtocolSDP(sdp: string) {
+		const s = new SDP(sdp.split('m=', 2).join('m=').trim())
+		const attributes = ['fingerprint', 'ice-', 'extmap', 'rtpmap']
+		s.set(s.parsed.filter(([, v]) => attributes.filter((a) => v.includes(a)).length))
+		const select_protocol_sdp = s.stringified.trim().replaceAll('\r', '')
+		this.debug?.(`Select Protocol SDP:\n${select_protocol_sdp}`)
+		return select_protocol_sdp
 	}
 
-	public async openConnection(params: {
-		audio_track?: MediaStreamTrack
-		audio_settings: AudioSettings
-	}) {
-		const { audio_track, audio_settings } = params
-
-		if (this.pc) {
-			throw new VoiceRTCConnectionError('Peer Connection is already open.')
-		}
-		if (audio_track?.kind !== 'audio') {
-			throw new VoiceRTCConnectionError('Video tracks not supported.')
-		}
-		if (!audio_track && this.audio_settings?.mode === 'recvonly') {
-			throw new VoiceRTCConnectionError('An audio track must me provided when sending audio.')
-		}
-
-		this.audio_settings = audio_settings
-		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
-
-		if (audio_track) {
-			this.sender = this.pc.addTrack(audio_track)
-			this.emit('sender', this.sender)
-		}
-	}
-
-	public async maybeAddAudioReceiver(user_id: string, ssrc: number) {
-		if (!this.pc) {
-			throw new VoiceRTCOfferError('Peer connection is not open.')
-		}
-
-		console.log(this.receivers.map(({ transceiver }) => transceiver))
-
-		if (this.audio_settings?.mode === 'sendonly') return
-		if (this.findActiveReceiver(user_id)) return
-
-		const transceiver = this.pc.addTransceiver('audio', { direction: 'recvonly' })
-
-		this.receivers.push({
-			ssrc,
-			user_id,
-			transceiver
-		})
-
-		await this.createOffer()
-		await this.handleAnswer(this.discord_sdp!)
-
-		this.emit('track', transceiver.receiver.track)
-	}
-
-	public async stopAudioReceiver(user_id: string) {
-		if (!this.pc) {
-			throw new VoiceRTCOfferError('Peer connection is not open.')
-		}
-
-		if (this.audio_settings?.mode === 'sendonly') return
-
-		const receiver = this.findActiveReceiver(user_id)
-		if (!receiver) return
-
-		receiver.transceiver.stop()
-
-		await this.createOffer()
-		await this.handleAnswer(this.discord_sdp!)
-
-		this.receivers = this.receivers.filter(({ transceiver }) => {
-			return transceiver.currentDirection !== 'inactive'
-		})
-	}
-
-	public async createOffer() {
+	private async createOffer() {
 		if (!this.pc) {
 			throw new VoiceRTCOfferError('Peer connection is not open.')
 		}
@@ -131,160 +62,282 @@ export class VoiceRTC extends EventEmitter {
 		}
 
 		this.debug?.(`SDP Offer:\n${sdp}`)
-		this.last_offer_sdp = sdp
+		return { sdp }
+	}
+
+	private getNonStoppedReceiver(user_id: string) {
+		const index = this.transceivers.findIndex((t) => {
+			if (t.type === TransceiverType.Sender) return false
+			else return t.user_id === user_id && t.transceiver?.currentDirection !== 'stopped'
+		})
+
+		const receiver = this.transceivers[index]
+
+		return receiver as Receiver | undefined
+	}
+
+	public setDiscordSDP(sdp: string) {
+		this.debug?.(`SDP Discord Raw:\n${sdp}`)
+		this.discord_sdp = sdp
+		this.processReceivers()
+	}
+
+	/** Inits the connection. */
+	public async init(params: { audio_track?: MediaStreamTrack; audio_settings: AudioSettings }) {
+		const { audio_track, audio_settings } = params
+
+		if (this.pc) {
+			throw new VoiceRTCConnectionError('Peer Connection is already open.')
+		}
+		if (audio_track?.kind !== 'audio') {
+			throw new VoiceRTCConnectionError('Video tracks not supported.')
+		}
+		if (!audio_track && this.audio_settings?.mode !== 'recvonly') {
+			throw new VoiceRTCConnectionError('An audio track must be provided when sending audio.')
+		}
+
+		this.audio_settings = audio_settings
+		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
+
+		if (audio_track) {
+			const transceiver = this.pc!.addTransceiver(audio_track, { direction: 'sendonly' })
+			this.emit('sender', transceiver.sender)
+			this.transceivers.push({
+				type: TransceiverType.Sender,
+				transceiver
+			})
+		}
+
+		const { sdp } = await this.createOffer()
+
 		await this.pc.setLocalDescription({ type: 'offer', sdp })
 
 		const select_protocol_sdp = this.buildSelectProtocolSDP(sdp)
-		this.debug?.(`Select Protocol SDP:\n${select_protocol_sdp}`)
-
-		this.payload_type = Number(sdp.match(/a=rtpmap:(\d+) opus/)![1])
+		const payload_type = Number(sdp.match(/a=rtpmap:(\d+) opus/)![1])
 		const ssrc = Number(sdp.match(/a=ssrc:(\d+) cname/)![1])
 
 		return {
 			ssrc,
-			sdp: select_protocol_sdp,
+			select_protocol_sdp,
 			codecs: [
 				{
 					name: 'opus',
 					type: 'audio',
 					priority: 1000,
-					payload_type: this.payload_type,
+					payload_type,
 					rtx_payload_type: null
 				}
 			]
 		}
 	}
 
-	public async handleAnswer(discord_sdp: string) {
-		if (!this.pc) {
-			throw new VoiceRTCAnswerError('Peer connection is not open.')
-		}
+	/** Add user audio receiver if no active user receiver is found. */
+	public addUserAudioReceiver(user_id: string, ssrc: number) {
+		const receiver = this.getNonStoppedReceiver(user_id)
 
-		this.debug?.(`SDP Answer Raw:\n${discord_sdp}`)
-		this.discord_sdp = discord_sdp
-
-		const sdp = new SDP([
-			['v', '0'],
-			['o', '- 0000000000000000000 0 IN IP4 0.0.0.0'],
-			['s', '-'],
-			['t', '0 0'],
-			['a', 'msid-semantic: WMS *']
-		])
-
-		const mids = []
-		const sdp_sections = new SDP()
-
-		for (const [num, transceiver] of this.pc.getTransceivers().entries()) {
-			const mid = transceiver.mid ? Number(transceiver.mid) : num
-
-			const receiver = this.receivers.find(({ transceiver: t }) => transceiver === t)
-			const receiver_details = !receiver
-				? undefined
-				: { ssrc: receiver.ssrc, user_id: receiver.user_id }
-
-			const sdp_section = this.buildRemoteDescriptionSection({
-				transceiver,
-				discord_sdp,
-				mid,
-				receiver_details
+		if (!receiver) {
+			this.transceivers.push({
+				type: TransceiverType.Receiver,
+				user_id,
+				ssrc,
+				todo: ReceiverToDo.Add
 			})
 
-			sdp_sections.concat(sdp_section)
-
-			if (!transceiver.stopped) mids.push(mid)
+			this.processReceivers()
+			return
 		}
 
-		sdp.add('a', `group:BUNDLE ${mids.join(' ')}`)
-		sdp.concat(sdp_sections.parsed)
-
-		this.debug?.(`SDP Answer Parsed:\n${sdp.stringified}`)
-		await this.pc.setRemoteDescription({ type: 'answer', sdp: sdp.stringified })
+		if (receiver.todo === ReceiverToDo.Remove) {
+			receiver.todo = ReceiverToDo.Nothing as typeof ReceiverToDo.Remove
+		}
 	}
 
-	private buildRemoteDescriptionSection(params: {
-		transceiver: RTCRtpTransceiver
-		discord_sdp: string
-		mid: number
-		receiver_details?: {
-			user_id: string
-			ssrc: number
+	/** Stop active user receiver. */
+	public stopUserAudioReceiver(user_id: string) {
+		const receiver = this.getNonStoppedReceiver(user_id)
+
+		if (!receiver) return
+
+		if (receiver.todo === ReceiverToDo.Add) {
+			receiver.todo = ReceiverToDo.Nothing
+			return
 		}
-	}) {
+
+		receiver.todo = ReceiverToDo.Remove
+		this.processReceivers()
+	}
+
+	private async processReceivers() {
+		if (this.processing || !this.discord_sdp) return
+
+		this.debug?.(`Processing Started\ntransceivers:`, this.transceivers)
+		this.processing = true
+
+		for (const t of this.transceivers) {
+			if (t.type === TransceiverType.Sender) continue
+
+			if (t.todo === ReceiverToDo.Add) {
+				const transceiver = this.pc!.addTransceiver('audio', { direction: 'recvonly' })
+				this.emit('track', transceiver.receiver.track)
+				t.transceiver = transceiver
+				t.todo = ReceiverToDo.Nothing
+				continue
+			}
+
+			if (t.todo === ReceiverToDo.Remove) {
+				t.transceiver.stop()
+				t.todo = ReceiverToDo.Nothing as typeof ReceiverToDo.Remove
+				continue
+			}
+		}
+
+		this.debug?.(`Processed Before Update\ntransceivers:`, this.transceivers)
+
+		try {
+			await this.updatePeerConnection(this.discord_sdp)
+		} catch (e) {
+			console.warn('Error Updating Peer Connection: ', e)
+		}
+
+		this.debug?.(`Processed After Update\ntransceivers:`, this.transceivers)
+
+		const continueProcessing = this.transceivers.find((t) => {
+			if (t.type === TransceiverType.Sender) return false
+			else return t.todo !== ReceiverToDo.Nothing
+		})
+
+		this.processing = false
+
+		if (continueProcessing) {
+			this.debug?.(`Processing Continuing`)
+			await this.processReceivers()
+			return
+		}
+
+		this.debug?.(`Processing Done\ntransceivers:`, this.transceivers)
+	}
+
+	private async updatePeerConnection(discord_sdp: string) {
 		if (!this.pc) {
 			throw new VoiceRTCAnswerError('Peer connection is not open.')
 		}
 
-		const { transceiver, discord_sdp, mid, receiver_details } = params
-		const { audio_settings, payload_type } = this
+		const { sdp: offer_sdp } = await this.createOffer()
+		await this.pc!.setLocalDescription({ type: 'offer', sdp: offer_sdp })
 
-		if (transceiver.stopped) {
-			if (!this.last_offer_sdp?.includes(`mid:${mid}`)) return []
+		const remote_sdp = new SDP()
+		for (const [i, s] of offer_sdp.split('m=').entries()) {
+			const section = new SDP(i === 0 ? s : `m=${s}`)
+			const parsed_section = new SDP()
 
-			return new SDP([
-				['m', 'audio 0 UDP/TLS/RTP/SAVPF 0'],
-				['c', 'IN IP4 0.0.0.0'],
-				['a', `mid:${mid}`],
-				['a', 'inactive'],
-				['a', 'rtpmap:0 PCMU/8000']
-			]).parsed
+			const [, fingerprint, in_ip4, rtcp, ice_ufrag, ice_pwd, , candidate] = discord_sdp
+				.replaceAll('\n\r', '\n')
+				.split('\n')
+				.map((line) => line.split('=')[1])
+
+			if (i === 0) {
+				for (const [chr, val] of section.parsed) {
+					if (val.startsWith('fingerprint')) {
+						parsed_section.add(chr, fingerprint)
+						continue
+					}
+
+					parsed_section.add(chr, val)
+				}
+
+				remote_sdp.concat(parsed_section.parsed)
+				continue
+			}
+
+			const inactive_section = section.stringified.includes('inactive')
+			if (inactive_section) {
+				remote_sdp.concat(section.parsed)
+				continue
+			}
+
+			const mid = section.stringified.match(/a=mid:(\d+)/)![1]
+			const payload_type = offer_sdp.match(/a=rtpmap:(\d+) opus/)![1]
+			const transceiver = this.transceivers.find(({ transceiver }) => transceiver?.mid === mid)!
+			const rtcp_num = rtcp.split(':')[1]
+
+			for (const [chr, val] of section.parsed) {
+				if (i === 1 && val.startsWith(`fmtp:${payload_type}`)) {
+					const bitrate = this.audio_settings!.bitrate_kbps * 1_000
+					const stereo = this.audio_settings!.stereo ? 1 : 0
+					const v = `fmtp:${payload_type} minptime=10;useinbandfec=1;usedtx=1;stereo=${stereo};maxaveragebitrate=${bitrate}`
+					parsed_section.add(chr, v)
+					continue
+				}
+
+				if (val.startsWith('setup:actpass')) {
+					parsed_section.add(chr, 'setup:passive')
+					continue
+				}
+
+				if (chr === 'm') {
+					parsed_section.add(chr, `audio ${rtcp_num} UDP/TLS/RTP/SAVPF ${payload_type}`)
+					continue
+				}
+
+				if (chr === 'c') {
+					parsed_section.add(chr, in_ip4)
+					continue
+				}
+
+				if (val.startsWith('fingerprint')) {
+					parsed_section.add(chr, fingerprint)
+					continue
+				}
+
+				if (val.startsWith('ice-ufrag')) {
+					parsed_section.add(chr, ice_ufrag)
+					continue
+				}
+
+				if (val.startsWith('ice-pwd')) {
+					parsed_section.add(chr, ice_pwd)
+					continue
+				}
+
+				if (val.startsWith('sendonly')) {
+					parsed_section.add(chr, 'recvonly')
+					continue
+				}
+
+				if (val.startsWith('recvonly')) {
+					parsed_section.add(chr, 'sendonly')
+					continue
+				}
+
+				if (val.startsWith('candidate')) continue
+				if (val.startsWith('end-of-candidates')) continue
+				if (val.startsWith('ssrc')) continue
+				if (val.startsWith('msid')) continue
+				if (val.startsWith('rtcp:')) continue
+				if (val.startsWith('rtpmap:') && !val.startsWith(`rtpmap:${payload_type}`)) continue
+				if (val.startsWith('fmtp:') && !val.startsWith(`fmtp:${payload_type}`)) continue
+				if (val.startsWith('rtcp-fb:') && !val.startsWith(`rtcp-fb:${payload_type}`)) continue
+
+				parsed_section.add(chr, val)
+			}
+
+			parsed_section.add('a', `rtcp:${rtcp_num}`)
+			parsed_section.add('a', candidate)
+
+			if (transceiver.type === TransceiverType.Receiver) {
+				const { user_id, ssrc } = transceiver
+				parsed_section.add('a', `msid:${user_id}-${ssrc} a${user_id}-${ssrc}`)
+				parsed_section.add('a', `ssrc:${ssrc} cname:${user_id}-${ssrc}`)
+			}
+
+			remote_sdp.concat(parsed_section.parsed)
 		}
 
-		const bitrate = audio_settings!.bitrate_kbps * 1_000
-		const stereo = audio_settings!.stereo ? 1 : 0
-
-		let mode = transceiver.direction
-		if (mode === 'recvonly') mode = 'sendonly'
-		else if (mode === 'sendonly') mode = 'recvonly'
-
-		const sdp = new SDP(discord_sdp.replace('ICE/SDP', `UDP/TLS/RTP/SAVPF ${payload_type}`))
-
-		sdp.concat([
-			['a', mode],
-			['a', 'setup:passive'],
-			['a', `mid:${mid}`]
-		])
-
-		if (receiver_details) {
-			const { ssrc, user_id } = receiver_details
-			sdp.add('a', `msid:${user_id}-${ssrc} a${user_id}-${ssrc}`)
-		}
-
-		sdp.concat([
-			['a', `rtpmap:${payload_type} opus/48000/2`],
-			['a', `rtcp-fb:${payload_type} transport-cc`],
-			['a', 'rtcp-mux'],
-			[
-				'a',
-				['recvonly', 'sendrecv'].includes(mode)
-					? `fmtp:${payload_type} minptime=10;useinbandfec=1;usedtx=1;stereo=${stereo};maxaveragebitrate=${bitrate}`
-					: `fmtp:${payload_type} minptime=10;useinbandfec=1;usedtx=1`
-			]
-		])
-
-		if (receiver_details) {
-			const { ssrc, user_id } = receiver_details
-			sdp.add('a', `ssrc:${ssrc} cname:${user_id}-${ssrc}`)
-		}
-
-		const extmap_attributes = [
-			' urn:ietf:params:rtp-hdrext:ssrc-audio-level'
-			// ' http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01'
-		]
-
-		for (const [num, attr] of extmap_attributes.entries()) {
-			sdp.add('a', `extmap:${num + 1}${attr}`)
-		}
-
-		return sdp.parsed
+		this.debug?.(`SDP Answer Parsed:\n${remote_sdp.stringified}`)
+		await this.pc.setRemoteDescription({ type: 'answer', sdp: remote_sdp.stringified })
 	}
 
-	private buildSelectProtocolSDP(sdp: string) {
-		const s = new SDP(sdp.split('m=', 2).join('m=').trim())
-		const attributes = ['fingerprint', 'ice-', 'extmap', 'rtpmap']
-		s.set(s.parsed.filter(([, v]) => attributes.filter((a) => v.includes(a)).length))
-		return s.stringified.trim().replaceAll('\r', '')
-	}
-
+	/** Stop all transceivers and closes connection. */
 	public destroy() {
 		if (!this.pc) {
 			throw new VoiceRTCDestroyError('Peer connection is not open.')
@@ -293,16 +346,7 @@ export class VoiceRTC extends EventEmitter {
 		if (this.pc.connectionState === 'closed') return
 
 		this.debug?.('Closing')
-
-		for (const { transceiver } of this.receivers) transceiver.stop()
-		this.receivers = []
-		this.discord_sdp = undefined
-
-		if (this.sender) {
-			this.pc.removeTrack(this.sender)
-			this.sender = undefined
-		}
-
+		for (const transceiver of this.pc.getTransceivers()) transceiver.stop()
 		this.pc.close()
 	}
 }
