@@ -137,12 +137,14 @@ export class VoiceManager extends EventEmitter {
 				this.rtc.on('track', (t) => this.emit('track', t))
 				this.rtc.on('sender', (t) => this.emit('sender', t))
 
-				await this.rtc.openConnection({
+				const { 
+					select_protocol_sdp, 
+					codecs, 
+					ssrc 
+				} = await this.rtc.init({
 					audio_track: this.track,
 					audio_settings: this.audio_settings
 				})
-
-				const { sdp, codecs, ssrc } = await this.rtc.createOffer()
 
 				this.ssrc = ssrc
 
@@ -155,7 +157,7 @@ export class VoiceManager extends EventEmitter {
 					token,
 					debug: this.debug
 				})
-				this.voice.on('packet', (p) => this.handleVoicePacket(p, sdp, codecs))
+				this.voice.on('packet', (p) => this.handleVoicePacket(p, select_protocol_sdp, codecs))
 				this.voice.on('close', () => {
 					this.rtc?.destroy()
 					this.emit('disconnected')
@@ -164,15 +166,15 @@ export class VoiceManager extends EventEmitter {
 		}
 	}
 
-	private async handleVoicePacket(packet: any, sdp: string, codecs: Codecs) {
+	private handleVoicePacket(packet: any, sdp: string, codecs: Codecs) {
 		switch (packet.op) {
 			case VoiceOpcodes.Ready: {
-				await this.voice!.sendSelectProtocol(sdp, codecs)
+				this.voice!.sendSelectProtocol(sdp, codecs)
 				break
 			}
 
 			case VoiceOpcodes.SessionDescription: {
-				await this.rtc!.handleAnswer(packet.d.sdp)
+				this.rtc!.setDiscordSDP(packet.d.sdp)
 				this.setSpeaking(this.initial_speaking)
 				this.emit('connected')
 				break
@@ -180,13 +182,13 @@ export class VoiceManager extends EventEmitter {
 
 			case VoiceOpcodes.Speaking: {
 				const { user_id, ssrc } = packet.d
-				await this.rtc!.maybeAddAudioReceiver(user_id, ssrc)
+				this.rtc!.addUserAudioReceiver(user_id, ssrc)
 				break
 			}
 
 			case VoiceOpcodes.ClientDisconnect: {
 				const { user_id } = packet.d
-				await this.rtc!.stopAudioReceiver(user_id)
+				this.rtc!.stopUserAudioReceiver(user_id)
 				break
 			}
 		}
