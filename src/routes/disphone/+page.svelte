@@ -4,9 +4,10 @@
 	import { Session, SessionState } from 'sip.js'
 	import { generateDummyStream, getUserMedia, playAudioFromUrls, startMediaFlow } from '$lib/utils'
 	import { PhoneClient } from '$lib/phone-client'
-	import VoiceBot from '$lib/discord-browser-voice-client'
+	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
 
-	let audioElement = new Audio()
+	let audioElement: HTMLAudioElement | undefined
+	let audioContext: AudioContext | undefined
 
 	let phoneSender: RTCRtpSender | undefined
 	let phoneTrack: MediaStreamTrack | undefined
@@ -76,6 +77,7 @@
 			switch (state) {
 				case SessionState.Establishing: {
 					if (botSender) {
+						voice?.setSpeaking(true)
 						const stream = await playAudioFromUrls({
 							urls: ['/sounds/ringing.wav'],
 							volume: 50,
@@ -88,6 +90,7 @@
 					break
 				}
 				case SessionState.Established: {
+					voice?.setSpeaking(true)
 					oncall = true
 					console.log('Session has been established')
 					break
@@ -97,12 +100,16 @@
 				}
 				case SessionState.Terminated: {
 					if (botSender) {
+						voice?.setSpeaking(true)
 						const stream = await playAudioFromUrls({
 							urls: ['/sounds/hangup.wav'],
 							volume: 50
 						})
 						const [track] = stream.getAudioTracks()
 						botSender.replaceTrack(track)
+						track.onended = () => voice?.setSpeaking(false)
+					} else {
+						voice?.setSpeaking(false)
 					}
 					oncall = false
 					phoneSender = undefined
@@ -140,8 +147,8 @@
 				audio_track,
 				guild_id: $config.guildId!,
 				channel_id: $config.channelId!,
-				initial_speaking: true,
-				audio_settings: { mode: 'sendrecv', bitrate_kbps: 320, stereo: true }
+				audio_settings: { mode: 'sendrecv' },
+				initial_speaking: true
 			})
 
 			voice.on('connected', () => {
@@ -153,26 +160,11 @@
 				connected = false
 				botSender = undefined
 				botTrack = undefined
-				botStreamDestination = undefined
 				console.log('Disconnected')
 			})
 
 			voice.on('sender', async (s) => {
 				botSender = s
-
-				// const a = await playAudioFromUrls({
-				// 	urls: [
-				// 		'/music/07. The Demon-Haunted World.mp3'
-				// 		// '/music/03. Shades Of Hell - Kuolleet Sielut.mp3',
-				// 		// '/music/03. Body & Symphony.mp3'
-				// 	].sort(() => Math.random() - 0.5),
-				// 	volume: 100,
-				// 	loop: true
-				// })
-				// startMediaFlow(a)
-				// const tr = a.getAudioTracks()[0]
-				// botSender.replaceTrack(tr)
-
 				if (phoneTrack) {
 					console.debug('bot sender updated to phone track')
 					await botSender.replaceTrack(phoneTrack)
@@ -180,32 +172,20 @@
 			})
 
 			voice.on('track', async (t) => {
-				// startMediaFlow(t)
-				// botTrack = t
-
-				const ac = new AudioContext()
-				if (!botStreamDestination) {
-					botStreamDestination = new MediaStreamAudioDestinationNode(ac, {
-						channelInterpretation: 'discrete',
-						channelCount: 2,
-						channelCountMode: 'max'
-					})
-
-					audioElement.srcObject = botStreamDestination.stream
-					await audioElement.play()
+				if (!audioContext) audioContext = new AudioContext()
+				if (!botStreamDestination || !botTrack) {
+					botStreamDestination = audioContext.createMediaStreamDestination()
+					botTrack = botStreamDestination.stream.getAudioTracks()[0]
+					startMediaFlow(botTrack)
 				}
 
 				const stream = new MediaStream()
 				stream.addTrack(t)
-
-				const ss = ac.createMediaStreamSource(stream)
-				botStreamDestination.connect(ss)
+				const source = audioContext.createMediaStreamSource(stream)
+				source.connect(botStreamDestination)
 
 				if (phoneSender) {
 					console.debug('phone sender updated to new bot track')
-					botTrack = botStreamDestination.stream.getAudioTracks()[0]
-					startMediaFlow(botTrack)
-
 					await phoneSender.replaceTrack(botTrack)
 				}
 			})
