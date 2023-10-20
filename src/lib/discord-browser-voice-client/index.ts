@@ -12,7 +12,7 @@ import { VoiceManager } from './voice-manager'
 import type { AudioSettings } from './types'
 import { getBrowserName } from './utils/get-browser-name'
 
-export interface Client extends EventEmitter {
+interface Client extends EventEmitter {
 	on(event: 'ready', listener: () => void): this
 	on(event: 'done', listener: () => void): this
 	once(event: 'ready', listener: () => void): this
@@ -21,7 +21,7 @@ export interface Client extends EventEmitter {
 	emit(event: 'done'): boolean
 }
 
-export class Client extends EventEmitter {
+class Client extends EventEmitter {
 	private _gateway: GatewaySocket
 	private _voice?: VoiceManager
 	private _debug: boolean
@@ -98,3 +98,6 @@ export class Client extends EventEmitter {
 		this.emit('done')
 	}
 }
+
+export { Client }
+export default Client
