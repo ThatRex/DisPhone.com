@@ -1,6 +1,7 @@
 import EventEmitter from 'eventemitter3'
 import { UserAgent, Registerer, Inviter, Web, RegistererState, TransportState } from 'sip.js'
-import { generateDummyStream, getUserMedia } from '$lib/utils'
+import { getUserMedia } from '$lib/utils'
+import { generateDummyStream } from '$lib/discord-browser-voice-client/utils/generate-dummy-stream'
 
 interface PhoneClient extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
