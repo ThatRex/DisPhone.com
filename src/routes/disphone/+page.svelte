@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
-	import { Session, SessionState } from 'sip.js'
+	import { Session, SessionState, UserAgent } from 'sip.js'
 	import { getUserMedia, playAudioFromUrls, startMediaFlow } from '$lib/utils'
 	import { PhoneClient } from '$lib/phone-client'
 	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
+	import Title from '$lib/components/misc/title.svelte'
 
 	let audioContext: AudioContext | undefined
 
@@ -27,7 +28,9 @@
 		pass: '',
 		phoneNum: '',
 		// ui
-		hideConfig: false
+		hideConfig: false,
+		transfer_num: '',
+		dtmf: ''
 	})
 
 	let phone: PhoneClient
@@ -67,6 +70,22 @@
 		phoneReady = true
 	}
 
+	async function playRing() {
+		if (!botSender) return
+
+		const stream = await playAudioFromUrls({
+			urls: ['/sounds/ringing.wav'],
+			volume: 50,
+			onStart: () => voice?.setSpeaking(true),
+			onEnd: async () => {
+				if (!oncall && botSender) await playRing()
+			}
+		})
+
+		const [track] = stream.getAudioTracks()
+		botSender?.replaceTrack(track)
+	}
+
 	async function makeCall() {
 		const inviter = phone.makeInviter($config.phoneNum)
 
@@ -75,16 +94,7 @@
 		outgoingSession.stateChange.addListener(async (state) => {
 			switch (state) {
 				case SessionState.Establishing: {
-					if (botSender) {
-						voice?.setSpeaking(true)
-						const stream = await playAudioFromUrls({
-							urls: ['/sounds/ringing.wav'],
-							volume: 50,
-							loop: true
-						})
-						const [track] = stream.getAudioTracks()
-						botSender.replaceTrack(track)
-					}
+					await playRing()
 					console.log('Session is establishing')
 					break
 				}
@@ -192,9 +202,9 @@
 			})
 		}
 	}
-
-	let dtmf: string
 </script>
+
+<Title title="DisPhone" />
 
 <div style="color: red; margin-bottom: 10px">
 	Disclaimer: This project is a proof of concept and is still in early development. Use at own risk.
@@ -271,12 +281,39 @@
 		{#if oncall}
 			<form
 				on:submit|preventDefault={() => {
-					outgoingSession.sessionDescriptionHandler?.sendDtmf(dtmf)
-					dtmf = ''
+					outgoingSession.sessionDescriptionHandler?.sendDtmf($config.dtmf)
 				}}
 			>
-				<input type="tel" name="dtmf" id="dtmd" min="0" max="9" placeholder="0" bind:value={dtmf} />
+				<input
+					type="tel"
+					name="dtmf"
+					id="dtmf"
+					min="0"
+					max="9"
+					placeholder="0"
+					bind:value={$config.dtmf}
+				/>
 				<button>Send DTMF</button>
+			</form>
+			<form
+				on:submit|preventDefault={() => {
+					const uri = UserAgent.makeURI(`sip:${$config.transfer_num}@${$config.sipServer}`)
+					if (uri) {
+						outgoingSession.refer(uri)
+						outgoingSession.bye()
+					}
+				}}
+			>
+				<input
+					type="tel"
+					name="transfer_num"
+					id="transfer_num"
+					min="0"
+					max="10"
+					placeholder="2484345508"
+					bind:value={$config.transfer_num}
+				/>
+				<button>Transfer</button>
 			</form>
 		{/if}
 	</div>
@@ -294,7 +331,6 @@
 				Invite Bot
 			</a>
 		</div>
-		<div><b>Connected:</b> {connected}</div>
 		<div>
 			{#if !connected}
 				<div style="display: flex; flex-direction: column;">
