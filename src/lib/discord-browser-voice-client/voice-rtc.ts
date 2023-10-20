@@ -68,7 +68,7 @@ export class VoiceRTC extends EventEmitter {
 	private getNonStoppedReceiver(user_id: string) {
 		const index = this.transceivers.findIndex((t) => {
 			if (t.type === TransceiverType.Sender) return false
-			else return t.user_id === user_id && t.transceiver?.currentDirection !== 'stopped'
+			else return t.user_id === user_id && !t.transceiver?.stopped
 		})
 
 		const receiver = this.transceivers[index]
@@ -133,6 +133,7 @@ export class VoiceRTC extends EventEmitter {
 
 	/** Add user audio receiver if no active user receiver is found. */
 	public addUserAudioReceiver(user_id: string, ssrc: number) {
+
 		const receiver = this.getNonStoppedReceiver(user_id)
 
 		if (!receiver) {
