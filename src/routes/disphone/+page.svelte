@@ -2,7 +2,7 @@
 	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
 	import { Session, SessionState } from 'sip.js'
-	import { generateDummyStream, getUserMedia, playAudioFromUrls, startMediaFlow } from '$lib/utils'
+	import { getUserMedia, playAudioFromUrls, startMediaFlow } from '$lib/utils'
 	import { PhoneClient } from '$lib/phone-client'
 	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
 
@@ -103,11 +103,12 @@
 						voice?.setSpeaking(true)
 						const stream = await playAudioFromUrls({
 							urls: ['/sounds/hangup.wav'],
-							volume: 50
+							volume: 50,
+							onStart: () => voice?.setSpeaking(true),
+							onEnd: () => voice?.setSpeaking(false)
 						})
 						const [track] = stream.getAudioTracks()
 						botSender.replaceTrack(track)
-						track.onended = () => voice?.setSpeaking(false)
 					} else {
 						voice?.setSpeaking(false)
 					}
@@ -138,17 +139,13 @@
 
 	async function connect() {
 		await getUserMedia({ audio: true })
-		const stream = generateDummyStream()
-
-		const [audio_track] = stream.getAudioTracks()
 
 		if (!voice) {
 			voice = bot.connect({
-				audio_track,
 				guild_id: $config.guildId!,
 				channel_id: $config.channelId!,
 				audio_settings: { mode: 'sendrecv' },
-				initial_speaking: true
+				initial_speaking: oncall
 			})
 
 			voice.on('connected', () => {
