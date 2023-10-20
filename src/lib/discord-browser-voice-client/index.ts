@@ -10,17 +10,7 @@ import {
 import { GatewaySocket } from './gateway-socket'
 import { VoiceManager } from './voice-manager'
 import type { AudioSettings } from './types'
-
-function getBrowserName() {
-	for (const [matcher, name] of [
-		['Firefox', 'Firefox'],
-		['Edg', 'Edge'],
-		['Chrome', 'Chrome']
-	]) {
-		if (navigator.userAgent.includes(matcher)) return name
-	}
-	return 'A Browser'
-}
+import { getBrowserName } from './utils/get-browser-name'
 
 export interface Client extends EventEmitter {
 	on(event: 'ready', listener: () => void): this
@@ -82,7 +72,7 @@ export class Client extends EventEmitter {
 	public connect(params: {
 		guild_id: string
 		channel_id: string
-		audio_track: MediaStreamTrack
+		audio_track?: MediaStreamTrack
 		initial_speaking?: boolean
 		self_mute?: boolean
 		self_deaf?: boolean

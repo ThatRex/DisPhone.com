@@ -1,7 +1,7 @@
 export type AudioSettings = {
 	bitrate_kbps: number
 	stereo: boolean
-	mode: 'sendrecv' | 'sendonly' | 'recvonly'
+	mode: 'sendrecv' | 'sendonly'
 }
 
 export type Codecs = {

@@ -92,21 +92,19 @@ export class VoiceRTC extends EventEmitter {
 		if (audio_track?.kind !== 'audio') {
 			throw new VoiceRTCConnectionError('Video tracks not supported.')
 		}
-		if (!audio_track && this.audio_settings?.mode !== 'recvonly') {
+		if (!audio_track) {
 			throw new VoiceRTCConnectionError('An audio track must be provided when sending audio.')
 		}
 
 		this.audio_settings = audio_settings
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
 
-		if (audio_track) {
-			const transceiver = this.pc!.addTransceiver(audio_track, { direction: 'sendonly' })
-			this.emit('sender', transceiver.sender)
-			this.transceivers.push({
-				type: TransceiverType.Sender,
-				transceiver
-			})
-		}
+		const transceiver = this.pc!.addTransceiver(audio_track, { direction: 'sendonly' })
+		this.emit('sender', transceiver.sender)
+		this.transceivers.push({
+			type: TransceiverType.Sender,
+			transceiver
+		})
 
 		const { sdp } = await this.createOffer()
 
@@ -133,6 +131,7 @@ export class VoiceRTC extends EventEmitter {
 
 	/** Add user audio receiver if no active user receiver is found. */
 	public addUserAudioReceiver(user_id: string, ssrc: number) {
+		if (this.audio_settings?.mode === 'sendonly') return
 
 		const receiver = this.getNonStoppedReceiver(user_id)
 
@@ -155,6 +154,8 @@ export class VoiceRTC extends EventEmitter {
 
 	/** Stop active user receiver. */
 	public stopUserAudioReceiver(user_id: string) {
+		if (this.audio_settings?.mode === 'sendonly') return
+
 		const receiver = this.getNonStoppedReceiver(user_id)
 
 		if (!receiver) return

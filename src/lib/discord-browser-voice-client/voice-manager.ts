@@ -6,6 +6,7 @@ import { VoiceSocket } from './voice-socket'
 import { VoiceRTC } from './voice-rtc'
 import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 import type { AudioSettings, VoiceStateUpdate, VoiceServerUpdate, Codecs } from './types'
+import { generateDummyStream } from './utils/generate-dummy-stream'
 
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -41,7 +42,7 @@ export class VoiceManager extends EventEmitter {
 
 	constructor(params: {
 		gateway_socket: GatewaySocket
-		audio_track: MediaStreamTrack
+		audio_track?: MediaStreamTrack
 		audio_settings?: Partial<AudioSettings>
 		debug?: boolean
 	}) {
@@ -90,7 +91,16 @@ export class VoiceManager extends EventEmitter {
 		this.self_mute = self_mute ?? this.self_mute
 		this.self_deaf = self_deaf ?? this.self_deaf
 
-		this.track = audio_track ?? this.track
+		if (!this.track) {
+			if (!audio_track) {
+				console.warn('An audio track was not provided. Using dummy track.')
+				const [audio_track] = generateDummyStream().getAudioTracks()
+				this.track = audio_track
+			} else {
+				this.track = audio_track
+			}
+		}
+
 		this.initial_speaking = initial_speaking ?? this.initial_speaking
 		if (audio_settings) {
 			this.audio_settings = {
@@ -137,11 +147,7 @@ export class VoiceManager extends EventEmitter {
 				this.rtc.on('track', (t) => this.emit('track', t))
 				this.rtc.on('sender', (t) => this.emit('sender', t))
 
-				const { 
-					select_protocol_sdp, 
-					codecs, 
-					ssrc 
-				} = await this.rtc.init({
+				const { select_protocol_sdp, codecs, ssrc } = await this.rtc.init({
 					audio_track: this.track,
 					audio_settings: this.audio_settings
 				})
@@ -199,14 +205,18 @@ export class VoiceManager extends EventEmitter {
 			throw new VoiceSpeakingError('Voice socket not open.')
 		}
 
-		this.voice.sendPacket({
-			op: VoiceOpcodes.Speaking,
-			d: {
-				speaking: speaking ? 1 : 0,
-				delay: 0,
-				ssrc: this.ssrc
-			}
-		})
+		try {
+			this.voice.sendPacket({
+				op: VoiceOpcodes.Speaking,
+				d: {
+					speaking: speaking ? 1 : 0,
+					delay: 0,
+					ssrc: this.ssrc
+				}
+			})
+		} catch {
+			return
+		}
 	}
 
 	public move(params: {
