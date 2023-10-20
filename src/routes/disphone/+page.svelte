@@ -6,7 +6,6 @@
 	import { PhoneClient } from '$lib/phone-client'
 	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
 
-	let audioElement: HTMLAudioElement | undefined
 	let audioContext: AudioContext | undefined
 
 	let phoneSender: RTCRtpSender | undefined
@@ -196,6 +195,10 @@
 
 	let dtmf: string
 </script>
+
+<div style="color: red; margin-bottom: 10px">
+	Disclaimer: This project is a proof of concept and is still in early development. Use at own risk.
+</div>
 
 <button on:click={() => ($config.hideConfig = !$config.hideConfig)}>
 	{$config.hideConfig ? 'Show Config' : 'Hide Config'}
