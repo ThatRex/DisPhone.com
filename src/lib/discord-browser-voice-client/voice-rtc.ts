@@ -67,7 +67,7 @@ export class VoiceRTC extends EventEmitter {
 
 	private getNonStoppedReceiver(user_id: string) {
 		const index = this.transceivers.findIndex((t) => {
-			if (t.type === TransceiverType.Sender) return false
+			if (t.type === TransceiverType.SENDER) return false
 			else return t.user_id === user_id && !t.transceiver?.stopped
 		})
 
@@ -102,7 +102,7 @@ export class VoiceRTC extends EventEmitter {
 		const transceiver = this.pc!.addTransceiver(audio_track, { direction: 'sendonly' })
 		this.emit('sender', transceiver.sender)
 		this.transceivers.push({
-			type: TransceiverType.Sender,
+			type: TransceiverType.SENDER,
 			transceiver
 		})
 
@@ -137,18 +137,18 @@ export class VoiceRTC extends EventEmitter {
 
 		if (!receiver) {
 			this.transceivers.push({
-				type: TransceiverType.Receiver,
+				type: TransceiverType.RECEIVER,
 				user_id,
 				ssrc,
-				todo: ReceiverToDo.Add
+				todo: ReceiverToDo.ADD
 			})
 
 			this.processReceivers()
 			return
 		}
 
-		if (receiver.todo === ReceiverToDo.Remove) {
-			receiver.todo = ReceiverToDo.Nothing as typeof ReceiverToDo.Remove
+		if (receiver.todo === ReceiverToDo.REMOVE) {
+			receiver.todo = ReceiverToDo.NOTHING as typeof ReceiverToDo.REMOVE
 		}
 	}
 
@@ -160,12 +160,12 @@ export class VoiceRTC extends EventEmitter {
 
 		if (!receiver) return
 
-		if (receiver.todo === ReceiverToDo.Add) {
-			receiver.todo = ReceiverToDo.Nothing
+		if (receiver.todo === ReceiverToDo.ADD) {
+			receiver.todo = ReceiverToDo.NOTHING
 			return
 		}
 
-		receiver.todo = ReceiverToDo.Remove
+		receiver.todo = ReceiverToDo.REMOVE
 		this.processReceivers()
 	}
 
@@ -176,19 +176,19 @@ export class VoiceRTC extends EventEmitter {
 		this.processing = true
 
 		for (const t of this.transceivers) {
-			if (t.type === TransceiverType.Sender) continue
+			if (t.type === TransceiverType.SENDER) continue
 
-			if (t.todo === ReceiverToDo.Add) {
+			if (t.todo === ReceiverToDo.ADD) {
 				const transceiver = this.pc!.addTransceiver('audio', { direction: 'recvonly' })
 				this.emit('track', transceiver.receiver.track)
 				t.transceiver = transceiver
-				t.todo = ReceiverToDo.Nothing
+				t.todo = ReceiverToDo.NOTHING
 				continue
 			}
 
-			if (t.todo === ReceiverToDo.Remove) {
+			if (t.todo === ReceiverToDo.REMOVE) {
 				t.transceiver.stop()
-				t.todo = ReceiverToDo.Nothing as typeof ReceiverToDo.Remove
+				t.todo = ReceiverToDo.NOTHING as typeof ReceiverToDo.REMOVE
 				continue
 			}
 		}
@@ -204,8 +204,8 @@ export class VoiceRTC extends EventEmitter {
 		this.debug?.(`Processed After Update\ntransceivers:`, this.transceivers)
 
 		const continueProcessing = this.transceivers.find((t) => {
-			if (t.type === TransceiverType.Sender) return false
-			else return t.todo !== ReceiverToDo.Nothing
+			if (t.type === TransceiverType.SENDER) return false
+			else return t.todo !== ReceiverToDo.NOTHING
 		})
 
 		this.processing = false
@@ -326,7 +326,7 @@ export class VoiceRTC extends EventEmitter {
 			parsed_section.add('a', `rtcp:${rtcp_num}`)
 			parsed_section.add('a', candidate)
 
-			if (transceiver.type === TransceiverType.Receiver) {
+			if (transceiver.type === TransceiverType.RECEIVER) {
 				const { user_id, ssrc } = transceiver
 				parsed_section.add('a', `msid:${user_id}-${ssrc} a${user_id}-${ssrc}`)
 				parsed_section.add('a', `ssrc:${ssrc} cname:${user_id}-${ssrc}`)

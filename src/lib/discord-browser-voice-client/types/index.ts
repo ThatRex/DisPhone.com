@@ -12,35 +12,37 @@ export type Codecs = {
 	rtx_payload_type: number | null
 }[]
 
+export type ReceiverToDo = keyof typeof ReceiverToDo
 export const ReceiverToDo = {
-	Nothing: 0,
-	Add: 1,
-	Remove: 2
+	NOTHING: 'NOTHING',
+	ADD: 'ADD',
+	REMOVE: 'REMOVE'
 } as const
 
+export type TransceiverType = keyof typeof TransceiverType
 export const TransceiverType = {
-	Sender: 0,
-	Receiver: 1
+	SENDER: 'SENDER',
+	RECEIVER: 'RECEIVER'
 } as const
 
 export type Transceiver = Sender | Receiver
 
 export type Sender = {
-	type: typeof TransceiverType.Sender
+	type: typeof TransceiverType.SENDER
 	transceiver: RTCRtpTransceiver
 }
 
 export type Receiver = {
-	type: typeof TransceiverType.Receiver
+	type: typeof TransceiverType.RECEIVER
 	ssrc: number
 	user_id: string
 } & (
 	| {
-			todo: typeof ReceiverToDo.Add | typeof ReceiverToDo.Nothing
+			todo: typeof ReceiverToDo.ADD | typeof ReceiverToDo.NOTHING
 			transceiver?: RTCRtpTransceiver
 	  }
 	| {
-			todo: typeof ReceiverToDo.Remove
+			todo: typeof ReceiverToDo.REMOVE
 			transceiver: RTCRtpTransceiver
 	  }
 )

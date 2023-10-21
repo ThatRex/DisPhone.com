@@ -1,21 +1,35 @@
-export function playAudioFromUrls(params: {
+export async function playAudioFromURLs(params: {
 	urls: string[]
 	volume?: number
+	loop?: boolean
 	onStart?: () => unknown
 	onEnd?: () => unknown
 }) {
-	const { urls, volume, onStart, onEnd } = params
+	const { urls, volume, loop, onStart, onEnd } = params
 
 	const context = new AudioContext()
 	const destination = context.createMediaStreamDestination()
 	const stream = destination.stream
 
+	const stop = () => {
+		onEnd?.()
+		for (const track of stream.getTracks()) track.stop()
+		stopped = true
+	}
+
 	let i = 0
+	let stopped = false
 	const playNextAudio = async () => {
+		if (stopped) return
+
+		onStart?.()
+
 		if (i >= urls.length) {
-			for (const track of stream.getTracks()) track.stop()
-			onEnd?.()
-			return
+			if (loop) i = 0
+			else {
+				stop()
+				return
+			}
 		}
 
 		const url = urls[i]
@@ -37,6 +51,5 @@ export function playAudioFromUrls(params: {
 
 	playNextAudio()
 
-	onStart?.()
-	return stream
+	return [stream, stop] as [MediaStream, () => void]
 }
