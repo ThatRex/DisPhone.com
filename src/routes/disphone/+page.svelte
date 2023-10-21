@@ -223,12 +223,6 @@
 <Title title="DisPhone" />
 
 <div style="display: flex; flex-direction: column; gap: 10px;">
-	<div style="color: red;">
-		This project is in early development,<a href="https://github.com/ThatRex/BaitKit.net/issues">
-			expect bugs and report them here!
-		</a>
-	</div>
-
 	<div>
 		<button on:click={() => ($config.hide_config = !$config.hide_config)}>
 			{$config.hide_config ? 'Show Config' : 'Hide Config'}
@@ -387,7 +381,12 @@
 			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
 				<h1>Config</h1>
 				<div>
+					For the best experience use this app with FireFox on desktop and Chome on mobile.<br />
+					On mobile make sure the browser you use is not battery restricted or optimised.
+				</div>
+				<div>
 					<h2>Discord Bot</h2>
+					<p>You can create a bot <a target="_blank" href="https://discord.com/developers/applications">here</a>.</p>
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
 							<div>Token</div>
@@ -402,8 +401,8 @@
 				<div>
 					<h2>Soft Phone</h2>
 					<p>
-						<span style="color: red;">Normal SIP won't work!</span>
-						Make sure your devie is WebRTC compatible.
+						<span style="color: red;">Normal SIP won't work!</span><br />
+						Make sure your device is WebRTC compatible.
 					</p>
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
@@ -427,4 +426,22 @@
 			</div>
 		{/if}
 	</div>
+
+	<div>
+		<span style="color: red;">
+			This project is in early development,
+			<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
+				expect bugs and report them here</a
+			>!
+		</span>
+		<br />
+		<!-- <span style="font-style: italic;">
+			Projects like this take lots of time and effort to develop and maintain. Like my work?
+			<a target="_blank" href="https://example.com">Your support is appreciated</a>.
+		</span> -->
+		<span style="float: right; opacity: 50%;">
+			Developed by <a target="_blank" href="https://rexslab.com">Rex's Lab</a>.</span
+		>
+	</div>
+	<div />
 </div>
