@@ -6,12 +6,16 @@
 	import { PhoneClient } from '$lib/phone-client'
 	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
 	import Title from '$lib/components/misc/title.svelte'
+	import { GatewayDispatchEvents } from 'discord-api-types/v10'
 
 	let audio_context: AudioContext | undefined
 
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
 	let bot_stream_sestination: MediaStreamAudioDestinationNode | undefined
+
+	let guild_id: ''
+	let channel_id: ''
 
 	type PhoneState = keyof typeof PhoneState
 	const PhoneState = {
@@ -29,17 +33,16 @@
 
 	const config = persisted('config', {
 		// bot
-		discordToken: '',
-		guildId: '',
-		channelId: '',
+		discord_token: '',
+		discord_username: '',
 		// phone
-		sipServer: '',
+		server: '',
 		user: '',
 		login: '',
 		pass: '',
-		phoneNum: '',
 		// ui
-		hideConfig: false,
+		hide_config: false,
+		dial_num: '',
 		transfer_num: '',
 		dtmf: ''
 	})
@@ -51,7 +54,7 @@
 			username: $config.user,
 			login: $config.login,
 			password: $config.pass,
-			sipServer: $config.sipServer
+			sipServer: $config.server
 		})
 
 		await phone.start()
@@ -93,7 +96,7 @@
 	}
 
 	async function makeCall() {
-		const inviter = phone.makeInviter($config.phoneNum)
+		const inviter = phone.makeInviter($config.dial_num)
 
 		outgoing_session = inviter
 
@@ -146,10 +149,17 @@
 
 	function initBot() {
 		bot = new VoiceBot({
-			token: $config.discordToken!,
+			token: $config.discord_token!,
 			debug: true
 		})
 		bot.on('ready', () => (bot_ready = true))
+
+		bot.gateway.on('packet', (p) => {
+			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
+			if (p.d.member.user.username !== $config.discord_username) return
+			channel_id = p.d.channel_id ?? ''
+			guild_id = channel_id ? p.d.guild_id : ''
+		})
 	}
 
 	async function connect() {
@@ -157,8 +167,8 @@
 
 		if (!voice) {
 			voice = bot.connect({
-				guild_id: $config.guildId!,
-				channel_id: $config.channelId!,
+				guild_id: guild_id!,
+				channel_id: channel_id!,
 				audio_settings: { mode: 'sendrecv' },
 				initial_speaking: phone_state === PhoneState.ONCALL
 			})
@@ -203,8 +213,8 @@
 			})
 		} else {
 			voice.connect({
-				guild_id: $config.guildId!,
-				channel_id: $config.channelId!
+				guild_id: guild_id!,
+				channel_id: channel_id!
 			})
 		}
 	}
@@ -214,19 +224,21 @@
 
 <div style="display: flex; flex-direction: column; gap: 10px;">
 	<div style="color: red;">
-		This project in early development, expect bugs & use at own risk.
-		<a href="https://github.com/ThatRex/BaitKit.net/issues">
-			If you have an issue please create one here.
+		This project is in early development,<a href="https://github.com/ThatRex/BaitKit.net/issues">
+			expect bugs and report them here!
 		</a>
 	</div>
 
 	<div>
-		<button on:click={() => ($config.hideConfig = !$config.hideConfig)}>
-			{$config.hideConfig ? 'Show Config' : 'Hide Config'}
+		<button on:click={() => ($config.hide_config = !$config.hide_config)}>
+			{$config.hide_config ? 'Show Config' : 'Hide Config'}
 		</button>
 
 		{#if !bot_ready}
-			<button disabled={!$config.discordToken} on:click={() => initBot()}>Start Bot</button>
+			<button
+				disabled={!$config.discord_token || !$config.discord_username}
+				on:click={() => initBot()}>Start Bot</button
+			>
 		{:else}
 			<button
 				on:click={() => {
@@ -242,7 +254,7 @@
 
 		{#if phone_state === PhoneState.NOTREADY}
 			<button
-				disabled={!$config.sipServer || !$config.user || !$config.pass}
+				disabled={!$config.server || !$config.user || !$config.pass}
 				on:click={async () => await initPhone()}
 			>
 				Start Phone
@@ -261,131 +273,131 @@
 		{/if}
 	</div>
 
-	<div style="display: flex; flex-direction: row; flex-wrap: wrap; gap: 10px;">
-		{#if phone_state !== PhoneState.NOTREADY}
-			<div style="padding: 10px; border: 1px solid">
-				<h1>Phone</h1>
+	<div style="display: flex; flex-direction: column;">
+		<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+			{#if phone_state !== PhoneState.NOTREADY}
+				<div style="padding: 10px; border: 1px solid; flex-grow: 2;">
+					<h1>Phone</h1>
 
-				<b>Status: </b>{phone_state}
-				<div style="display: flex; flex-direction: column; gap: 4px 0">
-					<form
-						on:submit|preventDefault={async () => {
-							if (phone_state === PhoneState.ONCALL) {
-								await outgoing_session.bye()
-								return
-							}
-							if (phone_state === PhoneState.CALLING) {
-								outgoing_session.cancel()
-								return
-							}
-							if (!/[a-zA-Z]/.test($config.phoneNum)) {
-								$config.phoneNum = $config.phoneNum.replace(/[^0-9#*+]/g, '')
-							}
-							$config.phoneNum = $config.phoneNum
-							await makeCall()
-						}}
-					>
-						<label>
-							<input
-								type="tel"
-								placeholder="2484345508"
-								bind:value={$config.phoneNum}
-								disabled={phone_state === PhoneState.ONCALL}
-							/>
-						</label>
-
-						<button>{phone_state === PhoneState.READY ? 'CALL' : 'HANGUP'}</button>
-					</form>
-
-					{#if phone_state === PhoneState.ONCALL}
-						<form
-							on:submit|preventDefault={() => {
-								$config.dtmf = $config.dtmf.replace(/[^0-9#*]/g, '')
-								outgoing_session.sessionDescriptionHandler?.sendDtmf($config.dtmf)
-							}}
-						>
-							<input
-								type="tel"
-								name="dtmf"
-								id="dtmf"
-								min="0"
-								max="9"
-								placeholder="0"
-								bind:value={$config.dtmf}
-							/>
-							<button>Send DTMF</button>
-						</form>
+					<b>Status: </b>{phone_state}
+					<div style="display: flex; flex-direction: column; gap: 4px 0">
 						<form
 							on:submit|preventDefault={async () => {
-								if (!/[a-zA-Z]/.test($config.transfer_num)) {
-									$config.transfer_num = $config.transfer_num.replace(/[^0-9#*+]/g, '')
-								}
-								const uri = UserAgent.makeURI(`sip:${$config.transfer_num}@${$config.sipServer}`)
-								if (uri) {
-									await outgoing_session.refer(uri)
+								if (phone_state === PhoneState.ONCALL) {
 									await outgoing_session.bye()
+									return
 								}
+								if (phone_state === PhoneState.CALLING) {
+									outgoing_session.cancel()
+									return
+								}
+								if (!/[a-zA-Z]/.test($config.dial_num)) {
+									$config.dial_num = $config.dial_num.replace(/[^0-9#*+]/g, '')
+								}
+								$config.dial_num = $config.dial_num
+								await makeCall()
 							}}
 						>
-							<input
-								type="tel"
-								name="transfer_num"
-								id="transfer_num"
-								min="0"
-								max="10"
-								placeholder="2484345508"
-								bind:value={$config.transfer_num}
-							/>
-							<button>Transfer</button>
-						</form>
-					{/if}
-				</div>
-			</div>
-		{/if}
+							<label>
+								<input
+									type="tel"
+									placeholder="2484345508"
+									bind:value={$config.dial_num}
+									readonly={['ONCALL', 'CALLING'].includes(phone_state)}
+								/>
+							</label>
 
-		{#if bot_ready}
-			<div style="padding: 10px; border: 1px solid">
-				<h1>Bot</h1>
-				<div>
-					{#if !connected}
-						<div style="display: flex; flex-direction: column; gap: 4px 0">
-							<div>
-								<a
-									target="_blank"
-									href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
-										.id}&permissions=0&scope=bot%20applications.commands"
-								>
-									Invite Bot
-								</a>
-							</div>
-							<label>
-								<div>Channel ID</div>
-								<input type="text" bind:value={$config.channelId} />
-							</label>
-							<label>
-								<div>Guild/Server ID</div>
-								<input type="text" bind:value={$config.guildId} />
-							</label>
-							<button
-								disabled={!$config.channelId || !$config.guildId}
-								on:click={async () => await connect()}>Connect</button
+							<button>{phone_state === PhoneState.READY ? 'CALL' : 'HANGUP'}</button>
+						</form>
+
+						{#if phone_state === PhoneState.ONCALL}
+							<form
+								on:submit|preventDefault={() => {
+									$config.dtmf = $config.dtmf.replace(/[^0-9#*]/g, '')
+									outgoing_session.sessionDescriptionHandler?.sendDtmf($config.dtmf)
+								}}
 							>
-						</div>
-					{:else}
-						<button on:click={() => voice?.disconnect()}>Disconnect</button>
-					{/if}
+								<input
+									type="tel"
+									name="dtmf"
+									id="dtmf"
+									min="0"
+									max="9"
+									placeholder="0"
+									bind:value={$config.dtmf}
+								/>
+								<button>Send DTMF</button>
+							</form>
+							<form
+								on:submit|preventDefault={async () => {
+									if (!/[a-zA-Z]/.test($config.transfer_num)) {
+										$config.transfer_num = $config.transfer_num.replace(/[^0-9#*+]/g, '')
+									}
+									const uri = UserAgent.makeURI(`sip:${$config.transfer_num}@${$config.server}`)
+									if (uri) {
+										await outgoing_session.refer(uri)
+										await outgoing_session.bye()
+									}
+								}}
+							>
+								<input
+									type="tel"
+									name="transfer_num"
+									id="transfer_num"
+									min="0"
+									max="10"
+									placeholder="2484345508"
+									bind:value={$config.transfer_num}
+								/>
+								<button>Transfer</button>
+							</form>
+						{/if}
+					</div>
 				</div>
-			</div>
-		{/if}
-		{#if !$config.hideConfig}
-			<div style="padding: 10px; border: 1px solid">
+			{/if}
+
+			{#if bot_ready}
+				<div style="padding: 10px; border: 1px solid; flex-shrink: 1; flex-grow: 1;">
+					<h1>Bot</h1>
+					<div>
+						{#if !connected}
+							<div style="display: flex; flex-direction: column; gap: 4px 0">
+								<div>
+									<a
+										target="_blank"
+										href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
+											.id}&permissions=0&scope=bot%20applications.commands"
+									>
+										Invite your bot
+									</a> then join a voice channel. If you are already in a channel toggle your mute.
+								</div>
+								<button disabled={!channel_id || !guild_id} on:click={async () => await connect()}>
+									Connect
+								</button>
+							</div>
+						{:else}
+							<button on:click={() => voice?.disconnect()}>Disconnect</button>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		</div>
+
+		{#if !$config.hide_config}
+			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
 				<h1>Config</h1>
 				<div>
 					<h2>Discord Bot</h2>
-					<label>
-						<div>Token</div>
-						<input type="text" bind:value={$config.discordToken} />
-					</label>
+					<div style="display: flex; flex-direction: column; gap: 4px 0;">
+						<label>
+							<div>Token</div>
+							<input type="text" bind:value={$config.discord_token} />
+						</label>
+						<label>
+							<div>Your Discord Username</div>
+							<input type="text" bind:value={$config.discord_username} />
+						</label>
+					</div>
 				</div>
 				<div>
 					<h2>Soft Phone</h2>
@@ -396,7 +408,7 @@
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
 							<div>Server</div>
-							<input type="text" bind:value={$config.sipServer} />
+							<input type="text" bind:value={$config.server} />
 						</label>
 						<label>
 							<div>User</div>
