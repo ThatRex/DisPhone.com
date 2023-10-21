@@ -1,10 +1,12 @@
 import EventEmitter from 'eventemitter3'
 import { SocketClosedError, SocketOpenError } from '../errors'
 
-export enum SocketState {
-	CLOSED,
-	OPEN
-}
+export const SocketState = {
+	CLOSED: 'CLOSED',
+	OPEN: 'OPEN'
+} as const
+
+export type SocketState = keyof typeof SocketState
 
 export interface Socket extends EventEmitter {
 	on(event: 'packet', listener: (event: any) => void): this
@@ -15,7 +17,7 @@ export interface Socket extends EventEmitter {
 
 export class Socket extends EventEmitter {
 	private ws?: WebSocket
-	private _state = SocketState.CLOSED
+	private _state: SocketState = SocketState.CLOSED
 
 	private readonly name: string
 	public readonly debug: ((...args: any) => void) | null
