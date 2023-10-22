@@ -16,6 +16,7 @@ class PhoneClient extends EventEmitter {
 	private _ua: UserAgent
 	private _registerer?: Registerer
 	private sip_server: string
+	private got_user_media = false
 
 	public get ua() {
 		return this._ua
@@ -94,7 +95,10 @@ class PhoneClient extends EventEmitter {
 			return Promise.reject(new Error('Media devices not available in insecure contexts.'))
 		}
 
-		await getUserMedia({ audio: true })
+		if (!this.got_user_media) {
+			await getUserMedia({ audio: true })
+			this.got_user_media = true
+		}
 
 		sessionDescriptionHandler.close = () => {
 			const { peerConnection, dataChannel } = sessionDescriptionHandler
