@@ -40,6 +40,7 @@
 		user: '',
 		login: '',
 		pass: '',
+		auto_redial_safety_limit: 0,
 		// ui
 		hide_config: false,
 		dial_num: '',
@@ -95,7 +96,16 @@
 		bot_sender.replaceTrack(track)
 	}
 
+	let call_counter = 0
 	async function makeCall() {
+		if ($config.auto_redial_safety_limit && call_counter === $config.auto_redial_safety_limit) {
+			// this forces the user to view the page every X calls
+			await getUserMedia({ audio: true })
+			call_counter = 0
+		}
+
+		call_counter++
+
 		if (['CALLING', 'ONCALL'].includes(phone_state)) return
 		const inviter = phone.makeInviter($config.dial_num)
 
@@ -141,7 +151,9 @@
 						const min = 2000
 						const max = 4500
 						const ms = Math.floor(Math.random() * (max - min + 1)) + min
-						setTimeout(async () => await makeCall(), ms)
+						setTimeout(async () => {
+							if (do_auto_redial) await makeCall()
+						}, ms)
 					}
 
 					break
@@ -455,6 +467,12 @@
 							<div>Pass</div>
 							<input type="text" bind:value={$config.pass} />
 						</label>
+						<br />
+						<label>
+							<div>Auto Redial Safety</div>
+							<input type="number" min="0" bind:value={$config.auto_redial_safety_limit} />
+						</label>
+						<div>Forces you to view the page every X calls. 0 to disable.</div>
 					</div>
 				</div>
 			</div>
