@@ -32,5 +32,8 @@
 		"vite": "^4.5.0",
 		"vite-plugin-mkcert": "^1.16.0"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"@vercel/analytics": "^1.1.1"
+	}
 }
