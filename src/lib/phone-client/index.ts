@@ -15,7 +15,7 @@ interface PhoneClient extends EventEmitter {
 class PhoneClient extends EventEmitter {
 	private _ua: UserAgent
 	private _registerer?: Registerer
-	private sipServer: string
+	private sip_server: string
 
 	public get ua() {
 		return this._ua
@@ -29,14 +29,14 @@ class PhoneClient extends EventEmitter {
 		username: string
 		login?: string
 		password: string
-		sipServer: string
-		wsServer?: string
+		sip_server: string
+		ws_server?: string
 	}) {
 		super()
 
-		const { username, login, password, sipServer, wsServer } = params
+		const { username, login, password, sip_server, ws_server } = params
 
-		this.sipServer = sipServer
+		this.sip_server = sip_server
 
 		this._ua = new UserAgent({
 			sessionDescriptionHandlerFactory: Web.defaultSessionDescriptionHandlerFactory(
@@ -44,8 +44,8 @@ class PhoneClient extends EventEmitter {
 			),
 			authorizationUsername: login ?? username,
 			authorizationPassword: password,
-			transportOptions: { server: wsServer ?? `wss://${sipServer}:8089/ws` },
-			uri: UserAgent.makeURI(`sip:${username}@${sipServer}`)
+			transportOptions: { server: ws_server ?? `wss://${sip_server}:8089/ws` },
+			uri: UserAgent.makeURI(`sip:${username}@${sip_server}`)
 		})
 
 		this.ua.transport.stateChange.addListener(async (state) => {
@@ -70,7 +70,7 @@ class PhoneClient extends EventEmitter {
 	}
 
 	public makeInviter(number: string) {
-		const target = UserAgent.makeURI(`sip:${number}@${this.sipServer}`)
+		const target = UserAgent.makeURI(`sip:${number}@${this.sip_server}`)
 		if (!target) throw Error('Target Was Undefined')
 
 		const inviter = new Inviter(this._ua, target, {

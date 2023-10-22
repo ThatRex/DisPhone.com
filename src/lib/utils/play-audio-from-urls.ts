@@ -34,18 +34,18 @@ export async function playAudioFromURLs(params: {
 
 		const url = urls[i]
 		const response = await fetch(url)
-		const arrayBuffer = await response.arrayBuffer()
-		const audioBuffer = await context.decodeAudioData(arrayBuffer)
-		const bufferSource = context.createBufferSource()
-		bufferSource.buffer = audioBuffer
-		bufferSource.onended = playNextAudio
+		const array_buffer = await response.arrayBuffer()
+		const audio_buffer = await context.decodeAudioData(array_buffer)
+		const buffer_source = context.createBufferSource()
+		buffer_source.buffer = audio_buffer
+		buffer_source.onended = playNextAudio
 
-		const gainNode = context.createGain()
-		gainNode.gain.value = (volume ?? 100) / 100
-		bufferSource.connect(gainNode)
-		gainNode.connect(destination)
+		const gain_node = context.createGain()
+		gain_node.gain.value = (volume ?? 100) / 100
+		buffer_source.connect(gain_node)
+		gain_node.connect(destination)
 
-		bufferSource.start(0)
+		buffer_source.start(0)
 		i++
 	}
 
