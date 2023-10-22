@@ -54,7 +54,7 @@
 			username: $config.user,
 			login: $config.login,
 			password: $config.pass,
-			sipServer: $config.server
+			sip_server: $config.server
 		})
 
 		await phone.start()
@@ -62,7 +62,7 @@
 		phone.on('sender', async (s) => {
 			phone_sender = s
 			if (bot_track) {
-				console.debug('phone sender updated to bot track')
+				console.debug('phone_sender updated to bot_track')
 				await phone_sender.replaceTrack(bot_track)
 			}
 		})
@@ -71,7 +71,7 @@
 			startMediaFlow(t)
 			phone_track = t
 			if (bot_sender) {
-				console.debug('bot sender updated to new phone track')
+				console.debug('bot_sender updated to new phone_track')
 				await bot_sender.replaceTrack(phone_track)
 			}
 		})
@@ -96,6 +96,7 @@
 	}
 
 	async function makeCall() {
+		if (['CALLING', 'ONCALL'].includes(phone_state)) return
 		const inviter = phone.makeInviter($config.dial_num)
 
 		outgoing_session = inviter
@@ -105,35 +106,44 @@
 				case SessionState.Establishing: {
 					phone_state = PhoneState.CALLING
 					await playRing()
-					console.log('Session is establishing')
+					console.debug('Session is establishing')
 					break
 				}
 				case SessionState.Established: {
+					asserted_identity = outgoing_session.assertedIdentity?.friendlyName
 					phone_state = PhoneState.ONCALL
+					call_started_time = new Date()
 					voice?.setSpeaking(true)
 					console.log('Session has been established')
 					break
 				}
 				case SessionState.Terminated: {
+					asserted_identity = undefined
 					phone_state = PhoneState.READY
 					phone_sender = undefined
 					phone_track = undefined
 
-					if (bot_sender) {
-						voice?.setSpeaking(true)
-						const [stream] = await playAudioFromURLs({
-							urls: ['/sounds/hangup.wav'],
-							volume: 50,
-							onStart: () => voice?.setSpeaking(true),
-							onEnd: () => voice?.setSpeaking(false)
-						})
-						const [track] = stream.getAudioTracks()
-						bot_sender.replaceTrack(track)
-					} else {
-						voice?.setSpeaking(false)
+					console.debug('Session has terminated')
+
+					if (!bot_sender) break
+
+					voice?.setSpeaking(true)
+					const [stream] = await playAudioFromURLs({
+						urls: ['/sounds/hangup.wav'],
+						volume: 50,
+						onStart: () => voice?.setSpeaking(true),
+						onEnd: () => voice?.setSpeaking(false)
+					})
+					const [track] = stream.getAudioTracks()
+					bot_sender.replaceTrack(track)
+
+					if (do_auto_redial) {
+						const min = 2000
+						const max = 4500
+						const ms = Math.floor(Math.random() * (max - min + 1)) + min
+						setTimeout(async () => await makeCall(), ms)
 					}
 
-					console.log('Session has terminated')
 					break
 				}
 			}
@@ -188,7 +198,7 @@
 			voice.on('sender', async (s) => {
 				bot_sender = s
 				if (phone_track) {
-					console.debug('bot sender updated to phone track')
+					console.debug('bot_sender updated to phone_track')
 					await bot_sender.replaceTrack(phone_track)
 				}
 			})
@@ -207,7 +217,7 @@
 				source.connect(bot_stream_sestination)
 
 				if (phone_sender) {
-					console.debug('phone sender updated to new bot track')
+					console.debug('phone_sender updated to new bot_track')
 					await phone_sender.replaceTrack(bot_track)
 				}
 			})
@@ -218,6 +228,10 @@
 			})
 		}
 	}
+
+	let asserted_identity: string | undefined = undefined
+	let call_started_time: Date | undefined = undefined
+	let do_auto_redial = false
 </script>
 
 <Title title="DisPhone" />
@@ -272,8 +286,12 @@
 			{#if phone_state !== PhoneState.NOTREADY}
 				<div style="padding: 10px; border: 1px solid; flex-grow: 2;">
 					<h1>Phone</h1>
-
-					<b>Status: </b>{phone_state}
+					<div>
+						<b>Status: </b>{phone_state}
+						{#if asserted_identity}
+							<br /><b>Name: </b>{asserted_identity}
+						{/if}
+					</div>
 					<div style="display: flex; flex-direction: column; gap: 4px 0">
 						<form
 							on:submit|preventDefault={async () => {
@@ -282,7 +300,7 @@
 									return
 								}
 								if (phone_state === PhoneState.CALLING) {
-									outgoing_session.cancel()
+									await outgoing_session.cancel()
 									return
 								}
 								if (!/[a-zA-Z]/.test($config.dial_num)) {
@@ -302,6 +320,15 @@
 							</label>
 
 							<button>{phone_state === PhoneState.READY ? 'CALL' : 'HANGUP'}</button>
+							<label>
+								<input
+									type="checkbox"
+									name="do_auto_redial"
+									id="do_auto_redial"
+									bind:checked={do_auto_redial}
+								/>
+								Auto Redial
+							</label>
 						</form>
 
 						{#if phone_state === PhoneState.ONCALL}
@@ -357,13 +384,15 @@
 						{#if !connected}
 							<div style="display: flex; flex-direction: column; gap: 4px 0">
 								<div>
+									If you havn't,
 									<a
 										target="_blank"
 										href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
-											.id}&permissions=0&scope=bot%20applications.commands"
-									>
-										Invite your bot
-									</a> then join a voice channel. If you are already in a channel toggle your mute.
+											.id}&permissions=0&scope=bot%20applications.commands">Invite your bot</a
+									>.
+									<br />Then join a voice channel. If you are already in a channel toggle your mute.
+									<br />If the connect button doesn't become clickable you either entered you
+									discord name incorrectly or the bot can't see the channel.
 								</div>
 								<button disabled={!channel_id || !guild_id} on:click={async () => await connect()}>
 									Connect
@@ -386,7 +415,12 @@
 				</div>
 				<div>
 					<h2>Discord Bot</h2>
-					<p>You can create a bot <a target="_blank" href="https://discord.com/developers/applications">here</a>.</p>
+					<p>
+						You can create a bot <a
+							target="_blank"
+							href="https://discord.com/developers/applications">here</a
+						>.
+					</p>
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
 							<div>Token</div>
@@ -434,14 +468,16 @@
 				expect bugs and report them here</a
 			>!
 		</span>
+		<!-- 
 		<br />
-		<!-- <span style="font-style: italic;">
+		<span style="font-style: italic;">
 			Projects like this take lots of time and effort to develop and maintain. Like my work?
 			<a target="_blank" href="https://example.com">Your support is appreciated</a>.
-		</span> -->
+		</span> 
+		-->
 		<span style="float: right; opacity: 50%;">
-			Developed by <a target="_blank" href="https://rexslab.com">Rex's Lab</a>.</span
-		>
+			Developed by <a target="_blank" href="https://rexslab.com">Rex's Lab</a>.
+		</span>
 	</div>
 	<div />
 </div>
