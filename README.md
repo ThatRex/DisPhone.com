@@ -2,4 +2,4 @@
 
 ## Tools
 
-- **DisPhone:** Discord Browser Phone Proof Of Concept
+- **DisPhone:** Browser Phone w/ Discord Integration
