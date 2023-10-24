@@ -6,7 +6,7 @@ import { VoiceSocket } from './voice-socket'
 import { VoiceRTC } from './voice-rtc'
 import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 import type { AudioSettings, VoiceStateUpdate, VoiceServerUpdate, Codecs } from './types'
-import { generateDummyStream } from './utils/generate-dummy-stream'
+import { generateDummyStream } from '../utils/generate-dummy-stream'
 
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -70,7 +70,7 @@ export class VoiceManager extends EventEmitter {
 		initial_speaking?: boolean
 		self_mute?: boolean
 		self_deaf?: boolean
-		audio_settings?: AudioSettings
+		audio_settings?: Partial<AudioSettings>
 	}) {
 		if (!this.gateway.ready) {
 			throw new VoiceConnectionError('Gateway not ready.')

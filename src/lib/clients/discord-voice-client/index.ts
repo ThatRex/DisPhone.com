@@ -1,8 +1,6 @@
 import EventEmitter from 'eventemitter3'
 import {
-	ActivityType,
 	GatewayIntentBits,
-	PresenceUpdateStatus,
 	type GatewayIdentifyProperties,
 	type GatewayPresenceUpdateData,
 	GatewayOpcodes
@@ -10,7 +8,6 @@ import {
 import { GatewaySocket } from './gateway-socket'
 import { VoiceManager } from './voice-manager'
 import type { AudioSettings } from './types'
-import { getBrowserName } from './utils/get-browser-name'
 
 interface Client extends EventEmitter {
 	on(event: 'ready', listener: () => void): this
@@ -44,19 +41,8 @@ class Client extends EventEmitter {
 			address: 'gateway.discord.gg',
 			token: params.token,
 			intents: params.intents ?? GatewayIntentBits.GuildVoiceStates,
-			debug: this._debug,
-			presence: params.presence ?? {
-				since: null,
-				afk: false,
-				status: PresenceUpdateStatus.Online,
-				activities: [
-					{
-						name: `from ${getBrowserName()}`,
-						type: ActivityType.Streaming,
-						url: 'https://www.youtube.com/watch?v=0'
-					}
-				]
-			}
+			presence: params.presence,
+			debug: this._debug
 		})
 
 		this._gateway.on('ready', () => this.emit('ready'))

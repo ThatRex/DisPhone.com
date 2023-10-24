@@ -1,10 +1,10 @@
 <script lang="ts">
-	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
+	import type { VoiceManager } from '$lib/clients/discord-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
 	import { Inviter, Session, SessionState, UserAgent } from 'sip.js'
-	import { getUserMedia, playAudioFromURLs, startMediaFlow } from '$lib/utils'
-	import { PhoneClient } from '$lib/phone-client'
-	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
+	import { getUserMedia, playAudioFromURLs, startMediaFlow } from '$lib/clients/utils'
+	import { PhoneClient } from '$lib/clients/phone-client'
+	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
 	import Title from '$lib/components/misc/title.svelte'
 	import { GatewayDispatchEvents } from 'discord-api-types/v10'
 
@@ -236,7 +236,7 @@
 		} else {
 			voice.connect({
 				guild_id: guild_id!,
-				channel_id: channel_id!
+				channel_id: channel_id!,
 			})
 		}
 	}
