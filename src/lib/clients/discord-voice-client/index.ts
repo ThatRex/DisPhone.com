@@ -42,6 +42,7 @@ class Client extends EventEmitter {
 			token: params.token,
 			intents: params.intents ?? GatewayIntentBits.GuildVoiceStates,
 			presence: params.presence,
+			properties: params.properties,
 			debug: this._debug
 		})
 

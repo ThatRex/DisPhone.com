@@ -118,6 +118,13 @@
 					break
 				}
 				case SessionState.Established: {
+					bot?.setPresence({
+						since: 0,
+						afk: false,
+						status: PresenceUpdateStatus.Online,
+						activities: []
+					})
+
 					asserted_identity = outgoing_session.assertedIdentity?.friendlyName
 					phone_state = PhoneState.ONCALL
 					call_started_time = new Date()
@@ -126,6 +133,12 @@
 					break
 				}
 				case SessionState.Terminated: {
+					bot?.setPresence({
+						since: 0,
+						afk: false,
+						status: PresenceUpdateStatus.Idle,
+						activities: []
+					})
 					asserted_identity = undefined
 					phone_state = PhoneState.READY
 					phone_sender = undefined
@@ -170,17 +183,20 @@
 	function initBot() {
 		bot = new VoiceBot({
 			token: $config.discord_token!,
-			debug: true
-		})
-		bot.on('ready', () => {
-			bot_ready = true
-			bot.setPresence({
+			debug: true,
+			properties: {
+				os: 'linux',
+				browser: 'Discord Android',
+				device: 'Discord Android'
+			},
+			presence: {
 				since: 0,
-				activities: [],
-				status: PresenceUpdateStatus.Online,
-				afk: false
-			})
+				afk: false,
+				status: PresenceUpdateStatus.Idle,
+				activities: []
+			}
 		})
+		bot.on('ready', () => (bot_ready = true))
 
 		bot.gateway.on('packet', (p) => {
 			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
