@@ -69,7 +69,7 @@ export class GatewaySocket extends Socket {
 	}
 
 	private initalPresence: GatewayPresenceUpdateData = {
-		since: 0,
+		since: Date.now(),
 		activities: [],
 		status: PresenceUpdateStatus.Online,
 		afk: false
