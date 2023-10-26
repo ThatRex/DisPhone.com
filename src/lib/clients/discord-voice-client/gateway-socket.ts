@@ -64,8 +64,7 @@ export class GatewaySocket extends Socket {
 		properties: {
 			os: 'linux',
 			browser: '',
-			device: '',
-			client: 'mobile'
+			device: ''
 		}
 	}
 
