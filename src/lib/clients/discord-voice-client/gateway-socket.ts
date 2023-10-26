@@ -212,7 +212,7 @@ export class GatewaySocket extends Socket {
 				token: this.connection_data.token,
 				intents: this.connection_data.intents,
 				properties: this.connection_data.properties,
-				presence: this.initalPresence
+				// presence: this.initalPresence
 			}
 		} satisfies GatewayIdentify)
 	}

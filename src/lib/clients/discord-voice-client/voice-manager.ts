@@ -7,6 +7,7 @@ import { VoiceRTC } from './voice-rtc'
 import { VoiceConnectionError, VoiceSpeakingError } from './errors'
 import type { AudioSettings, VoiceStateUpdate, VoiceServerUpdate, Codecs } from './types'
 import { generateDummyStream } from '../utils/generate-dummy-stream'
+import { startMediaFlow } from '../utils'
 
 export interface VoiceManager extends EventEmitter {
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
@@ -39,6 +40,9 @@ export class VoiceManager extends EventEmitter {
 	private audio_settings: AudioSettings
 	private initial_speaking = false
 	private debug = false
+
+	private audio_context = new AudioContext()
+	private stream_sestination?: MediaStreamAudioDestinationNode
 
 	constructor(params: {
 		gateway_socket: GatewaySocket
@@ -88,6 +92,7 @@ export class VoiceManager extends EventEmitter {
 
 		this.guild_id = guild_id
 		this.channel_id = channel_id
+		this.initial_speaking = initial_speaking ?? this.initial_speaking
 		this.self_mute = self_mute ?? this.self_mute
 		this.self_deaf = self_deaf ?? this.self_deaf
 
@@ -101,7 +106,6 @@ export class VoiceManager extends EventEmitter {
 			}
 		}
 
-		this.initial_speaking = initial_speaking ?? this.initial_speaking
 		if (audio_settings) {
 			this.audio_settings = {
 				stereo: audio_settings?.stereo ?? this.audio_settings.stereo,
@@ -142,10 +146,25 @@ export class VoiceManager extends EventEmitter {
 			case GatewayDispatchEvents.VoiceServerUpdate: {
 				const { endpoint, guild_id, token } = packet.d as VoiceServerUpdate['d']
 
+				this.stream_sestination?.stream.getTracks().forEach((t) => t.stop())
+				this.stream_sestination = undefined
+
 				this.rtc?.destroy()
 				this.rtc = new VoiceRTC({ debug: this.debug })
-				this.rtc.on('track', (t) => this.emit('track', t))
-				this.rtc.on('sender', (t) => this.emit('sender', t))
+				this.rtc.on('sender', (s) => this.emit('sender', s))
+				this.rtc.on('track', (t) => {
+					if (!this.stream_sestination) {
+						this.stream_sestination = this.audio_context.createMediaStreamDestination()
+						const [track] = this.stream_sestination.stream.getAudioTracks()
+						startMediaFlow(track)
+						this.emit('track', track)
+					}
+
+					const stream = new MediaStream()
+					stream.addTrack(t)
+					const source = this.audio_context.createMediaStreamSource(stream)
+					source.connect(this.stream_sestination)
+				})
 
 				const { select_protocol_sdp, codecs, ssrc } = await this.rtc.init({
 					audio_track: this.track,

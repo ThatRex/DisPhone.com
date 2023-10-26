@@ -8,11 +8,8 @@
 	import Title from '$lib/components/misc/title.svelte'
 	import { GatewayDispatchEvents } from 'discord-api-types/v10'
 
-	let audio_context: AudioContext | undefined
-
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
-	let bot_stream_sestination: MediaStreamAudioDestinationNode | undefined
 
 	let guild_id: ''
 	let channel_id: ''
@@ -58,6 +55,7 @@
 			sip_server: $config.server
 		})
 
+		phone.ua.delegate
 		await phone.start()
 
 		phone.on('sender', async (s) => {
@@ -174,7 +172,10 @@
 			token: $config.discord_token!,
 			debug: true
 		})
-		bot.on('ready', () => (bot_ready = true))
+		bot.on('ready', () => {
+			bot_ready = true
+			bot.setPresence1()
+		})
 
 		bot.gateway.on('packet', (p) => {
 			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
@@ -192,7 +193,7 @@
 				guild_id: guild_id!,
 				channel_id: channel_id!,
 				audio_settings: { mode: 'sendrecv' },
-				initial_speaking: phone_state === PhoneState.ONCALL
+				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
 			})
 
 			voice.on('connected', () => {
@@ -204,7 +205,7 @@
 				connected = false
 				bot_sender = undefined
 				bot_track = undefined
-				console.log('Disconnected')
+				console.debug('Disconnected')
 			})
 
 			voice.on('sender', async (s) => {
@@ -216,18 +217,8 @@
 			})
 
 			voice.on('track', async (t) => {
-				if (!audio_context) audio_context = new AudioContext()
-				if (!bot_stream_sestination || !bot_track) {
-					bot_stream_sestination = audio_context.createMediaStreamDestination()
-					bot_track = bot_stream_sestination.stream.getAudioTracks()[0]
-					startMediaFlow(bot_track)
-				}
-
-				const stream = new MediaStream()
-				stream.addTrack(t)
-				const source = audio_context.createMediaStreamSource(stream)
-				source.connect(bot_stream_sestination)
-
+				startMediaFlow(t)
+				bot_track = t
 				if (phone_sender) {
 					console.debug('phone_sender updated to new bot_track')
 					await phone_sender.replaceTrack(bot_track)
@@ -237,6 +228,7 @@
 			voice.connect({
 				guild_id: guild_id!,
 				channel_id: channel_id!,
+				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
 			})
 		}
 	}
