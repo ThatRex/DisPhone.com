@@ -62,9 +62,9 @@ export class GatewaySocket extends Socket {
 		token: '',
 		intents: 0,
 		properties: {
-			os: 'linux',
-			browser: 'dbvc',
-			device: 'dbvc'
+			os: 'Android',
+			browser: '',
+			device: 'Mobile'
 		}
 	}
 

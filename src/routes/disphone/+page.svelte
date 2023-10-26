@@ -178,7 +178,6 @@
 				since: 0,
 				activities: [],
 				status: PresenceUpdateStatus.Online,
-				client_status: { mobile: 'online' },
 				afk: false
 			})
 		})
