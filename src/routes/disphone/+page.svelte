@@ -6,7 +6,7 @@
 	import { PhoneClient } from '$lib/clients/phone-client'
 	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
 	import Title from '$lib/components/misc/title.svelte'
-	import { GatewayDispatchEvents } from 'discord-api-types/v10'
+	import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10'
 
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
@@ -174,7 +174,12 @@
 		})
 		bot.on('ready', () => {
 			bot_ready = true
-			bot.setPresence1()
+			bot.setPresence({
+				since: 0,
+				activities: [],
+				status: PresenceUpdateStatus.Online,
+				afk: false
+			})
 		})
 
 		bot.gateway.on('packet', (p) => {

@@ -55,28 +55,6 @@ class Client extends EventEmitter {
 		})
 	}
 
-	public setPresence1() {
-		this._gateway.sendPacket({
-			op: GatewayOpcodes.Dispatch,
-			t: 'PRESENCE_UPDATE',
-			d: {
-				// since: Date.now(),
-				status: 'online',
-				client_status: { mobile: 'online' },
-				broadcast: true,
-				activities: [
-					{
-						type: 4,
-						state: 'on call',
-						name: 'Custom Status',
-						id: 'custom',
-						created_at: Date.now()
-					}
-				]
-			}
-		})
-	}
-
 	public connect(params: {
 		guild_id: string
 		channel_id: string
