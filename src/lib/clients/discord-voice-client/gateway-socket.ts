@@ -63,13 +63,13 @@ export class GatewaySocket extends Socket {
 		intents: 0,
 		properties: {
 			os: 'linux',
-			browser: 'dbvc',
-			device: 'dbvc'
+			browser: '',
+			device: ''
 		}
 	}
 
 	private initalPresence: GatewayPresenceUpdateData = {
-		since: Date.now(),
+		since: 0,
 		activities: [],
 		status: PresenceUpdateStatus.Online,
 		afk: false
@@ -211,10 +211,14 @@ export class GatewaySocket extends Socket {
 			d: {
 				token: this.connection_data.token,
 				intents: this.connection_data.intents,
-				properties: this.connection_data.properties,
-				presence: this.initalPresence
+				properties: this.connection_data.properties
 			}
 		} satisfies GatewayIdentify)
+
+		this.sendPacket({
+			op: GatewayOpcodes.PresenceUpdate,
+			d: this.initalPresence
+		})
 	}
 
 	private doResume() {

@@ -1,18 +1,15 @@
 <script lang="ts">
-	import type { VoiceManager } from '$lib/discord-browser-voice-client/voice-manager'
+	import type { VoiceManager } from '$lib/clients/discord-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
 	import { Inviter, Session, SessionState, UserAgent } from 'sip.js'
-	import { getUserMedia, playAudioFromURLs, startMediaFlow } from '$lib/utils'
-	import { PhoneClient } from '$lib/phone-client'
-	import { Client as VoiceBot } from '$lib/discord-browser-voice-client'
+	import { getUserMedia, playAudioFromURLs, startMediaFlow } from '$lib/clients/utils'
+	import { PhoneClient } from '$lib/clients/phone-client'
+	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
 	import Title from '$lib/components/misc/title.svelte'
-	import { GatewayDispatchEvents } from 'discord-api-types/v10'
-
-	let audio_context: AudioContext | undefined
+	import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10'
 
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
-	let bot_stream_sestination: MediaStreamAudioDestinationNode | undefined
 
 	let guild_id: ''
 	let channel_id: ''
@@ -58,6 +55,7 @@
 			sip_server: $config.server
 		})
 
+		phone.ua.delegate
 		await phone.start()
 
 		phone.on('sender', async (s) => {
@@ -120,6 +118,13 @@
 					break
 				}
 				case SessionState.Established: {
+					bot?.setPresence({
+						since: 0,
+						afk: false,
+						status: PresenceUpdateStatus.Online,
+						activities: []
+					})
+
 					asserted_identity = outgoing_session.assertedIdentity?.friendlyName
 					phone_state = PhoneState.ONCALL
 					call_started_time = new Date()
@@ -128,6 +133,12 @@
 					break
 				}
 				case SessionState.Terminated: {
+					bot?.setPresence({
+						since: 0,
+						afk: false,
+						status: PresenceUpdateStatus.Idle,
+						activities: []
+					})
 					asserted_identity = undefined
 					phone_state = PhoneState.READY
 					phone_sender = undefined
@@ -172,7 +183,18 @@
 	function initBot() {
 		bot = new VoiceBot({
 			token: $config.discord_token!,
-			debug: true
+			debug: true,
+			properties: {
+				os: 'linux',
+				browser: 'Discord Android',
+				device: 'Discord Android'
+			},
+			presence: {
+				since: 0,
+				afk: false,
+				status: PresenceUpdateStatus.Idle,
+				activities: []
+			}
 		})
 		bot.on('ready', () => (bot_ready = true))
 
@@ -192,7 +214,7 @@
 				guild_id: guild_id!,
 				channel_id: channel_id!,
 				audio_settings: { mode: 'sendrecv' },
-				initial_speaking: phone_state === PhoneState.ONCALL
+				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
 			})
 
 			voice.on('connected', () => {
@@ -204,7 +226,7 @@
 				connected = false
 				bot_sender = undefined
 				bot_track = undefined
-				console.log('Disconnected')
+				console.debug('Disconnected')
 			})
 
 			voice.on('sender', async (s) => {
@@ -216,18 +238,8 @@
 			})
 
 			voice.on('track', async (t) => {
-				if (!audio_context) audio_context = new AudioContext()
-				if (!bot_stream_sestination || !bot_track) {
-					bot_stream_sestination = audio_context.createMediaStreamDestination()
-					bot_track = bot_stream_sestination.stream.getAudioTracks()[0]
-					startMediaFlow(bot_track)
-				}
-
-				const stream = new MediaStream()
-				stream.addTrack(t)
-				const source = audio_context.createMediaStreamSource(stream)
-				source.connect(bot_stream_sestination)
-
+				startMediaFlow(t)
+				bot_track = t
 				if (phone_sender) {
 					console.debug('phone_sender updated to new bot_track')
 					await phone_sender.replaceTrack(bot_track)
@@ -236,7 +248,8 @@
 		} else {
 			voice.connect({
 				guild_id: guild_id!,
-				channel_id: channel_id!
+				channel_id: channel_id!,
+				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
 			})
 		}
 	}
