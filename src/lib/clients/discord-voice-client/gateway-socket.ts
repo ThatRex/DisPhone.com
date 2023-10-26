@@ -62,14 +62,15 @@ export class GatewaySocket extends Socket {
 		token: '',
 		intents: 0,
 		properties: {
-			os: 'Android',
+			os: 'linux',
 			browser: '',
-			device: 'Mobile'
+			device: '',
+			client: 'mobile'
 		}
 	}
 
 	private initalPresence: GatewayPresenceUpdateData = {
-		since: Date.now(),
+		since: 0,
 		activities: [],
 		status: PresenceUpdateStatus.Online,
 		afk: false
@@ -211,10 +212,14 @@ export class GatewaySocket extends Socket {
 			d: {
 				token: this.connection_data.token,
 				intents: this.connection_data.intents,
-				properties: this.connection_data.properties,
-				presence: this.initalPresence
+				properties: this.connection_data.properties
 			}
 		} satisfies GatewayIdentify)
+
+		this.sendPacket({
+			op: GatewayOpcodes.PresenceUpdate,
+			d: this.initalPresence
+		})
 	}
 
 	private doResume() {
