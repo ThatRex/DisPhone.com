@@ -87,6 +87,7 @@
 			onStart: () => voice?.setSpeaking(true),
 			onEnd: async () => {
 				if (phone_state === PhoneState.CALLING && bot_sender) await playRing()
+				else if (phone_state !== PhoneState.ONCALL) voice?.setSpeaking(false)
 			}
 		})
 
@@ -148,7 +149,6 @@
 
 					if (!bot_sender) break
 
-					voice?.setSpeaking(true)
 					const [stream] = await playAudioFromURLs({
 						urls: ['/sounds/hangup.wav'],
 						volume: 50,
@@ -197,6 +197,7 @@
 			}
 		})
 		bot.on('ready', () => (bot_ready = true))
+		bot.on('done', () => (bot_ready = false))
 
 		bot.gateway.on('packet', (p) => {
 			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
@@ -248,8 +249,7 @@
 		} else {
 			voice.connect({
 				guild_id: guild_id!,
-				channel_id: channel_id!,
-				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
+				channel_id: channel_id!
 			})
 		}
 	}
