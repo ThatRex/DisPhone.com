@@ -28,6 +28,12 @@
 	let phone_track: MediaStreamTrack | undefined
 	let outgoing_session: Session & Inviter
 
+	let asserted_identity: string | undefined = undefined
+	let call_start_time: number | undefined = undefined
+	let max_sequential_short_calls = 3
+	let sequential_short_calls = 0
+	let do_auto_redial = false
+
 	const config = persisted('config', {
 		// bot
 		discord_token: '',
@@ -119,12 +125,25 @@
 
 					asserted_identity = outgoing_session.assertedIdentity?.friendlyName
 					phone_state = PhoneState.ONCALL
-					call_started_time = new Date()
+					call_start_time = Date.now()
 					voice?.setSpeaking(true)
 					console.log('Session has been established')
 					break
 				}
 				case SessionState.Terminated: {
+					if (do_auto_redial && call_start_time) {
+						if (Date.now() - call_start_time > 4000) {
+							sequential_short_calls = 0
+						} else {
+							sequential_short_calls++
+							if (sequential_short_calls === max_sequential_short_calls) {
+								do_auto_redial = false
+								sequential_short_calls = 0
+							}
+						}
+					}
+					call_start_time = undefined
+
 					bot?.setPresence({
 						since: 0,
 						afk: false,
@@ -138,7 +157,10 @@
 
 					console.debug('Session has terminated')
 
-					if (!bot_sender) break
+					if (!bot_sender) {
+						do_auto_redial = false
+						break
+					}
 
 					const [stream] = await playAudioFromURLs({
 						urls: ['/sounds/hangup.wav'],
@@ -244,10 +266,6 @@
 			})
 		}
 	}
-
-	let asserted_identity: string | undefined = undefined
-	let call_started_time: Date | undefined = undefined
-	let do_auto_redial = false
 </script>
 
 <Title title="DisPhone" />
@@ -407,7 +425,11 @@
 											.id}&permissions=0&scope=bot%20applications.commands">Invite your bot</a
 									>.
 								</div>
-								<button style="max-width: 30rem;" disabled={!channel_id || !guild_id} on:click={async () => await connect()}>
+								<button
+									style="max-width: 30rem;"
+									disabled={!channel_id || !guild_id}
+									on:click={async () => await connect()}
+								>
 									{#if !channel_id || !guild_id}
 										<span style="color:red">
 											To connect you need to join a voice channel or toggle your mute.
@@ -439,32 +461,6 @@
 					On mobile make sure the browser you use is not battery restricted or optimised.
 				</div>
 				<h1>Config</h1>
-				<div>
-					<h2>Your Discord Account</h2>
-					<div style="display: flex; flex-direction: column; gap: 4px 0;">
-						<label>
-							<div>Username (<span style="color: red;">Not Display Or Nickname!</span>)</div>
-							<input
-								type="text"
-								bind:value={$config.discord_username}
-								on:blur={() => ($config.discord_username = $config.discord_username.trim())}
-							/>
-						</label>
-					</div>
-				</div>
-				<div>
-					<h2>Discord Dialler Account</h2>
-					<div style="display: flex; flex-direction: column; gap: 4px 0;">
-						<label>
-							<div>Bot / User Account Token</div>
-							<input
-								type="text"
-								bind:value={$config.discord_token}
-								on:blur={() => ($config.discord_token = $config.discord_token.trim())}
-							/>
-						</label>
-					</div>
-				</div>
 				<div>
 					<h2>Soft Phone</h2>
 					<p>
@@ -502,6 +498,32 @@
 								type="text"
 								bind:value={$config.pass}
 								on:blur={() => ($config.pass = $config.pass.trim())}
+							/>
+						</label>
+					</div>
+				</div>
+				<div>
+					<h2>Your Discord Account</h2>
+					<div style="display: flex; flex-direction: column; gap: 4px 0;">
+						<label>
+							<div>Username (<span style="color: red;">Not Display Or Nickname!</span>)</div>
+							<input
+								type="text"
+								bind:value={$config.discord_username}
+								on:blur={() => ($config.discord_username = $config.discord_username.trim())}
+							/>
+						</label>
+					</div>
+				</div>
+				<div>
+					<h2>Discord Dialler Account</h2>
+					<div style="display: flex; flex-direction: column; gap: 4px 0;">
+						<label>
+							<div>Bot / User Account Token</div>
+							<input
+								type="text"
+								bind:value={$config.discord_token}
+								on:blur={() => ($config.discord_token = $config.discord_token.trim())}
 							/>
 						</label>
 					</div>
