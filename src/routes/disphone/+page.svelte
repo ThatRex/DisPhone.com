@@ -84,10 +84,12 @@
 		const [stream] = await playAudioFromURLs({
 			urls: ['/sounds/ringing.wav'],
 			volume: 50,
-			onStart: () => voice?.setSpeaking(true),
+			onStart: () => {
+				if (phone_state === PhoneState.CALLING) voice?.setSpeaking(true)
+			},
 			onEnd: async () => {
 				if (phone_state === PhoneState.CALLING && bot_sender) await playRing()
-				else if (phone_state !== PhoneState.ONCALL) voice?.setSpeaking(false)
+				else if (phone_state !== PhoneState.ONCALL && !!phone_track) voice?.setSpeaking(false)
 			}
 		})
 
