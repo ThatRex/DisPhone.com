@@ -37,7 +37,6 @@
 		user: '',
 		login: '',
 		pass: '',
-		auto_redial_safety_limit: 0,
 		// ui
 		hide_config: false,
 		dial_num: '',
@@ -55,7 +54,6 @@
 			sip_server: $config.server
 		})
 
-		phone.ua.delegate
 		await phone.start()
 
 		phone.on('sender', async (s) => {
@@ -97,16 +95,7 @@
 		bot_sender.replaceTrack(track)
 	}
 
-	let call_counter = 0
 	async function makeCall() {
-		if ($config.auto_redial_safety_limit && call_counter === $config.auto_redial_safety_limit) {
-			// this forces the user to view the page every X calls
-			await getUserMedia({ audio: true })
-			call_counter = 0
-		}
-
-		call_counter++
-
 		if (['CALLING', 'ONCALL'].includes(phone_state)) return
 		const inviter = phone.makeInviter($config.dial_num)
 
@@ -417,12 +406,15 @@
 										href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
 											.id}&permissions=0&scope=bot%20applications.commands">Invite your bot</a
 									>.
-									<br />Then join a voice channel. If you are already in a channel toggle your mute.
-									<br />If the connect button doesn't become clickable you either entered you
-									discord name incorrectly or the bot can't see the channel.
 								</div>
-								<button disabled={!channel_id || !guild_id} on:click={async () => await connect()}>
-									Connect
+								<button style="max-width: 30rem;" disabled={!channel_id || !guild_id} on:click={async () => await connect()}>
+									{#if !channel_id || !guild_id}
+										<span style="color:red">
+											To connect you need to join a voice channel or toggle your mute.
+										</span>
+									{:else}
+										Connect
+									{/if}
 								</button>
 							</div>
 						{:else}
@@ -435,27 +427,41 @@
 
 		{#if !$config.hide_config}
 			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
-				<h1>Config</h1>
+				<h1>Before You Start</h1>
+				<span style="color: red;">
+					This project is in early development,
+					<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
+						expect bugs and report them here</a
+					>!
+				</span>
 				<div>
 					For the best experience use this app with FireFox on desktop and Chome on mobile.<br />
 					On mobile make sure the browser you use is not battery restricted or optimised.
 				</div>
+				<h1>Config</h1>
 				<div>
-					<h2>Discord Bot</h2>
-					<p>
-						You can create a bot <a
-							target="_blank"
-							href="https://discord.com/developers/applications">here</a
-						>.
-					</p>
+					<h2>Your Discord Account</h2>
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
-							<div>Token</div>
-							<input type="text" bind:value={$config.discord_token} />
+							<div>Username (<span style="color: red;">Not Display Or Nickname!</span>)</div>
+							<input
+								type="text"
+								bind:value={$config.discord_username}
+								on:blur={() => ($config.discord_username = $config.discord_username.trim())}
+							/>
 						</label>
+					</div>
+				</div>
+				<div>
+					<h2>Discord Dialler Account</h2>
+					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
-							<div>Your Discord Username</div>
-							<input type="text" bind:value={$config.discord_username} />
+							<div>Bot / User Account Token</div>
+							<input
+								type="text"
+								bind:value={$config.discord_token}
+								on:blur={() => ($config.discord_token = $config.discord_token.trim())}
+							/>
 						</label>
 					</div>
 				</div>
@@ -468,26 +474,36 @@
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
 							<div>Server</div>
-							<input type="text" bind:value={$config.server} />
+							<input
+								type="text"
+								bind:value={$config.server}
+								on:blur={() => ($config.server = $config.server.trim())}
+							/>
 						</label>
 						<label>
 							<div>User</div>
-							<input type="text" bind:value={$config.user} />
+							<input
+								type="text"
+								bind:value={$config.user}
+								on:blur={() => ($config.user = $config.user.trim())}
+							/>
 						</label>
 						<label>
 							<div>Login</div>
-							<input type="text" bind:value={$config.login} />
+							<input
+								type="text"
+								bind:value={$config.login}
+								on:blur={() => ($config.login = $config.login.trim())}
+							/>
 						</label>
 						<label>
-							<div>Pass</div>
-							<input type="text" bind:value={$config.pass} />
+							<div>Password</div>
+							<input
+								type="text"
+								bind:value={$config.pass}
+								on:blur={() => ($config.pass = $config.pass.trim())}
+							/>
 						</label>
-						<br />
-						<label>
-							<div>Auto Redial Safety</div>
-							<input type="number" min="0" bind:value={$config.auto_redial_safety_limit} />
-						</label>
-						<div>Forces you to view the page every X calls. 0 to disable.</div>
 					</div>
 				</div>
 			</div>
@@ -495,20 +511,13 @@
 	</div>
 
 	<div>
-		<span style="color: red;">
-			This project is in early development,
-			<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
-				expect bugs and report them here</a
-			>!
-		</span>
-		<!-- 
-		<br />
-		<span style="font-style: italic;">
+		<span>
 			Projects like this take lots of time and effort to develop and maintain. Like my work?
-			<a target="_blank" href="https://example.com">Your support is appreciated</a>.
-		</span> 
-		-->
-		<span style="float: right; opacity: 50%;">
+			<a target="_blank" href="https://www.buymeacoffee.com/thatrex">
+				Your support is appreciated.
+			</a>
+		</span>
+		<span style="float: right;">
 			Developed by <a target="_blank" href="https://rexslab.com">Rex's Lab</a>.
 		</span>
 	</div>
