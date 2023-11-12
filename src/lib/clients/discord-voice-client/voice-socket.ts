@@ -1,13 +1,15 @@
 import { Socket, SocketState } from './utils/socket'
 import type { Codecs } from './types'
 import { VoiceOpcodes } from 'discord-api-types/voice'
+
 export class VoiceSocket extends Socket {
-	private hartbeatInterval?: number
-	private missedHeartbeats = 0
+	private hartbeat_interval?: number
+	private missed_heartbeats = 0
 	private indentified = false
 	private resumed = false
+	private resume_attempts = 0
 
-	private connectionData: {
+	private connection_data: {
 		guild_id: string
 		user_id: string
 		session_id: string
@@ -31,10 +33,26 @@ export class VoiceSocket extends Socket {
 			debug: params.debug
 		})
 
-		this.connectionData = { guild_id, session_id, token, user_id, address }
+		this.connection_data = { guild_id, session_id, token, user_id, address }
 
 		this.on('packet', (p) => this.onPacket(p))
 		this.on('close', () => this.destroy())
+		this.on('error', () => this.doResume())
+
+		this.on('resume', () => {
+			const { guild_id: server_id, session_id, token } = this.connection_data
+
+			this.sendPacket({
+				op: VoiceOpcodes.Resume,
+				d: {
+					server_id,
+					session_id,
+					token
+				}
+			})
+
+			return
+		})
 	}
 
 	private onPacket(packet: any) {
@@ -51,14 +69,14 @@ export class VoiceSocket extends Socket {
 			}
 
 			case VoiceOpcodes.HeartbeatAck: {
-				this.missedHeartbeats = 0
+				this.missed_heartbeats = 0
 				break
 			}
 		}
 	}
 
 	private sendHeartbeat() {
-		this.missedHeartbeats++
+		this.missed_heartbeats++
 		this.sendPacket({
 			op: VoiceOpcodes.Heartbeat,
 			d: Math.floor(Math.random() * 100_000_000_000)
@@ -67,44 +85,40 @@ export class VoiceSocket extends Socket {
 
 	private startHartbeat(interval: number) {
 		this.debug?.('Starting Heartbeat')
-		this.hartbeatInterval = setInterval(() => {
-			if (this.missedHeartbeats > 2) {
-				this.debug?.('Too many missed heartbeats.')
-				this.destroy()
+		this.hartbeat_interval = setInterval(() => {
+			if (this.missed_heartbeats > 2) {
+				this.debug?.('Too many missed heartbeats. Attempting to resume.')
+				this.doResume()
 				return
 			}
 			this.sendHeartbeat()
 		}, interval)
 	}
 
-	public sendResume() {
+	public doResume() {
 		this.debug?.('Resuming')
-		const { guild_id: server_id, session_id, token, address } = this.connectionData
 
-		this.closeSocket()
-		this.openSocket(`wss://${address}/?v=7`)
+		if (this.resume_attempts === 3) {
+			this.debug?.(`Max resume attempts (3) reached. Destroying.`)
+			this.destroy()
+			return
+		}
 
-		this.sendPacket({
-			op: VoiceOpcodes.Resume,
-			d: {
-				server_id,
-				session_id,
-				token
-			}
-		})
+		clearInterval(this.hartbeat_interval)
+		this.closeSocket({ resume_url: `wss://${this.connection_data.address}/?v=7` })
 
 		this.resumed = false
 		setTimeout(() => {
 			if (!this.resumed) {
-				this.debug?.('Failed to resume.')
+				this.debug?.('Failed to resume. Destroying.')
 				this.destroy()
 			}
-		}, 250)
+		}, 2500)
 	}
 
 	private sendIdentification() {
 		this.debug?.('Sending Identification')
-		const { guild_id: server_id, session_id, token, user_id } = this.connectionData
+		const { guild_id: server_id, session_id, token, user_id } = this.connection_data
 		this.sendPacket({
 			op: VoiceOpcodes.Identify,
 			d: {
@@ -115,6 +129,7 @@ export class VoiceSocket extends Socket {
 				video: false
 			}
 		})
+		this.indentified = true
 	}
 
 	public sendSelectProtocol(sdp: string, codecs: Codecs) {
@@ -131,7 +146,7 @@ export class VoiceSocket extends Socket {
 	}
 
 	public destroy(clean?: boolean) {
-		if (this.hartbeatInterval) clearInterval(this.hartbeatInterval)
-		if (this.state === SocketState.OPEN) this.closeSocket(clean ? 1_000 : undefined)
+		clearInterval(this.hartbeat_interval)
+		if (this.state === SocketState.OPEN) this.closeSocket({ code: clean ? 1_000 : undefined })
 	}
 }

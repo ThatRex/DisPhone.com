@@ -130,15 +130,14 @@ export class VoiceManager extends EventEmitter {
 			case GatewayDispatchEvents.VoiceStateUpdate: {
 				const { channel_id, user_id } = packet.d as VoiceStateUpdate['d']
 
-				if (user_id !== this.gateway.identity.id) return
+				if (user_id !== this.gateway.identity.id) break
 
-				this.channel_id === channel_id
+				this.channel_id = channel_id
 
-				if (!channel_id) {
-					this.rtc?.destroy()
-					this.voice?.destroy(true)
-					return
-				}
+				if (channel_id) break
+
+				this.rtc?.destroy()
+				this.voice?.destroy(true)
 
 				break
 			}
@@ -151,6 +150,7 @@ export class VoiceManager extends EventEmitter {
 
 				this.rtc?.destroy()
 				this.rtc = new VoiceRTC({ debug: this.debug })
+				this.rtc.on('fail', () => this.disconnect())
 				this.rtc.on('sender', (s) => this.emit('sender', s))
 				this.rtc.on('track', (t) => {
 					if (!this.stream_sestination) {

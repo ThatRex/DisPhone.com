@@ -47,6 +47,7 @@ class Client extends EventEmitter {
 		})
 
 		this._gateway.on('ready', () => this.emit('ready'))
+		this._gateway.on('done', () => this.emit('done'))
 	}
 
 	public setPresence(params: GatewayPresenceUpdateData) {
@@ -82,7 +83,6 @@ class Client extends EventEmitter {
 	public shutdown() {
 		this._voice?.disconnect()
 		this._gateway.destroy(true)
-		this.emit('done')
 	}
 }
 

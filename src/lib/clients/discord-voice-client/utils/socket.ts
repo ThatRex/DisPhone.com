@@ -1,22 +1,23 @@
 import EventEmitter from 'eventemitter3'
 import { SocketClosedError, SocketOpenError } from '../errors'
 
+export type SocketState = keyof typeof SocketState
 export const SocketState = {
 	CLOSED: 'CLOSED',
 	OPEN: 'OPEN'
 } as const
 
-export type SocketState = keyof typeof SocketState
-
 export interface Socket extends EventEmitter {
 	on(event: 'packet', listener: (event: any) => void): this
 	on(event: 'error', listener: (event: Event) => void): this
 	on(event: 'open', listener: (event: Event) => void): this
+	on(event: 'resume', listener: (event: Event) => void): this
 	on(event: 'close', listener: (event: CloseEvent) => void): this
 }
 
 export class Socket extends EventEmitter {
 	private ws?: WebSocket
+	private resume_url?: string
 	private _state: SocketState = SocketState.CLOSED
 
 	private readonly name: string
@@ -31,7 +32,6 @@ export class Socket extends EventEmitter {
 
 		this.name = params.name
 		this.debug = !params.debug ? null : (...args) => console.debug(`[${this.name}]`, ...args)
-
 		this.openSocket(params.address)
 	}
 
@@ -57,7 +57,7 @@ export class Socket extends EventEmitter {
 		}
 	}
 
-	public openSocket(address: string) {
+	public async openSocket(address: string) {
 		if (this._state === SocketState.OPEN) {
 			throw new SocketOpenError('Socket is already open.')
 		}
@@ -67,18 +67,35 @@ export class Socket extends EventEmitter {
 		this.ws.onerror = (e) => this.emit('error', e)
 		this.ws.onopen = (e) => {
 			this._state = SocketState.OPEN
+
+			if (this.resume_url) {
+				this.emit('resume', e)
+				this.resume_url = undefined
+				return
+			}
+
 			this.emit('open', e)
 		}
 		this.ws.onclose = (e) => {
 			this._state = SocketState.CLOSED
+
+			if (this.resume_url) {
+				this.openSocket(this.resume_url)
+				return
+			}
+
 			this.emit('close', e)
 		}
 	}
 
-	public closeSocket(code?: number, reason?: string) {
+	public async closeSocket(params: { code?: number; reason?: string; resume_url?: string }) {
 		if (this._state === SocketState.CLOSED) {
 			throw new SocketClosedError('Socket is already closed.')
 		}
+
+		const { code, reason, resume_url } = params
+		this.resume_url = resume_url
+
 		this.debug?.('Closing')
 		this.ws?.close(code, reason)
 	}
