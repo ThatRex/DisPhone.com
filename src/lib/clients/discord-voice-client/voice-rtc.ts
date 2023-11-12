@@ -15,12 +15,15 @@ import {
 } from './types'
 
 export interface VoiceRTC extends EventEmitter {
+	on(event: 'fail', listener: () => void): this
 	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
 	on(event: 'sender', listener: (event: RTCRtpSender) => void): this
 	on(event: RTCPeerConnectionState, listener: () => void): this
+	once(event: 'fail', listener: () => void): this
 	once(event: 'track', listener: (event: MediaStreamTrack) => void): this
 	once(event: 'sender', listener: (event: RTCRtpSender) => void): this
 	once(event: RTCPeerConnectionState, listener: () => void): this
+	emit(event: 'fail'): boolean
 	emit(event: 'track', track: MediaStreamTrack): boolean
 	emit(event: 'sender', sender: RTCRtpSender): boolean
 	emit(event: RTCPeerConnectionState): boolean
@@ -32,6 +35,10 @@ export class VoiceRTC extends EventEmitter {
 	private discord_sdp?: string
 	private processing = false
 	private transceivers: Transceiver[] = []
+
+	public get peer_connection() {
+		return this.pc
+	}
 
 	public readonly debug: ((...args: any) => void) | null
 
@@ -98,6 +105,13 @@ export class VoiceRTC extends EventEmitter {
 
 		this.audio_settings = audio_settings
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
+
+		const emit_fail = () => this.emit('fail')
+		const pc = this.pc
+
+		this.pc.oniceconnectionstatechange = function () {
+			if (pc?.iceConnectionState === 'failed') emit_fail()
+		}
 
 		const transceiver = this.pc!.addTransceiver(audio_track, { direction: 'sendonly' })
 		this.emit('sender', transceiver.sender)

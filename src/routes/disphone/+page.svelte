@@ -28,6 +28,12 @@
 	let phone_track: MediaStreamTrack | undefined
 	let outgoing_session: Session & Inviter
 
+	let asserted_identity: string | undefined = undefined
+	let call_start_time: number | undefined = undefined
+	let max_sequential_short_calls = 3
+	let sequential_short_calls = 0
+	let do_auto_redial = false
+
 	const config = persisted('config', {
 		// bot
 		discord_token: '',
@@ -37,7 +43,6 @@
 		user: '',
 		login: '',
 		pass: '',
-		auto_redial_safety_limit: 0,
 		// ui
 		hide_config: false,
 		dial_num: '',
@@ -55,7 +60,6 @@
 			sip_server: $config.server
 		})
 
-		phone.ua.delegate
 		await phone.start()
 
 		phone.on('sender', async (s) => {
@@ -84,10 +88,12 @@
 		const [stream] = await playAudioFromURLs({
 			urls: ['/sounds/ringing.wav'],
 			volume: 50,
-			onStart: () => voice?.setSpeaking(true),
+			onStart: () => {
+				if (phone_state === PhoneState.CALLING) voice?.setSpeaking(true)
+			},
 			onEnd: async () => {
 				if (phone_state === PhoneState.CALLING && bot_sender) await playRing()
-				else if (phone_state !== PhoneState.ONCALL) voice?.setSpeaking(false)
+				else if (phone_state !== PhoneState.ONCALL && !!phone_track) voice?.setSpeaking(false)
 			}
 		})
 
@@ -95,16 +101,7 @@
 		bot_sender.replaceTrack(track)
 	}
 
-	let call_counter = 0
 	async function makeCall() {
-		if ($config.auto_redial_safety_limit && call_counter === $config.auto_redial_safety_limit) {
-			// this forces the user to view the page every X calls
-			await getUserMedia({ audio: true })
-			call_counter = 0
-		}
-
-		call_counter++
-
 		if (['CALLING', 'ONCALL'].includes(phone_state)) return
 		const inviter = phone.makeInviter($config.dial_num)
 
@@ -128,12 +125,25 @@
 
 					asserted_identity = outgoing_session.assertedIdentity?.friendlyName
 					phone_state = PhoneState.ONCALL
-					call_started_time = new Date()
+					call_start_time = Date.now()
 					voice?.setSpeaking(true)
 					console.log('Session has been established')
 					break
 				}
 				case SessionState.Terminated: {
+					if (do_auto_redial && call_start_time) {
+						if (Date.now() - call_start_time > 4000) {
+							sequential_short_calls = 0
+						} else {
+							sequential_short_calls++
+							if (sequential_short_calls === max_sequential_short_calls) {
+								do_auto_redial = false
+								sequential_short_calls = 0
+							}
+						}
+					}
+					call_start_time = undefined
+
 					bot?.setPresence({
 						since: 0,
 						afk: false,
@@ -147,7 +157,10 @@
 
 					console.debug('Session has terminated')
 
-					if (!bot_sender) break
+					if (!bot_sender) {
+						do_auto_redial = false
+						break
+					}
 
 					const [stream] = await playAudioFromURLs({
 						urls: ['/sounds/hangup.wav'],
@@ -197,7 +210,11 @@
 			}
 		})
 		bot.on('ready', () => (bot_ready = true))
-		bot.on('done', () => (bot_ready = false))
+		bot.on('done', () => {
+			voice = undefined
+			bot_ready = false
+			bot_sender = undefined
+		})
 
 		bot.gateway.on('packet', (p) => {
 			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
@@ -253,10 +270,6 @@
 			})
 		}
 	}
-
-	let asserted_identity: string | undefined = undefined
-	let call_started_time: Date | undefined = undefined
-	let do_auto_redial = false
 </script>
 
 <Title title="DisPhone" />
@@ -415,12 +428,19 @@
 										href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
 											.id}&permissions=0&scope=bot%20applications.commands">Invite your bot</a
 									>.
-									<br />Then join a voice channel. If you are already in a channel toggle your mute.
-									<br />If the connect button doesn't become clickable you either entered you
-									discord name incorrectly or the bot can't see the channel.
 								</div>
-								<button disabled={!channel_id || !guild_id} on:click={async () => await connect()}>
-									Connect
+								<button
+									style="max-width: 30rem;"
+									disabled={!channel_id || !guild_id}
+									on:click={async () => await connect()}
+								>
+									{#if !channel_id || !guild_id}
+										<span style="color:red">
+											To connect you need to join a voice channel or toggle your mute.
+										</span>
+									{:else}
+										Connect
+									{/if}
 								</button>
 							</div>
 						{:else}
@@ -433,30 +453,18 @@
 
 		{#if !$config.hide_config}
 			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
-				<h1>Config</h1>
+				<h1>Before You Start</h1>
+				<span style="color: red;">
+					This project is in early development,
+					<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
+						expect bugs and report them here</a
+					>!
+				</span>
 				<div>
 					For the best experience use this app with FireFox on desktop and Chome on mobile.<br />
 					On mobile make sure the browser you use is not battery restricted or optimised.
 				</div>
-				<div>
-					<h2>Discord Bot</h2>
-					<p>
-						You can create a bot <a
-							target="_blank"
-							href="https://discord.com/developers/applications">here</a
-						>.
-					</p>
-					<div style="display: flex; flex-direction: column; gap: 4px 0;">
-						<label>
-							<div>Token</div>
-							<input type="text" bind:value={$config.discord_token} />
-						</label>
-						<label>
-							<div>Your Discord Username</div>
-							<input type="text" bind:value={$config.discord_username} />
-						</label>
-					</div>
-				</div>
+				<h1>Config</h1>
 				<div>
 					<h2>Soft Phone</h2>
 					<p>
@@ -466,26 +474,62 @@
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
 							<div>Server</div>
-							<input type="text" bind:value={$config.server} />
+							<input
+								type="text"
+								bind:value={$config.server}
+								on:blur={() => ($config.server = $config.server.trim())}
+							/>
 						</label>
 						<label>
 							<div>User</div>
-							<input type="text" bind:value={$config.user} />
+							<input
+								type="text"
+								bind:value={$config.user}
+								on:blur={() => ($config.user = $config.user.trim())}
+							/>
 						</label>
 						<label>
 							<div>Login</div>
-							<input type="text" bind:value={$config.login} />
+							<input
+								type="text"
+								bind:value={$config.login}
+								on:blur={() => ($config.login = $config.login.trim())}
+							/>
 						</label>
 						<label>
-							<div>Pass</div>
-							<input type="text" bind:value={$config.pass} />
+							<div>Password</div>
+							<input
+								type="text"
+								bind:value={$config.pass}
+								on:blur={() => ($config.pass = $config.pass.trim())}
+							/>
 						</label>
-						<br />
+					</div>
+				</div>
+				<div>
+					<h2>Your Discord Account</h2>
+					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
-							<div>Auto Redial Safety</div>
-							<input type="number" min="0" bind:value={$config.auto_redial_safety_limit} />
+							<div>Username (<span style="color: red;">Not Display Or Nickname!</span>)</div>
+							<input
+								type="text"
+								bind:value={$config.discord_username}
+								on:blur={() => ($config.discord_username = $config.discord_username.trim())}
+							/>
 						</label>
-						<div>Forces you to view the page every X calls. 0 to disable.</div>
+					</div>
+				</div>
+				<div>
+					<h2>Discord Dialler Account</h2>
+					<div style="display: flex; flex-direction: column; gap: 4px 0;">
+						<label>
+							<div>Bot / User Account Token</div>
+							<input
+								type="text"
+								bind:value={$config.discord_token}
+								on:blur={() => ($config.discord_token = $config.discord_token.trim())}
+							/>
+						</label>
 					</div>
 				</div>
 			</div>
@@ -493,20 +537,13 @@
 	</div>
 
 	<div>
-		<span style="color: red;">
-			This project is in early development,
-			<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
-				expect bugs and report them here</a
-			>!
-		</span>
-		<!-- 
-		<br />
-		<span style="font-style: italic;">
+		<span>
 			Projects like this take lots of time and effort to develop and maintain. Like my work?
-			<a target="_blank" href="https://example.com">Your support is appreciated</a>.
-		</span> 
-		-->
-		<span style="float: right; opacity: 50%;">
+			<a target="_blank" href="https://www.buymeacoffee.com/thatrex">
+				Your support is appreciated.
+			</a>
+		</span>
+		<span style="float: right;">
 			Developed by <a target="_blank" href="https://rexslab.com">Rex's Lab</a>.
 		</span>
 	</div>
