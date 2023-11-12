@@ -210,7 +210,11 @@
 			}
 		})
 		bot.on('ready', () => (bot_ready = true))
-		bot.on('done', () => (bot_ready = false))
+		bot.on('done', () => {
+			voice = undefined
+			bot_ready = false
+			bot_sender = undefined
+		})
 
 		bot.gateway.on('packet', (p) => {
 			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
