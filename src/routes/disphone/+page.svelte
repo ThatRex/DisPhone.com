@@ -166,7 +166,9 @@
 						urls: ['/sounds/hangup.wav'],
 						volume: 50,
 						onStart: () => voice?.setSpeaking(true),
-						onEnd: () => voice?.setSpeaking(false)
+						onEnd: () => {
+							if (phone_state === PhoneState.READY) voice?.setSpeaking(false)
+						}
 					})
 					const [track] = stream.getAudioTracks()
 					bot_sender.replaceTrack(track)
