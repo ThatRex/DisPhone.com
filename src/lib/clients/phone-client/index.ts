@@ -109,10 +109,6 @@ class PhoneClient extends EventEmitter {
 				receiver.track && receiver.track.stop()
 			}
 
-			for (const sender of peerConnection.getSenders()) {
-				sender.track && sender.track.stop()
-			}
-
 			dataChannel?.close()
 			if (peerConnection.signalingState !== 'closed') peerConnection.close()
 		}
