@@ -109,16 +109,12 @@ class PhoneClient extends EventEmitter {
 				receiver.track && receiver.track.stop()
 			}
 
-			// Unlike the default function we don't want to stop the tracks on the sender because that prevents the sending track from being reused.
-			// for (const sender of peerConnection.getSenders()) {
-			//     sender.track && sender.track.stop()
-			// }
+			for (const sender of peerConnection.getSenders()) {
+				sender.track && sender.track.stop()
+			}
 
 			dataChannel?.close()
-			peerConnection.close()
-
-			// ! The default close does this but we can't so keep that in mind...
-			// peerConnection = undefined
+			if (peerConnection.signalingState !== 'closed') peerConnection.close()
 		}
 
 		sessionDescriptionHandler.peerConnectionDelegate = {
