@@ -268,7 +268,8 @@
 		} else {
 			voice.connect({
 				guild_id: guild_id!,
-				channel_id: channel_id!
+				channel_id: channel_id!,
+				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
 			})
 		}
 	}
