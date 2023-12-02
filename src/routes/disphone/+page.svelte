@@ -613,7 +613,7 @@
 		<span>
 			Projects like this take lots of time and effort to develop and maintain.
 			<a target="_blank" href="https://ko-fi.com/thatrex">
-				If you like this project considar supporting its development.
+				If you like this project consider supporting its development.
 			</a>
 		</span>
 		<span style="float: right;">
