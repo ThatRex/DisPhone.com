@@ -7,15 +7,13 @@ import {
 } from 'discord-api-types/v10'
 import { GatewaySocket } from './gateway-socket'
 import { VoiceManager } from './voice-manager'
-import type { AudioSettings } from './types'
+import type { AudioSettings, SocketState } from './types'
 
 interface Client extends EventEmitter {
-	on(event: 'ready', listener: () => void): this
-	on(event: 'done', listener: () => void): this
-	once(event: 'ready', listener: () => void): this
-	once(event: 'done', listener: () => void): this
-	emit(event: 'ready'): boolean
-	emit(event: 'done'): boolean
+	on(event: '', listener: () => void): this
+	on(event: 'state', listener: (state: SocketState) => void): this
+	emit(event: ''): boolean
+	emit(event: 'state', state: SocketState): boolean
 }
 
 class Client extends EventEmitter {
@@ -25,6 +23,10 @@ class Client extends EventEmitter {
 
 	public get gateway() {
 		return this._gateway
+	}
+
+	public get state() {
+		return this.gateway.state
 	}
 
 	constructor(params: {
@@ -38,7 +40,6 @@ class Client extends EventEmitter {
 
 		this._debug = params.debug ?? false
 		this._gateway = new GatewaySocket({
-			address: 'gateway.discord.gg',
 			token: params.token,
 			intents: params.intents ?? GatewayIntentBits.GuildVoiceStates,
 			presence: params.presence,
@@ -46,8 +47,11 @@ class Client extends EventEmitter {
 			debug: this._debug
 		})
 
-		this._gateway.on('ready', () => this.emit('ready'))
-		this._gateway.on('done', () => this.emit('done'))
+		this._gateway.on('state', (s) => this.emit('state', s))
+	}
+
+	public start() {
+		this.gateway.init()
 	}
 
 	public setPresence(params: GatewayPresenceUpdateData) {
@@ -57,32 +61,23 @@ class Client extends EventEmitter {
 		})
 	}
 
-	public connect(params: {
-		guild_id: string
-		channel_id: string
+	public createVoiceManager(params: {
 		audio_track?: MediaStreamTrack
-		initial_speaking?: boolean
-		self_mute?: boolean
-		self_deaf?: boolean
 		audio_settings?: Partial<AudioSettings>
 	}) {
-		const { audio_track, audio_settings, ...rest_settings } = params
+		const { audio_track, audio_settings } = params
 
-		this._voice = new VoiceManager({
+		return new VoiceManager({
 			gateway_socket: this._gateway,
 			debug: this._debug,
 			audio_track,
 			audio_settings
 		})
-
-		this._voice.connect(rest_settings)
-
-		return this._voice
 	}
 
 	public shutdown() {
 		this._voice?.disconnect()
-		this._gateway.destroy(true)
+		this._gateway.destroy()
 	}
 }
 

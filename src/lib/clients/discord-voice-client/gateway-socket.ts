@@ -1,22 +1,27 @@
-import { Socket, SocketState } from './utils/socket'
-import type {
-	GatewayHeartbeat,
-	GatewayIdentify,
-	GatewayReceivePayload,
-	GatewayResume
-} from 'discord-api-types/gateway'
-import { GatewayOpcodes } from 'discord-api-types/gateway'
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import EventEmitter from 'eventemitter3'
+import { SocketState } from './types'
+import { GatewaySocketError, GatewaySocketInitError, GatewaySocketNotReadyError } from './errors'
 import {
-	PresenceUpdateStatus,
+	type GatewayHeartbeat,
+	type GatewayIdentify,
+	type GatewayReceivePayload,
+	type GatewayResume,
+	GatewayOpcodes
+} from 'discord-api-types/gateway'
+import {
 	type GatewayDispatchPayload,
-	GatewayDispatchEvents,
-	GatewayCloseCodes,
 	type GatewayIdentifyProperties,
-	type GatewayPresenceUpdateData
+	type GatewayPresenceUpdateData,
+	PresenceUpdateStatus,
+	GatewayDispatchEvents,
+	GatewayCloseCodes
 } from 'discord-api-types/v10'
+import { wait } from '$lib/clients/utils'
 
 const RECONNECTABLE_CLOSE_CODES = [
-	1006, // abnormal closure
+	1005, // No Status Rcvd
+	1006, // Abnormal Closure
 	GatewayCloseCodes.UnknownError,
 	GatewayCloseCodes.UnknownOpcode,
 	GatewayCloseCodes.DecodeError,
@@ -27,36 +32,30 @@ const RECONNECTABLE_CLOSE_CODES = [
 	GatewayCloseCodes.SessionTimedOut
 ] as const
 
-export interface GatewaySocket extends Socket {
-	on(event: 'packet', listener: (event: any) => void): this
-	on(event: 'error', listener: (event: Event) => void): this
-	on(event: 'open', listener: (event: Event) => void): this
-	on(event: 'resume', listener: (event: Event) => void): this
-	on(event: 'close', listener: (event: CloseEvent) => void): this
-	on(event: 'ready', listener: () => void): this
-	on(event: 'done', listener: () => void): this
-	once(event: 'packet', listener: (event: any) => void): this
-	once(event: 'error', listener: (event: Event) => void): this
-	once(event: 'open', listener: (event: Event) => void): this
-	once(event: 'close', listener: (event: CloseEvent) => void): this
-	once(event: 'ready', listener: () => void): this
-	once(event: 'done', listener: () => void): this
-	emit(event: 'packet'): boolean
-	emit(event: 'error'): boolean
-	emit(event: 'open'): boolean
-	emit(event: 'close'): boolean
-	emit(event: 'ready'): boolean
-	emit(event: 'done'): boolean
+export interface GatewaySocket extends EventEmitter {
+	on(event: 'packet', listener: (packet: any) => void): this
+	on(event: 'state', listener: (state: SocketState) => void): this
+	emit(event: 'packet', packet: any): boolean
+	emit(event: 'state', state: SocketState): boolean
 }
 
-export class GatewaySocket extends Socket {
+export class GatewaySocket extends EventEmitter {
+	private ws!: WebSocket
+
 	private hartbeat_interval?: number
-	private last_sequence_number: number | null = null
 	private missed_heartbeats = 0
-	private resume_attempts = 0
+	private last_sequence_number: number | null = null
+
 	private indentified = false
+
 	private resumed = false
-	private _ready = false
+	private resume_attempts = 0
+
+	private _state: SocketState = SocketState.INITIAL
+
+	public get state() {
+		return this._state
+	}
 
 	private connection_data: {
 		token: string
@@ -98,12 +97,9 @@ export class GatewaySocket extends Socket {
 		return this._identity
 	}
 
-	public get ready() {
-		return this._ready
-	}
+	private readonly debug?: (...args: any) => void
 
 	constructor(params: {
-		address: string
 		token: string
 		intents: number
 		properties?: GatewayIdentifyProperties
@@ -111,13 +107,10 @@ export class GatewaySocket extends Socket {
 		max_resume_attempts?: number
 		debug?: boolean
 	}) {
-		const { address, token, intents, properties, presence, max_resume_attempts, debug } = params
+		super()
+		const { token, intents, properties, presence, max_resume_attempts, debug } = params
 
-		super({
-			address: `wss://${address}/?v=10&encoding=json`,
-			name: 'Gateway Socket',
-			debug
-		})
+		this.debug = !debug ? undefined : (...args) => console.debug('[Gateway Socket]', ...args)
 
 		this.connection_data.token = token
 		this.connection_data.intents = intents
@@ -126,14 +119,36 @@ export class GatewaySocket extends Socket {
 		if (presence) this.inital_presence = presence
 
 		this.on('packet', (p) => this.onPacket(p))
-		this.on('error', () => this.doResume())
-
-		this.on('close', (e) => {
-			if (!e.code || RECONNECTABLE_CLOSE_CODES.includes(e.code)) this.doResume()
-			else this.destroy()
+		this.on('state', (s) => {
+			this._state = s
+			this.debug?.(`State Update: ${s}`)
 		})
+	}
 
-		this.on('resume', () => {
+	public init() {
+		if (['INITIALISING', 'READY', 'RESUMING'].includes(this.state)) {
+			throw new GatewaySocketInitError('Socket State is either INITIALISING, READY or RESUMING.')
+		}
+
+		this.emit('state', SocketState.INITIALISING)
+		this.openSocket(`wss://gateway.discord.gg/?v=10&encoding=json`)
+	}
+
+	private openSocket(address: string) {
+		if (
+			this.ws &&
+			(this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
+		) {
+			throw new GatewaySocketError('Socket is already open or connecting.')
+		}
+
+		this.debug?.('Opening. Address:', address)
+
+		this.ws = new WebSocket(address)
+		this.ws.onmessage = (e) => this.onMessage(e)
+		this.ws.onopen = () => {
+			if (this.state !== SocketState.RESUMING) return
+
 			this.sendPacket({
 				op: GatewayOpcodes.Resume,
 				d: {
@@ -142,7 +157,55 @@ export class GatewaySocket extends Socket {
 					session_id: this.connection_data.session_id!
 				}
 			} satisfies GatewayResume)
-		})
+
+			this.resumed = false
+			setTimeout(() => {
+				if (!this.resumed) {
+					this.debug?.('Failed to resume. Destroying.')
+					this.destroy(true)
+				}
+			}, 2500)
+		}
+
+		this.ws.onclose = (e) => {
+			clearInterval(this.hartbeat_interval)
+			if (['DONE', 'FAILED'].includes(this.state)) return
+
+			if (this.state === SocketState.RESUMING) {
+				this.openSocket(`${this.connection_data.resume_gateway_url}/?v=10&encoding=json`)
+				return
+			}
+
+			if (RECONNECTABLE_CLOSE_CODES.includes(e.code)) {
+				this.doResume('Socket was closed with a reconnectable close code.')
+				return
+			}
+
+			this.destroy()
+		}
+	}
+
+	private onMessage(e: MessageEvent<any>) {
+		try {
+			const packet = JSON.parse(e.data)
+			this.debug?.('Received Packet:', packet)
+			this.emit('packet', packet)
+		} catch (err) {
+			this.debug?.('Error Parsing Packet:', err)
+		}
+	}
+
+	public sendPacket(packet: { op: number; d: any; [key: string]: any }) {
+		if (this.ws.readyState !== WebSocket.OPEN) {
+			throw new GatewaySocketNotReadyError('Unable to send packet.')
+		}
+
+		try {
+			this.debug?.('Sending Packet:', packet)
+			this.ws.send(JSON.stringify(packet))
+		} catch (err) {
+			this.debug?.('Error Sending Packet:', err)
+		}
 	}
 
 	private onPacket(packet: GatewayReceivePayload) {
@@ -164,13 +227,13 @@ export class GatewaySocket extends Socket {
 			}
 
 			case GatewayOpcodes.InvalidSession: {
-				if (packet.d === true) this.doResume()
+				if (packet.d === true) this.doResume('Invalid Session Packet Received.')
 				else this.destroy()
 				break
 			}
 
 			case GatewayOpcodes.Reconnect: {
-				this.doResume()
+				this.doResume('Reconnect Packet Received')
 				break
 			}
 
@@ -196,14 +259,13 @@ export class GatewaySocket extends Socket {
 				this._identity = { id, username, discriminator }
 
 				this.indentified = true
-				this._ready = true
-				this.emit('ready')
+				this.emit('state', SocketState.READY)
 				break
 			}
 			case GatewayDispatchEvents.Resumed: {
+				this.emit('state', SocketState.READY)
 				this.resume_attempts = 0
 				this.resumed = true
-				this._ready = true
 			}
 		}
 	}
@@ -220,10 +282,10 @@ export class GatewaySocket extends Socket {
 		this.debug?.('Starting Heartbeat')
 		this.missed_heartbeats = 0
 		interval = interval * Math.random()
+		clearInterval(this.hartbeat_interval)
 		this.hartbeat_interval = setInterval(() => {
 			if (this.missed_heartbeats > 2) {
-				this.debug?.('Too many missed heartbeats. Attempting to resume.')
-				this.doResume()
+				if (this.state !== SocketState.RESUMING) this.doResume('Too many missed heartbeats.')
 				return
 			}
 			this.sendHeartbeat()
@@ -248,42 +310,41 @@ export class GatewaySocket extends Socket {
 		})
 	}
 
-	private async doResume() {
-		this.debug?.('Resuming')
+	private async doResume(reason: string) {
+		this.debug?.('Maybe Resuming. Reason:', reason)
 
 		const { max_resume_attempts, resume_gateway_url, session_id } = this.connection_data
 
 		if (this.resume_attempts === max_resume_attempts) {
-			this.debug?.(`Max resume attempts (${max_resume_attempts}) reached. Destroying.`)
-			this.destroy()
+			this.debug?.(`Max resume attempts (${max_resume_attempts}) reached.`)
+			this.destroy(true)
 			return
 		}
 
 		if (!this.last_sequence_number || !resume_gateway_url || !session_id) {
-			this.debug?.('Lacking necessary data to resume. Destroying.')
-			this.destroy()
+			this.debug?.('Lacking necessary data to resume.')
+			this.destroy(true)
 			return
 		}
 
-		this._ready = false
 		this.resume_attempts++
+		if (this.state !== SocketState.RESUMING) {
+			this.emit('state', SocketState.RESUMING)
+		} else {
+			await wait(1000 * this.resume_attempts)
+		}
 
-		clearInterval(this.hartbeat_interval)
-		await this.closeSocket({ resume_url: `${resume_gateway_url}/?v=10&encoding=json` })
+		this.debug?.('Resuming')
 
-		this.resumed = false
-		setTimeout(() => {
-			if (!this.resumed) {
-				this.debug?.('Failed to resume. Destroying.')
-				this.destroy()
-			}
-		}, 2500)
+		if (this.ws.readyState === WebSocket.CLOSED || this.ws.readyState === WebSocket.CLOSING) {
+			this.openSocket(`${resume_gateway_url}/?v=10&encoding=json`)
+		} else this.ws.close()
 	}
 
-	public destroy(clean?: boolean) {
-		this.emit('done')
-		this._ready = false
-		clearInterval(this.hartbeat_interval)
-		if (this.state === SocketState.OPEN) this.closeSocket({ code: clean ? 1_000 : undefined })
+	public destroy(failed?: boolean) {
+		if (['DONE', 'FAILED'].includes(this.state)) return
+		this.emit('state', failed ? SocketState.FAILED : SocketState.DONE)
+		this.debug?.('Destroying. Reason:', this.state)
+		this.ws.close(1_000)
 	}
 }
