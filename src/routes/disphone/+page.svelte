@@ -522,6 +522,9 @@
 		{#if !$config.hide_config}
 			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
 				<h1>Before You Start</h1>
+				<div>
+					Checkout the wiki @ <a target="_blank" href="http://wiki.baitkit.net">wiki.baitkit.net</a>.
+				</div>
 				<span style="color: red;">
 					This project is in early development,
 					<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
