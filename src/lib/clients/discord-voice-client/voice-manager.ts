@@ -1,48 +1,72 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import {
+	SocketState,
+	type AudioSettings,
+	type VoiceStateUpdate,
+	type VoiceServerUpdate,
+	type Codecs
+} from './types'
+import type { GatewaySocket } from './gateway-socket'
 import EventEmitter from 'eventemitter3'
 import { GatewayDispatchEvents, GatewayOpcodes } from 'discord-api-types/v10'
 import { VoiceOpcodes } from 'discord-api-types/voice'
-import type { GatewaySocket } from './gateway-socket'
 import { VoiceSocket } from './voice-socket'
 import { VoiceRTC } from './voice-rtc'
-import { VoiceConnectionError, VoiceSpeakingError } from './errors'
-import type { AudioSettings, VoiceStateUpdate, VoiceServerUpdate, Codecs } from './types'
+import { VoiceManagerConnectionError, VoiceManagerSpeakingError } from './errors'
 import { generateDummyStream } from '../utils/generate-dummy-stream'
-import { startMediaFlow } from '../utils'
+
+export type VoiceManagerState = keyof typeof VoiceManagerState
+export const VoiceManagerState = {
+	INITIAL: 'INITIAL',
+	CONNECTING: 'CONNECTING',
+	CONNECTED: 'CONNECTED',
+	RECONNECTING: 'RECONNECTING',
+	DISCONNECTED: 'DISCONNECTED',
+	FAILED: 'FAILED'
+} as const
 
 export interface VoiceManager extends EventEmitter {
-	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
-	on(event: 'sender', listener: (event: RTCRtpSender) => void): this
-	on(event: 'connected', listener: () => void): this
-	on(event: 'disconnected', listener: () => void): this
-	once(event: 'track', listener: (event: MediaStreamTrack) => void): this
-	once(event: 'sender', listener: (event: RTCRtpSender) => void): this
-	once(event: 'connected', listener: () => void): this
-	once(event: 'disconnected', listener: () => void): this
+	on(event: 'track', listener: (track: MediaStreamTrack) => void): this
+	on(event: 'sender', listener: (sender: RTCRtpSender) => void): this
+	on(event: 'state', listener: (state: VoiceManagerState) => void): this
 	emit(event: 'track', track: MediaStreamTrack): boolean
 	emit(event: 'sender', sender: RTCRtpSender): boolean
-	emit(event: 'connected'): boolean
-	emit(event: 'disconnected'): boolean
+	emit(event: 'state', state: VoiceManagerState): boolean
 }
 
 export class VoiceManager extends EventEmitter {
-	private guild_id: string | null = null
-	private channel_id: string | null = null
-	private self_mute = false
-	private self_deaf = false
+	private audio_context = new AudioContext()
+	private stream_destination?: MediaStreamAudioDestinationNode
 
 	private gateway: GatewaySocket
 	private voice?: VoiceSocket
 	private rtc?: VoiceRTC
 
-	private track?: MediaStreamTrack
-	private ssrc?: number
+	private guild_id: string | null = null
+	private self_mute = false
+	private self_deaf = false
 
 	private audio_settings: AudioSettings
 	private initial_speaking = false
-	private debug = false
 
-	private audio_context = new AudioContext()
-	private stream_sestination?: MediaStreamAudioDestinationNode
+	private track?: MediaStreamTrack
+	private ssrc?: number
+
+	private select_protocol_sdp?: string
+	private codecs?: Codecs
+	private endpoint?: string
+	private token?: string
+
+	private reconnect_attempts = 0
+
+	private _state: VoiceManagerState = VoiceManagerState.INITIAL
+
+	public get state() {
+		return this._state
+	}
+
+	private readonly debug?: (...args: any) => void
 
 	constructor(params: {
 		gateway_socket: GatewaySocket
@@ -54,8 +78,11 @@ export class VoiceManager extends EventEmitter {
 
 		const { gateway_socket, debug, audio_track, audio_settings } = params
 
+		this.debug = !debug ? undefined : (...args) => console.debug('[Voice Manager]', ...args)
+
 		this.gateway = gateway_socket
-		this.gateway.on('packet', (p) => this.handleGatewayPacket(p))
+		this.gateway.on('packet', (p) => this.onGatewayPacket(p))
+		this.gateway.on('state', (s) => ['DONE', 'FAILED'].includes(s) ?? this._disconnect())
 
 		this.track = audio_track
 		this.audio_settings = {
@@ -64,7 +91,10 @@ export class VoiceManager extends EventEmitter {
 			mode: audio_settings?.mode ?? 'sendonly'
 		}
 
-		this.debug = debug ?? false
+		this.on('state', (s) => {
+			this._state = s
+			this.debug?.(`State Update: ${s}`)
+		})
 	}
 
 	public connect(params: {
@@ -76,8 +106,8 @@ export class VoiceManager extends EventEmitter {
 		self_deaf?: boolean
 		audio_settings?: Partial<AudioSettings>
 	}) {
-		if (!this.gateway.ready) {
-			throw new VoiceConnectionError('Gateway not ready.')
+		if (this.gateway.state !== SocketState.READY) {
+			throw new VoiceManagerConnectionError('Gateway not ready.')
 		}
 
 		const {
@@ -91,20 +121,10 @@ export class VoiceManager extends EventEmitter {
 		} = params
 
 		this.guild_id = guild_id
-		this.channel_id = channel_id
+		this.track = audio_track
 		this.initial_speaking = initial_speaking ?? this.initial_speaking
 		this.self_mute = self_mute ?? this.self_mute
 		this.self_deaf = self_deaf ?? this.self_deaf
-
-		if (!this.track) {
-			if (!audio_track) {
-				console.warn('An audio track was not provided. Using dummy track.')
-				const [audio_track] = generateDummyStream().getAudioTracks()
-				this.track = audio_track
-			} else {
-				this.track = audio_track
-			}
-		}
 
 		if (audio_settings) {
 			this.audio_settings = {
@@ -125,83 +145,135 @@ export class VoiceManager extends EventEmitter {
 		})
 	}
 
-	private async handleGatewayPacket(packet: any) {
+	private updateState() {
+		const rtc_state = this.rtc?.state
+		const voice_state = this.voice?.state
+
+		if (!rtc_state || !voice_state) return
+
+		switch (true) {
+			case this.state !== 'RECONNECTING' && ['DONE', 'FAILED'].includes(voice_state): {
+				this._disconnect(voice_state === VoiceManagerState.FAILED)
+				break
+			}
+
+			case rtc_state === 'failed': {
+				if (!(this.reconnect_attempts > 1) && this.endpoint && this.guild_id && this.token) {
+					this.reconnect_attempts++
+					this.emit('state', VoiceManagerState.RECONNECTING)
+					this.initConnection(this.endpoint, this.guild_id, this.token)
+				} else this._disconnect(true)
+				break
+			}
+
+			case this.state !== 'RECONNECTING' && voice_state === 'RESUMING': {
+				this.emit('state', VoiceManagerState.RECONNECTING)
+				break
+			}
+
+			case voice_state === 'INITIALISING' || rtc_state === 'connecting': {
+				this.emit('state', VoiceManagerState.CONNECTING)
+				break
+			}
+
+			case rtc_state === 'connected': {
+				this.reconnect_attempts = 0
+				this.emit('state', VoiceManagerState.CONNECTED)
+				break
+			}
+		}
+	}
+
+	private async initConnection(endpoint: string, guild_id: string, token: string) {
+		this.stream_destination?.stream.getTracks().forEach((t) => t.stop())
+		this.stream_destination = undefined
+
+		let audio_track = this.track
+		if (!audio_track) {
+			console.warn('An audio track was not provided. Using dummy track.')
+			audio_track = generateDummyStream().getAudioTracks()[0]
+		}
+
+		this.rtc?.close()
+		this.rtc = new VoiceRTC({ debug: !!this.debug })
+		this.rtc.on('state', () => this.updateState())
+		this.rtc.on('sender', (s) => this.emit('sender', s))
+		this.rtc.on('track', (t) => {
+			if (!this.stream_destination) {
+				this.stream_destination = this.audio_context.createMediaStreamDestination()
+				const [track] = this.stream_destination.stream.getAudioTracks()
+				this.emit('track', track)
+			}
+
+			const stream = new MediaStream()
+			stream.addTrack(t)
+			const source = this.audio_context.createMediaStreamSource(stream)
+			source.connect(this.stream_destination)
+		})
+
+		const { select_protocol_sdp, codecs, ssrc } = await this.rtc.init({
+			audio_track,
+			audio_settings: this.audio_settings
+		})
+
+		this.guild_id = guild_id
+		this.token = token
+		this.endpoint = endpoint
+
+		this.select_protocol_sdp = select_protocol_sdp
+		this.codecs = codecs
+		this.ssrc = ssrc
+
+		this.voice?.destroy()
+		this.voice = new VoiceSocket({
+			user_id: this.gateway.identity.id!,
+			session_id: this.gateway.session_id!,
+			address: endpoint,
+			guild_id,
+			token,
+			debug: !!this.debug
+		})
+		this.voice.on('state', () => this.updateState())
+		this.voice.on('packet', (p) => this.onVoicePacket(p))
+	}
+
+	private onGatewayPacket(packet: any) {
 		switch (packet.t) {
 			case GatewayDispatchEvents.VoiceStateUpdate: {
 				const { channel_id, user_id } = packet.d as VoiceStateUpdate['d']
 
 				if (user_id !== this.gateway.identity.id) break
-
-				this.channel_id = channel_id
-
 				if (channel_id) break
 
-				this.rtc?.destroy()
-				this.voice?.destroy(true)
+				this.rtc?.close()
+				this.voice?.destroy()
 
 				break
 			}
 
 			case GatewayDispatchEvents.VoiceServerUpdate: {
 				const { endpoint, guild_id, token } = packet.d as VoiceServerUpdate['d']
-
-				this.stream_sestination?.stream.getTracks().forEach((t) => t.stop())
-				this.stream_sestination = undefined
-
-				this.rtc?.destroy()
-				this.rtc = new VoiceRTC({ debug: this.debug })
-				this.rtc.on('fail', () => this.disconnect())
-				this.rtc.on('sender', (s) => this.emit('sender', s))
-				this.rtc.on('track', (t) => {
-					if (!this.stream_sestination) {
-						this.stream_sestination = this.audio_context.createMediaStreamDestination()
-						const [track] = this.stream_sestination.stream.getAudioTracks()
-						startMediaFlow(track)
-						this.emit('track', track)
-					}
-
-					const stream = new MediaStream()
-					stream.addTrack(t)
-					const source = this.audio_context.createMediaStreamSource(stream)
-					source.connect(this.stream_sestination)
-				})
-
-				const { select_protocol_sdp, codecs, ssrc } = await this.rtc.init({
-					audio_track: this.track,
-					audio_settings: this.audio_settings
-				})
-
-				this.ssrc = ssrc
-
-				this.voice?.destroy()
-				this.voice = new VoiceSocket({
-					user_id: this.gateway.identity.id!,
-					session_id: this.gateway.session_id!,
-					address: endpoint,
-					guild_id,
-					token,
-					debug: this.debug
-				})
-				this.voice.on('packet', (p) => this.handleVoicePacket(p, select_protocol_sdp, codecs))
-				this.voice.on('close', () => {
-					this.rtc?.destroy()
-					this.emit('disconnected')
-				})
+				this.emit('state', VoiceManagerState.CONNECTING)
+				this.initConnection(endpoint, guild_id, token)
 			}
 		}
 	}
 
-	private handleVoicePacket(packet: any, sdp: string, codecs: Codecs) {
+	private onVoicePacket(packet: any) {
 		switch (packet.op) {
 			case VoiceOpcodes.Ready: {
-				this.voice!.sendSelectProtocol(sdp, codecs)
+				this.voice!.sendSelectProtocol(this.select_protocol_sdp!, this.codecs!)
 				break
 			}
 
 			case VoiceOpcodes.SessionDescription: {
 				this.rtc!.setDiscordSDP(packet.d.sdp)
 				this.setSpeaking(this.initial_speaking)
-				this.emit('connected')
+				break
+			}
+
+			case VoiceOpcodes.Resumed: {
+				this.setSpeaking(this.initial_speaking)
 				break
 			}
 
@@ -221,21 +293,17 @@ export class VoiceManager extends EventEmitter {
 
 	public setSpeaking(speaking: boolean) {
 		if (!this.voice) {
-			throw new VoiceSpeakingError('Voice socket not open.')
+			throw new VoiceManagerSpeakingError('Voice socket not open.')
 		}
 
-		try {
-			this.voice.sendPacket({
-				op: VoiceOpcodes.Speaking,
-				d: {
-					speaking: speaking ? 1 : 0,
-					delay: 0,
-					ssrc: this.ssrc
-				}
-			})
-		} catch {
-			return
-		}
+		this.voice.sendPacket({
+			op: VoiceOpcodes.Speaking,
+			d: {
+				speaking: speaking ? 1 : 0,
+				delay: 0,
+				ssrc: this.ssrc
+			}
+		})
 	}
 
 	public move(params: {
@@ -257,21 +325,32 @@ export class VoiceManager extends EventEmitter {
 		})
 	}
 
-	public disconnect() {
-		this.gateway.sendPacket({
-			op: GatewayOpcodes.VoiceStateUpdate,
-			d: {
-				guild_id: this.guild_id,
-				channel_id: null,
-				self_mute: this.self_mute,
-				self_deaf: this.self_deaf
-			}
-		})
+	private _disconnect(failed?: boolean) {
+		if (['DISCONNECTED', 'FAILED'].includes(this.state)) return
 
-		this.rtc?.destroy()
-		this.voice?.destroy(true)
+		if (this.gateway.state === SocketState.READY) {
+			this.gateway.sendPacket({
+				op: GatewayOpcodes.VoiceStateUpdate,
+				d: {
+					guild_id: this.guild_id,
+					channel_id: null,
+					self_mute: this.self_mute,
+					self_deaf: this.self_deaf
+				}
+			})
+		}
 
-		this.channel_id = null
+		this.rtc?.close()
+		this.voice?.destroy()
+
+		this.rtc = undefined
+		this.voice = undefined
 		this.guild_id = null
+
+		this.emit('state', failed ? VoiceManagerState.FAILED : VoiceManagerState.DISCONNECTED)
+	}
+
+	public disconnect() {
+		this._disconnect()
 	}
 }

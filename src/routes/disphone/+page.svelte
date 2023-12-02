@@ -1,18 +1,20 @@
 <script lang="ts">
-	import type { VoiceManager } from '$lib/clients/discord-voice-client/voice-manager'
+	import { VoiceManager, VoiceManagerState } from '$lib/clients/discord-voice-client/voice-manager'
 	import { persisted } from 'svelte-local-storage-store'
 	import { Inviter, Session, SessionState, UserAgent } from 'sip.js'
-	import { getUserMedia, playAudioFromURLs, startMediaFlow } from '$lib/clients/utils'
+	import { getUserMedia, playAudioFromURLs, startMediaFlow, wait } from '$lib/clients/utils'
 	import { PhoneClient } from '$lib/clients/phone-client'
 	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
 	import Title from '$lib/components/misc/title.svelte'
 	import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10'
+	import type { SocketState } from '$lib/clients/discord-voice-client/types'
 
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
+	let bot_is_bot: boolean
 
-	let guild_id: ''
-	let channel_id: ''
+	let guild_id = ''
+	let channel_id = ''
 
 	type PhoneState = keyof typeof PhoneState
 	const PhoneState = {
@@ -37,7 +39,7 @@
 	const config = persisted('config', {
 		// bot
 		discord_token: '',
-		discord_username: '',
+		discord_username: '', // or user id
 		// phone
 		server: '',
 		user: '',
@@ -101,18 +103,32 @@
 		bot_sender.replaceTrack(track)
 	}
 
+	async function autoDTMF() {
+		const [, ...dtmf_digits] = $config.dial_num.split(',')
+
+		for (const digits of dtmf_digits) {
+			await wait(1000)
+			if (phone_state !== PhoneState.ONCALL) break
+			outgoing_session.sessionDescriptionHandler?.sendDtmf(digits)
+		}
+	}
+
 	async function makeCall() {
 		if (['CALLING', 'ONCALL'].includes(phone_state)) return
-		const inviter = phone.makeInviter($config.dial_num)
+
+		$config.dial_num = $config.dial_num.replace(/[^0-9#*+,]/g, '')
+
+		const [num] = $config.dial_num.split(',')
+		const inviter = phone.makeInviter(num)
 
 		outgoing_session = inviter
-
 		outgoing_session.stateChange.addListener(async (state) => {
 			switch (state) {
 				case SessionState.Establishing: {
 					phone_state = PhoneState.CALLING
 					await playRing()
 					console.debug('Session is establishing')
+					call_start_time = Date.now()
 					break
 				}
 				case SessionState.Established: {
@@ -125,6 +141,7 @@
 
 					asserted_identity = outgoing_session.assertedIdentity?.friendlyName
 					phone_state = PhoneState.ONCALL
+					autoDTMF()
 					call_start_time = Date.now()
 					voice?.setSpeaking(true)
 					console.log('Session has been established')
@@ -191,9 +208,9 @@
 	}
 
 	let bot: VoiceBot
-	let bot_ready = false
+	let bot_state: SocketState
 	let voice: VoiceManager | undefined
-	let connected = false
+	let voice_state: VoiceManagerState
 
 	function initBot() {
 		bot = new VoiceBot({
@@ -211,42 +228,79 @@
 				activities: []
 			}
 		})
-		bot.on('ready', () => (bot_ready = true))
-		bot.on('done', () => {
-			voice = undefined
-			bot_ready = false
-			bot_sender = undefined
+
+		bot.on('state', (state) => {
+			bot_state = state
+			switch (state) {
+				case 'DONE':
+				case 'FAILED': {
+					voice = undefined
+					bot_sender = undefined
+					channel_id = ''
+					guild_id = ''
+					break
+				}
+			}
 		})
 
-		bot.gateway.on('packet', (p) => {
-			if (!$config.discord_username || p.t !== GatewayDispatchEvents.VoiceStateUpdate) return
-			if (p.d.member.user.username !== $config.discord_username) return
-			channel_id = p.d.channel_id ?? ''
-			guild_id = channel_id ? p.d.guild_id : ''
+		bot.gateway.on('packet', ({ t, d }) => {
+			if (!$config.discord_username || t !== GatewayDispatchEvents.VoiceStateUpdate) return
+			if (
+				d.member.user.username !== $config.discord_username &&
+				d.member.user.id !== $config.discord_username
+			) {
+				return
+			}
+
+			channel_id = d.channel_id ?? ''
+			guild_id = channel_id ? d.guild_id : ''
 		})
+
+		bot.gateway.on('packet', ({ t, d }) => {
+			if (!$config.discord_username || t !== GatewayDispatchEvents.Ready) return
+			bot_is_bot = d.user.bot
+			if (d.user.bot) return
+
+			let _channel_id = ''
+			let _guild_id = ''
+
+			for (const { id, voice_states } of d.guilds) {
+				for (const { user_id, channel_id } of voice_states) {
+					if (user_id === $config.discord_username) {
+						_channel_id = channel_id
+						break
+					}
+				}
+
+				if (_channel_id) {
+					_guild_id = id
+					break
+				}
+			}
+
+			channel_id = _channel_id
+			guild_id = _guild_id
+		})
+
+		bot.start()
 	}
 
 	async function connect() {
 		await getUserMedia({ audio: true })
 
 		if (!voice) {
-			voice = bot.connect({
-				guild_id: guild_id!,
-				channel_id: channel_id!,
-				audio_settings: { mode: 'sendrecv' },
-				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
-			})
+			voice = bot.createVoiceManager({ audio_settings: { mode: 'sendrecv' } })
 
-			voice.on('connected', () => {
-				connected = true
-				console.debug('Connected')
-			})
-
-			voice.on('disconnected', async () => {
-				connected = false
-				bot_sender = undefined
-				bot_track = undefined
-				console.debug('Disconnected')
+			voice.on('state', (state) => {
+				voice_state = state
+				switch (state) {
+					case 'FAILED':
+					case 'DISCONNECTED': {
+						bot_sender = undefined
+						bot_track = undefined
+						break
+					}
+				}
 			})
 
 			voice.on('sender', async (s) => {
@@ -265,13 +319,13 @@
 					await phone_sender.replaceTrack(bot_track)
 				}
 			})
-		} else {
-			voice.connect({
-				guild_id: guild_id!,
-				channel_id: channel_id!,
-				initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
-			})
 		}
+
+		voice.connect({
+			guild_id: guild_id!,
+			channel_id: channel_id!,
+			initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
+		})
 	}
 </script>
 
@@ -282,24 +336,6 @@
 		<button on:click={() => ($config.hide_config = !$config.hide_config)}>
 			{$config.hide_config ? 'Show Config' : 'Hide Config'}
 		</button>
-
-		{#if !bot_ready}
-			<button
-				disabled={!$config.discord_token || !$config.discord_username}
-				on:click={() => initBot()}>Start Bot</button
-			>
-		{:else}
-			<button
-				on:click={() => {
-					voice = undefined
-					bot.shutdown()
-					bot_ready = false
-					bot_sender = undefined
-				}}
-			>
-				Stop Bot
-			</button>
-		{/if}
 
 		{#if phone_state === PhoneState.NOTREADY}
 			<button
@@ -318,6 +354,26 @@
 				}}
 			>
 				Stop Phone
+			</button>
+		{/if}
+
+		{#if !bot_state || ['DONE', 'FAILED'].includes(bot_state)}
+			<button
+				disabled={!$config.discord_token || !$config.discord_username}
+				on:click={() => initBot()}
+				>{bot_state === 'FAILED' ? 'Crashed - Restart Bot' : 'Start Bot'}</button
+			>
+		{:else if bot_state === 'INITIALISING'}
+			<button disabled>Starting Bot</button>
+		{:else}
+			<button
+				on:click={() => {
+					voice = undefined
+					bot_sender = undefined
+					bot.shutdown()
+				}}
+			>
+				Stop Bot
 			</button>
 		{/if}
 	</div>
@@ -344,10 +400,7 @@
 									await outgoing_session.cancel()
 									return
 								}
-								if (!/[a-zA-Z]/.test($config.dial_num)) {
-									$config.dial_num = $config.dial_num.replace(/[^0-9#*+]/g, '')
-								}
-								$config.dial_num = $config.dial_num
+
 								await makeCall()
 							}}
 						>
@@ -418,36 +471,48 @@
 				</div>
 			{/if}
 
-			{#if bot_ready}
+			{#if ['READY', 'RESUMING'].includes(bot_state)}
 				<div style="padding: 10px; border: 1px solid; flex-shrink: 1; flex-grow: 1;">
 					<h1>Bot</h1>
 					<div>
-						{#if !connected}
+						{#if !voice_state || ['DISCONNECTED', 'FAILED'].includes(voice_state)}
 							<div style="display: flex; flex-direction: column; gap: 4px 0">
-								<div>
-									If you havn't,
-									<a
-										target="_blank"
-										href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
-											.id}&permissions=0&scope=bot%20applications.commands">Invite your bot</a
-									>.
-								</div>
+								{#if bot_is_bot}
+									<div>
+										If you havn't,
+										<a
+											target="_blank"
+											href="https://discord.com/api/oauth2/authorize?client_id={bot.gateway.identity
+												.id}&permissions=0&scope=bot%20applications.commands">Invite your bot</a
+										>.
+									</div>
+								{/if}
 								<button
 									style="max-width: 30rem;"
 									disabled={!channel_id || !guild_id}
 									on:click={async () => await connect()}
 								>
 									{#if !channel_id || !guild_id}
-										<span style="color:red">
-											To connect you need to join a voice channel or toggle your mute.
-										</span>
+										To connect join a voice channel{!bot_is_bot &&
+										/^[0-9]+$/.test($config.discord_username)
+											? '.'
+											: ' or toggle your mute.'}
 									{:else}
-										Connect
+										{voice_state === VoiceManagerState.FAILED
+											? 'Disconnected - Reconect'
+											: 'Connect'}
 									{/if}
 								</button>
 							</div>
 						{:else}
-							<button on:click={() => voice?.disconnect()}>Disconnect</button>
+							<button on:click={() => voice?.disconnect()}>
+								{#if voice_state === VoiceManagerState.CONNECTING}
+									Connecting -
+								{:else if voice_state === VoiceManagerState.RECONNECTING}
+									Reconnecting -
+								{/if}
+								Disconnect
+							</button>
 						{/if}
 					</div>
 				</div>
@@ -457,6 +522,9 @@
 		{#if !$config.hide_config}
 			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
 				<h1>Before You Start</h1>
+				<div>
+					Checkout the wiki @ <a target="_blank" href="http://wiki.baitkit.net">wiki.baitkit.net</a>.
+				</div>
 				<span style="color: red;">
 					This project is in early development,
 					<a target="_blank" href="https://github.com/ThatRex/BaitKit.net/issues">
@@ -513,7 +581,9 @@
 					<h2>Your Discord Account</h2>
 					<div style="display: flex; flex-direction: column; gap: 4px 0;">
 						<label>
-							<div>Username (<span style="color: red;">Not Display Or Nickname!</span>)</div>
+							<div>
+								User ID Or Username (<span style="color: red;">Not Display Or Nickname!</span>)
+							</div>
 							<input
 								type="text"
 								bind:value={$config.discord_username}
@@ -541,9 +611,9 @@
 
 	<div>
 		<span>
-			Projects like this take lots of time and effort to develop and maintain. Like my work?
-			<a target="_blank" href="https://www.buymeacoffee.com/thatrex">
-				Your support is appreciated.
+			Projects like this take lots of time and effort to develop and maintain.
+			<a target="_blank" href="https://ko-fi.com/thatrex">
+				If you like this project considar supporting its development.
 			</a>
 		</span>
 		<span style="float: right;">
@@ -552,3 +622,7 @@
 	</div>
 	<div />
 </div>
+
+<svelte:head>
+	<meta name="description" content="Browser Softphone with discord integration." />
+</svelte:head>

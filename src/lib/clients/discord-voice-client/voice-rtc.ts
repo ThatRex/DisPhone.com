@@ -1,51 +1,44 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import EventEmitter from 'eventemitter3'
-import { SDP } from './utils/sdp'
+import { SDP } from './sdp'
+import { VoiceRTCConnectionError, VoiceRTCOfferError } from './errors'
 import {
-	VoiceRTCAnswerError,
-	VoiceRTCConnectionError,
-	VoiceRTCDestroyError,
-	VoiceRTCOfferError
-} from './errors'
-import {
-	ReceiverToDo,
 	type AudioSettings,
 	type Receiver,
-	TransceiverType,
-	type Transceiver
+	type Transceiver,
+	ReceiverToDo,
+	TransceiverType
 } from './types'
 
 export interface VoiceRTC extends EventEmitter {
-	on(event: 'fail', listener: () => void): this
-	on(event: 'track', listener: (event: MediaStreamTrack) => void): this
-	on(event: 'sender', listener: (event: RTCRtpSender) => void): this
-	on(event: RTCPeerConnectionState, listener: () => void): this
-	once(event: 'fail', listener: () => void): this
-	once(event: 'track', listener: (event: MediaStreamTrack) => void): this
-	once(event: 'sender', listener: (event: RTCRtpSender) => void): this
-	once(event: RTCPeerConnectionState, listener: () => void): this
-	emit(event: 'fail'): boolean
+	on(event: 'track', listener: (track: MediaStreamTrack) => void): this
+	on(event: 'sender', listener: (sender: RTCRtpSender) => void): this
+	on(event: 'state', listener: (state: RTCPeerConnectionState) => void): this
 	emit(event: 'track', track: MediaStreamTrack): boolean
 	emit(event: 'sender', sender: RTCRtpSender): boolean
-	emit(event: RTCPeerConnectionState): boolean
+	emit(event: 'state', state: RTCPeerConnectionState): boolean
 }
 
 export class VoiceRTC extends EventEmitter {
-	private pc?: RTCPeerConnection
+	private pc: RTCPeerConnection
 	private audio_settings?: AudioSettings
 	private discord_sdp?: string
 	private processing = false
 	private transceivers: Transceiver[] = []
 
-	public get peer_connection() {
-		return this.pc
+	get state() {
+		return this.pc.connectionState
 	}
 
-	public readonly debug: ((...args: any) => void) | null
+	private readonly debug?: (...args: any) => void
 
 	constructor(params: { debug?: boolean }) {
 		super()
-
-		this.debug = !params.debug ? null : (...args) => console.debug(`[Voice RTC]`, ...args)
+		this.debug = !params.debug ? undefined : (...args) => console.debug(`[Voice RTC]`, ...args)
+		this.on('state', (s) => this.debug?.('State Update:', s))
+		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
+		this.pc.onconnectionstatechange = () => this.emit('state', this.pc.connectionState)
 	}
 
 	private buildSelectProtocolSDP(sdp: string) {
@@ -58,18 +51,10 @@ export class VoiceRTC extends EventEmitter {
 	}
 
 	private async createOffer() {
-		if (!this.pc) {
-			throw new VoiceRTCOfferError('Peer connection is not open.')
-		}
-
-		const { sdp } = await this.pc.createOffer()
-
-		if (!sdp) {
-			throw new VoiceRTCOfferError('No SDP was created.')
-		}
-
-		this.debug?.(`SDP Offer:\n${sdp}`)
-		return { sdp }
+		const offer = await this.pc.createOffer()
+		if (!offer.sdp) throw new VoiceRTCOfferError('SDP was not created.')
+		this.debug?.(`SDP Offer:\n${offer.sdp}`)
+		return offer.sdp
 	}
 
 	private getNonStoppedReceiver(user_id: string) {
@@ -78,9 +63,7 @@ export class VoiceRTC extends EventEmitter {
 			else return t.user_id === user_id && !t.transceiver?.stopped
 		})
 
-		const receiver = this.transceivers[index]
-
-		return receiver as Receiver | undefined
+		return this.transceivers[index] as Receiver | undefined
 	}
 
 	public setDiscordSDP(sdp: string) {
@@ -90,38 +73,29 @@ export class VoiceRTC extends EventEmitter {
 	}
 
 	/** Inits the connection. */
-	public async init(params: { audio_track?: MediaStreamTrack; audio_settings: AudioSettings }) {
+	public async init(params: { audio_track: MediaStreamTrack; audio_settings: AudioSettings }) {
 		const { audio_track, audio_settings } = params
 
-		if (this.pc) {
-			throw new VoiceRTCConnectionError('Peer Connection is already open.')
-		}
-		if (audio_track?.kind !== 'audio') {
+		if (this.pc.connectionState !== 'new') {
+			throw new VoiceRTCConnectionError('Peer Connection has already been initiated.')
+		} else if (!audio_track) {
+			throw new VoiceRTCConnectionError('An audio track must be provided when sending audio.')
+		} else if (audio_track.kind !== 'audio') {
 			throw new VoiceRTCConnectionError('Video tracks not supported.')
 		}
-		if (!audio_track) {
-			throw new VoiceRTCConnectionError('An audio track must be provided when sending audio.')
-		}
+
+		this.debug?.('Initiating')
 
 		this.audio_settings = audio_settings
-		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
-
-		const emit_fail = () => this.emit('fail')
-		const pc = this.pc
-
-		this.pc.oniceconnectionstatechange = function () {
-			if (pc?.iceConnectionState === 'failed') emit_fail()
-		}
-
-		const transceiver = this.pc!.addTransceiver(audio_track, { direction: 'sendonly' })
+		const transceiver = this.pc.addTransceiver(audio_track, { direction: 'sendonly' })
 		this.emit('sender', transceiver.sender)
+
 		this.transceivers.push({
 			type: TransceiverType.SENDER,
 			transceiver
 		})
 
-		const { sdp } = await this.createOffer()
-
+		const sdp = await this.createOffer()
 		await this.pc.setLocalDescription({ type: 'offer', sdp })
 
 		const select_protocol_sdp = this.buildSelectProtocolSDP(sdp)
@@ -186,14 +160,14 @@ export class VoiceRTC extends EventEmitter {
 	private async processReceivers() {
 		if (this.processing || !this.discord_sdp) return
 
-		this.debug?.(`Processing Started\ntransceivers:`, this.transceivers)
+		this.debug?.('Processing Started')
 		this.processing = true
 
 		for (const t of this.transceivers) {
 			if (t.type === TransceiverType.SENDER) continue
 
 			if (t.todo === ReceiverToDo.ADD) {
-				const transceiver = this.pc!.addTransceiver('audio', { direction: 'recvonly' })
+				const transceiver = this.pc.addTransceiver('audio', { direction: 'recvonly' })
 				this.emit('track', transceiver.receiver.track)
 				t.transceiver = transceiver
 				t.todo = ReceiverToDo.NOTHING
@@ -207,20 +181,18 @@ export class VoiceRTC extends EventEmitter {
 			}
 		}
 
-		this.debug?.(`Processed Before Update\ntransceivers:`, this.transceivers)
-
 		try {
 			await this.updatePeerConnection(this.discord_sdp)
 		} catch (e) {
 			console.warn('Error Updating Peer Connection: ', e)
 		}
 
-		this.debug?.(`Processed After Update\ntransceivers:`, this.transceivers)
-
-		const continueProcessing = this.transceivers.find((t) => {
-			if (t.type === TransceiverType.SENDER) return false
-			else return t.todo !== ReceiverToDo.NOTHING
-		})
+		const continueProcessing =
+			!['closed', 'failed'].includes(this.pc.connectionState) &&
+			this.transceivers.find((t) => {
+				if (t.type === TransceiverType.SENDER) return false
+				else return t.todo !== ReceiverToDo.NOTHING
+			})
 
 		this.processing = false
 
@@ -234,12 +206,8 @@ export class VoiceRTC extends EventEmitter {
 	}
 
 	private async updatePeerConnection(discord_sdp: string) {
-		if (!this.pc) {
-			throw new VoiceRTCAnswerError('Peer connection is not open.')
-		}
-
-		const { sdp: offer_sdp } = await this.createOffer()
-		await this.pc!.setLocalDescription({ type: 'offer', sdp: offer_sdp })
+		const offer_sdp = await this.createOffer()
+		await this.pc.setLocalDescription({ type: 'offer', sdp: offer_sdp })
 
 		const remote_sdp = new SDP()
 		for (const [i, s] of offer_sdp.split('m=').entries()) {
@@ -354,13 +322,8 @@ export class VoiceRTC extends EventEmitter {
 	}
 
 	/** Stop all transceivers and closes connection. */
-	public destroy() {
-		if (!this.pc) {
-			throw new VoiceRTCDestroyError('Peer connection is not open.')
-		}
-
+	public close() {
 		if (this.pc.connectionState === 'closed') return
-
 		this.debug?.('Closing')
 		for (const transceiver of this.pc.getTransceivers()) transceiver.stop()
 		this.pc.close()
