@@ -5,7 +5,6 @@
 	import { getUserMedia, playAudioFromURLs, startMediaFlow, wait } from '$lib/clients/utils'
 	import { PhoneClient } from '$lib/clients/phone-client'
 	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
-	import Title from '$lib/components/misc/title.svelte'
 	import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10'
 	import type { SocketState } from '$lib/clients/discord-voice-client/types'
 
@@ -329,8 +328,6 @@
 	}
 </script>
 
-<Title title="DisPhone" />
-
 <div style="display: flex; flex-direction: column; gap: 10px;">
 	<div>
 		<button on:click={() => ($config.hide_config = !$config.hide_config)}>
@@ -523,7 +520,8 @@
 			<div style="padding: 10px; border: 1px solid; margin-top: 10px">
 				<h1>Before You Start</h1>
 				<div>
-					Check out the wiki @ <a target="_blank" href="http://wiki.baitkit.net">wiki.baitkit.net</a>.
+					Check out the wiki @ <a target="_blank" href="http://wiki.baitkit.net">wiki.baitkit.net</a
+					>.
 				</div>
 				<span style="color: red;">
 					This project is in early development,
@@ -622,7 +620,3 @@
 	</div>
 	<div />
 </div>
-
-<svelte:head>
-	<meta name="description" content="Browser Softphone with discord integration." />
-</svelte:head>
