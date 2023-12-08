@@ -326,6 +326,8 @@
 			initial_speaking: ['ONCALL', 'CALLING'].includes(phone_state)
 		})
 	}
+
+	window.onbeforeunload = () => confirm()
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 10px;">
