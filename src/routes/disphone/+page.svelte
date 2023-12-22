@@ -183,7 +183,7 @@
 						volume: 50,
 						onStart: () => voice?.setSpeaking(true),
 						onEnd: () => {
-							if (phone_state === PhoneState.READY) voice?.setSpeaking(false)
+							if (['READY', 'NOTREADY'].includes(phone_state)) voice?.setSpeaking(false)
 						}
 					})
 					const [track] = stream.getAudioTracks()
@@ -194,7 +194,7 @@
 						const max = 4500
 						const ms = Math.floor(Math.random() * (max - min + 1)) + min
 						setTimeout(async () => {
-							if (do_auto_redial) await makeCall()
+							if (do_auto_redial && phone_state !== PhoneState.NOTREADY) await makeCall()
 						}, ms)
 					}
 
@@ -355,6 +355,7 @@
 					phone_state = PhoneState.NOTREADY
 					phone_sender = undefined
 					phone_track = undefined
+					do_auto_redial = false
 				}}
 			>
 				Stop Phone
