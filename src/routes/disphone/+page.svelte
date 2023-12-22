@@ -6,7 +6,7 @@
 	import { PhoneClient } from '$lib/clients/phone-client'
 	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
 	import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10'
-	import type { SocketState } from '$lib/clients/discord-voice-client/types'
+	import { SocketState } from '$lib/clients/discord-voice-client/types'
 
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
@@ -207,7 +207,7 @@
 	}
 
 	let bot: VoiceBot
-	let bot_state: SocketState
+	let bot_state: SocketState = SocketState.INITIAL
 	let voice: VoiceManager | undefined
 	let voice_state: VoiceManagerState
 
@@ -327,7 +327,12 @@
 		})
 	}
 
-	window.onbeforeunload = () => confirm()
+	window.onbeforeunload = () => {
+		if (['INITIAL', 'DONE', 'FAILED'].includes(bot_state) && phone_state === PhoneState.NOTREADY)
+			return
+
+		return confirm()
+	}
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -356,7 +361,7 @@
 			</button>
 		{/if}
 
-		{#if !bot_state || ['DONE', 'FAILED'].includes(bot_state)}
+		{#if ['INITIAL', 'DONE', 'FAILED'].includes(bot_state)}
 			<button
 				disabled={!$config.discord_token || !$config.discord_username}
 				on:click={() => initBot()}
