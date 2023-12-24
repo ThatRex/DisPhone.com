@@ -6,7 +6,7 @@
 	import { PhoneClient } from '$lib/clients/phone-client'
 	import { Client as VoiceBot } from '$lib/clients/discord-voice-client'
 	import { GatewayDispatchEvents, PresenceUpdateStatus } from 'discord-api-types/v10'
-	import type { SocketState } from '$lib/clients/discord-voice-client/types'
+	import { SocketState } from '$lib/clients/discord-voice-client/types'
 
 	let bot_sender: RTCRtpSender | undefined
 	let bot_track: MediaStreamTrack | undefined
@@ -183,7 +183,7 @@
 						volume: 50,
 						onStart: () => voice?.setSpeaking(true),
 						onEnd: () => {
-							if (phone_state === PhoneState.READY) voice?.setSpeaking(false)
+							if (['READY', 'NOTREADY'].includes(phone_state)) voice?.setSpeaking(false)
 						}
 					})
 					const [track] = stream.getAudioTracks()
@@ -194,7 +194,7 @@
 						const max = 4500
 						const ms = Math.floor(Math.random() * (max - min + 1)) + min
 						setTimeout(async () => {
-							if (do_auto_redial) await makeCall()
+							if (do_auto_redial && phone_state !== PhoneState.NOTREADY) await makeCall()
 						}, ms)
 					}
 
@@ -207,7 +207,7 @@
 	}
 
 	let bot: VoiceBot
-	let bot_state: SocketState
+	let bot_state: SocketState = SocketState.INITIAL
 	let voice: VoiceManager | undefined
 	let voice_state: VoiceManagerState
 
@@ -327,7 +327,12 @@
 		})
 	}
 
-	window.onbeforeunload = () => confirm()
+	window.onbeforeunload = () => {
+		if (['INITIAL', 'DONE', 'FAILED'].includes(bot_state) && phone_state === PhoneState.NOTREADY)
+			return
+
+		return confirm()
+	}
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 10px;">
@@ -350,13 +355,14 @@
 					phone_state = PhoneState.NOTREADY
 					phone_sender = undefined
 					phone_track = undefined
+					do_auto_redial = false
 				}}
 			>
 				Stop Phone
 			</button>
 		{/if}
 
-		{#if !bot_state || ['DONE', 'FAILED'].includes(bot_state)}
+		{#if ['INITIAL', 'DONE', 'FAILED'].includes(bot_state)}
 			<button
 				disabled={!$config.discord_token || !$config.discord_username}
 				on:click={() => initBot()}
