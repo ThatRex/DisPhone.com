@@ -48,7 +48,7 @@ export class VoiceManager extends EventEmitter {
 	private self_deaf = false
 
 	private audio_settings: AudioSettings
-	private initial_speaking = false
+	private speaking = false
 
 	private track?: MediaStreamTrack
 	private ssrc?: number
@@ -122,7 +122,7 @@ export class VoiceManager extends EventEmitter {
 
 		this.guild_id = guild_id
 		this.track = audio_track
-		this.initial_speaking = initial_speaking ?? this.initial_speaking
+		this.speaking = initial_speaking ?? this.speaking
 		this.self_mute = self_mute ?? this.self_mute
 		this.self_deaf = self_deaf ?? this.self_deaf
 
@@ -166,12 +166,13 @@ export class VoiceManager extends EventEmitter {
 				break
 			}
 
-			case this.state !== 'RECONNECTING' && voice_state === 'RESUMING': {
+			case this.state === 'RECONNECTING' && voice_state === 'RESUMING': {
 				this.emit('state', VoiceManagerState.RECONNECTING)
 				break
 			}
 
-			case voice_state === 'INITIALISING' || rtc_state === 'connecting': {
+			case this.state !== 'RECONNECTING' &&
+				(voice_state === 'INITIALISING' || rtc_state === 'connecting'): {
 				this.emit('state', VoiceManagerState.CONNECTING)
 				break
 			}
@@ -268,12 +269,12 @@ export class VoiceManager extends EventEmitter {
 
 			case VoiceOpcodes.SessionDescription: {
 				this.rtc!.setDiscordSDP(packet.d.sdp)
-				this.setSpeaking(this.initial_speaking)
+				this.setSpeaking(this.speaking)
 				break
 			}
 
 			case VoiceOpcodes.Resumed: {
-				this.setSpeaking(this.initial_speaking)
+				this.setSpeaking(this.speaking)
 				break
 			}
 
@@ -292,6 +293,8 @@ export class VoiceManager extends EventEmitter {
 	}
 
 	public setSpeaking(speaking: boolean) {
+		this.speaking = speaking
+
 		if (!this.voice) {
 			throw new VoiceManagerSpeakingError('Voice socket not open.')
 		}
@@ -328,7 +331,7 @@ export class VoiceManager extends EventEmitter {
 	private _disconnect(failed?: boolean) {
 		if (['DISCONNECTED', 'FAILED'].includes(this.state)) return
 
-		if (this.gateway.state === SocketState.READY) {
+		if (failed && this.gateway.state === SocketState.READY) {
 			this.gateway.sendPacket({
 				op: GatewayOpcodes.VoiceStateUpdate,
 				d: {
@@ -351,6 +354,16 @@ export class VoiceManager extends EventEmitter {
 	}
 
 	public disconnect() {
+		this.gateway.sendPacket({
+			op: GatewayOpcodes.VoiceStateUpdate,
+			d: {
+				guild_id: this.guild_id,
+				channel_id: null,
+				self_mute: this.self_mute,
+				self_deaf: this.self_deaf
+			}
+		})
+
 		this._disconnect()
 	}
 }
