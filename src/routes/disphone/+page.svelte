@@ -529,7 +529,7 @@
 				<h1>Before You Start</h1>
 				<div>
 					Check out the wiki @ <a target="_blank" href="http://wiki.baitkit.net">wiki.baitkit.net</a
-					>.
+					> for information on getting setup.
 				</div>
 				<span style="color: red;">
 					This project is in early development,
