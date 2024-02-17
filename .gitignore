@@ -9,4 +9,3 @@ node_modules
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 discord-voice-unminified-code.js
-*.mp3
