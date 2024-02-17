@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+	--color-bg: #f3f3f5;
+	--color-base-100: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: #111111;
+		--color-base-100: #1e1d1d;
+	}
+}
+
+.tooltip {
+	@apply z-10 px-2 py-0.5 rounded-[4px] 
+        bg-zinc-50 dark:bg-zinc-800 text-black dark:text-white 
+        border border-black/20 dark:border-white/20;
+}

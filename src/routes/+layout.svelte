@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { dev } from '$app/environment'
+	import '../app.css'
+	import { browser, dev } from '$app/environment'
 	import { inject } from '@vercel/analytics'
+	import Meta from '$lib/components/core/meta.svelte'
 
 	inject({ mode: dev ? 'development' : 'production' })
 </script>
 
-<slot />
+<Meta description="A fun feature full phone right in your browser. Dial on desktop, mobile and in Discord voice chat." />
 
-<style>
-	:global(*) {
-		font-family: Arial, Helvetica, sans-serif;
-	}
-</style>
+<div class="mx-auto sm:px-4 m-4 max-w-[1200px] max-sm:m-2">
+	{#if browser}<slot />{/if}
+</div>
