@@ -37,7 +37,7 @@
 		class="
 			relative flex flex-col items-center w-9 border-2 rounded-md grow duration-75 transition
 			!bg-opacity-10 bg-neutral-500 dark:bg-neutral-300 border-neutral-500 dark:border-neutral-300
-			!border-opacity-40 hover:!border-opacity-100 focus-within:!border-opacity-100
+			!border-opacity-40 hover:!border-opacity-100 focus-within:!border-opacity-100 cursor-ns-resize
 			"
 		role="button"
 		tabindex="-1"
