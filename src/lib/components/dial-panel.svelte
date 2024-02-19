@@ -15,15 +15,16 @@
 	const dispatch = createEventDispatcher()
 	const phone = getContext<Manager>('phone')
 
-	const call = (v: string = '') => {
-		if (v === 'revealyoursecrets') $config.cfg_show_hidden_settings = true
-		else if (v === 'hideyoursecrets') $config.cfg_show_hidden_settings = false
+	const call = (call_last = false) => {
+		if ($dial_string === 'revealyoursecrets') $config.cfg_show_hidden_settings = true
+		else if ($dial_string === 'hideyoursecrets') $config.cfg_show_hidden_settings = false
 		else {
-			const dial_str = v || $redial_string
+			const dial_str = call_last ? $redial_string : $dial_string || $redial_string
+			if (!dial_str) return
 			phone.dial({ profile_id: $config.cfg_sip_profiles[0].id, input: dial_str })
-			if (v) $redial_string = v
-			$dial_string = ''
+			if ($dial_string) $redial_string = $dial_string
 		}
+		if (!call_last) $dial_string = ''
 	}
 
 	const dtmf = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#', 'A', 'B', 'C', 'D']
@@ -73,7 +74,7 @@
 			class="grow min-w-0 flex"
 			on:submit={(e) => {
 				e.preventDefault()
-				call($dial_string)
+				call()
 			}}
 		>
 			<input
@@ -108,22 +109,20 @@
 	</div>
 	<div class="flex gap-2 flex-wrap">
 		{#if !$dial_string && $redial_string}
-			<!-- svelte-ignore a11y-no-static-element-interactions -->
-			<div
-				class="flex grow rounded-md"
+			<Button
 				on:mouseenter={() => (peek = $redial_string)}
 				on:mouseleave={() => (peek = undefined)}
-			>
-				<Button
-					on:trigger={() => call($redial_string)}
-					tip="Redial"
-					icon={IconArrowBackUp}
-					color="purple"
-				/>
-			</div>
+				on:trigger={() => call(true)}
+				tip="Redial"
+				icon={IconArrowBackUp}
+				color="purple"
+			/>
 		{:else}
 			<Button
-				on:trigger={() => call($dial_string)}
+				on:trigger={(e) => {
+					if (e.detail === 'middle-click') call(true)
+					else call()
+				}}
 				tip="Call"
 				icon={IconPhone}
 				color="green"
@@ -131,7 +130,8 @@
 			/>
 		{/if}
 		<Button
-			on:trigger={() => phone.hangup({ ids: calls_hangupable })}
+			on:trigger={(e) =>
+				phone.hangup({ ids: e.detail === 'left-click' ? calls_hangupable : undefined })}
 			tip={calls_hangupable.length ? 'Hangup Selected' : 'Hangup All'}
 			icon={IconPhoneX}
 			disabled={!$calls.filter((c) => c.progress !== 'DISCONNECTED').length}
