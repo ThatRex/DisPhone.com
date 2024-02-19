@@ -105,7 +105,7 @@
 		bot.on('state', (state) => {
 			switch (state) {
 				case 'READY': {
-					btn_state = 'WAITING'
+					btn_state = btn_state === 'CONNECTED' ? 'CONNECTED' : 'WAITING'
 					break
 				}
 				case 'DONE': {
@@ -215,15 +215,11 @@
 	}
 
 	const destroy = () => {
-		if (bot_voice) {
-			bot_voice.disconnect()
-			bot_voice = undefined
-		}
+		bot_voice?.disconnect()
+		bot_voice = undefined
 
-		if (bot) {
-			bot.shutdown()
-			bot = undefined
-		}
+		bot?.shutdown()
+		bot = undefined
 
 		bot_guild_id = null
 		bot_channel_id = null
@@ -233,19 +229,14 @@
 	}
 
 	onMount(async () => {
-		subscribeKey(config, 'tgl_bot', (v) => {
-			if (v && !bot) init()
-			if (!v && bot) destroy()
-		})
-
+		subscribeKey(config, 'tgl_bot', (v) => (v ? init() : destroy()))
+		subscribeKey(config, 'tgl_deafened', (v) => bot_voice?.update({ self_mute: v }))
+		subscribeKey(config, 'tgl_muted', (v) => bot_voice?.update({ self_deaf: v }))
 		subscribeKey(config, 'cfg_discord_follow_mode', (v) => {
 			if (!v) return
 			if (!usr_channel_id) bot_voice?.disconnect()
 			else connect()
 		})
-
-		subscribeKey(config, 'tgl_deafened', (v) => bot_voice?.update({ self_mute: v }))
-		subscribeKey(config, 'tgl_muted', (v) => bot_voice?.update({ self_deaf: v }))
 
 		if ($config.tgl_bot && !bot) await init()
 	})
