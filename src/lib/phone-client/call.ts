@@ -71,7 +71,7 @@ class Call extends EventEmitter {
 		const dest = this.uri.toRaw().replace('sip:', '').replace(`@${this.profile.server}`, '')
 		const seq = Array.from(this.sequence)
 		const seq_uri_idx = seq.indexOf('DEST')
-		seq[seq_uri_idx] = dest
+		seq[seq_uri_idx] = dest.replaceAll('%23', '#')
 		return seq.join('')
 	}
 
