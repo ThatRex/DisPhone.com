@@ -6,3 +6,4 @@
 </h1>
 
 A fun feature full phone right in your browser. Dial on desktop, mobile and in Discord voice chat.
+[Find out more on the wiki!](http://wiki.disphone.com)

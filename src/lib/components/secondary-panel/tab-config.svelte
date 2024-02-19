@@ -78,7 +78,7 @@
 					<FieldSwitch label="Extend Dialpad" bind:value={$config.cfg_dialpad_extended} />
 					<FieldSwitch label="Numeric Dialpad" bind:value={$config.cfg_dialpad_numeric} />
 					{#if $config.cfg_show_hidden_settings}
-						<FieldSwitch label="Auto Redial" bind:value={$config.cfg_auto_redial_enabled} />
+						<FieldSwitch label="Auto Redial Feature" bind:value={$config.cfg_auto_redial_enabled} />
 					{/if}
 					<h1 class="mt-1 font-bold text-xl">Profile</h1>
 					<span>Refresh page to apply changes.</span>

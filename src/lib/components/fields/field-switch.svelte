@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createSwitch, createSync, melt } from '@melt-ui/svelte'
+	import { IconCheck, IconCross, IconX } from '@tabler/icons-svelte'
 
 	export let label: string
 	export let value = false
@@ -17,7 +18,7 @@
 	})
 </script>
 
-<form>
+<form class="flex">
 	<label class="flex items-center gap-2 mt-1">
 		<button
 			use:melt={$root}
@@ -28,11 +29,15 @@
 				"
 		>
 			<span
-				class="thumb block rounded-sm bg-neutral-500 dark:bg-neutral-300 transition duration-75"
-			/>
+				class="
+					thumb flex rounded-sm transition duration-75 items-center justify-center
+					bg-neutral-500 dark:bg-neutral-300 text-neutral-100 dark:text-neutral-700"
+			>
+				<svelte:component this={value ? IconCheck : IconX} size={14} stroke={4} />
+			</span>
 		</button>
 		<input use:melt={$input} />
-		<span class="font-medium select-none">
+		<span class="font-medium select-none shrink cursor-pointer">
 			{label}
 		</span>
 	</label>

@@ -84,8 +84,10 @@
 </script>
 
 <button
+	on:mouseup={(e) => e.button !== 1 || (call.selected = !call.selected)}
 	on:click={(e) => {
-		if (e.ctrlKey) call.selected = !call.selected
+		const selected_calls = $calls.filter((c) => c.selected).length
+		if (e.ctrlKey || (selected_calls === 1 && call.selected)) call.selected = !call.selected
 		else {
 			$calls = $calls.map((c) => {
 				c.selected = c.id === call.id
