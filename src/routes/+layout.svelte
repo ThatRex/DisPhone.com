@@ -9,6 +9,6 @@
 
 <Meta description="A fun feature full phone right in your browser. Dial on desktop, mobile and in Discord voice chat." />
 
-<div class="mx-auto sm:px-4 m-4 max-w-[1200px] max-sm:m-2">
+<div class="mx-auto sm:px-2.5 m-3 max-w-[1200px] max-sm:m-2">
 	{#if browser}<slot />{/if}
 </div>
