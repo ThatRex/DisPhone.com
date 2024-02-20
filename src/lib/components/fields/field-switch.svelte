@@ -34,7 +34,7 @@
 					bg-neutral-500 dark:bg-neutral-300 text-neutral-100 dark:text-neutral-700
 					"
 			>
-				<svelte:component this={value ? IconCheck : IconX} size={14} stroke={4} />
+				<svelte:component this={value ? IconCheck : IconX} size={12} stroke={4.5} />
 			</span>
 		</button>
 		<input use:melt={$input} />
