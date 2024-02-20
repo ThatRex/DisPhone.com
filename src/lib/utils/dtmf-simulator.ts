@@ -5,10 +5,10 @@ class DTMFSimulator {
 	}
 
 	private readonly dtmf = [
-		['1', '2', '3', 'A'],
-		['4', '5', '6', 'B'],
-		['7', '8', '9', 'C'],
-		['*', '0', '#', 'D']
+		['1', '2', '3'],
+		['4', '5', '6'],
+		['7', '8', '9'],
+		['*', '0', '#']
 	]
 
 	private readonly ac = new AudioContext()

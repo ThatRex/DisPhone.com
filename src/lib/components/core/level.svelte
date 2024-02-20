@@ -23,8 +23,8 @@
 	const sync = createSync(states)
 	$: sync.value([value], ([v]) => {
 		if (value !== v) {
-			if (v % 10 === 0) navigator.vibrate(10)
-			else navigator.vibrate(1)
+			if (v % 10 === 0) navigator.vibrate?.(10)
+			else navigator.vibrate?.(1)
 		}
 		value = v
 	})

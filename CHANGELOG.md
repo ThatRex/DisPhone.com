@@ -1,3 +1,14 @@
+# 0.9.2 [20-02-2024]
+
+## Changes
+
+- fixed: clicking on switch thumb doesn't switch switch
+- fixed: extended dialpad characters not flashing
+- fixed: now works in safari 15.4 and above
+- changed: disabled a b c d DTMF sounds as typical softphones do not play them
+- changed: removed outer border
+- other minor changes
+
 # 0.9.1 [20-02-2024]
 
 ## Changes
@@ -7,7 +18,7 @@
 - added: middle click on hangup button to hangup all
 - added: middle click on call button to redial
 - added: middle click on call to select an additional call
-- improved: switch UI/UX
+- changed: switch UI/UX
 - other minor changes
 
 # 0.9.0 [17-02-2024]

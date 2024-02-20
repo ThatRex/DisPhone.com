@@ -27,6 +27,7 @@ const schema = z.object({
 			password: z.string().optional(),
 			sip_server: z.string(),
 			ws_server: z.string().optional(),
+			stun_server: z.string().optional(),
 			register: z.boolean().catch(true)
 		})
 		.array()

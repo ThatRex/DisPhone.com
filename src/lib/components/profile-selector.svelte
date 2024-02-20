@@ -58,7 +58,7 @@
 		}
 	})
 
-	open.subscribe(() => navigator.vibrate(6))
+	open.subscribe(() => navigator.vibrate?.(6))
 
 	const dispatch = createEventDispatcher()
 

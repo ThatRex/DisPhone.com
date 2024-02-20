@@ -26,7 +26,7 @@
 	import { version } from '$app/environment'
 	import { config } from '$lib/stores/state.persistent'
 	import ToggleMulti from '$lib/components/core/toggle-multi.svelte'
-	import { getUserMedia, subscribeKey, DTMFSimulator, AudioPlayer } from '$lib/utils'
+	import { getUserMedia, subscribeKey, DTMFSimulator, AudioPlayer, noop } from '$lib/utils'
 	import { onMount, setContext } from 'svelte'
 	import { addActiveKey, calls } from '$lib/stores/state.volitile'
 	import Dialog from '$lib/components/core/dialog.svelte'
@@ -34,7 +34,6 @@
 	import DiscordBotBtn from '$lib/components/discord-bot-btn.svelte'
 	import Manager from '$lib/phone-client/manager'
 	import Level from '$lib/components/core/level.svelte'
-	import { noop } from '@melt-ui/svelte/internal/helpers'
 
 	const player = new AudioPlayer()
 	const phone = new Manager({ debug: $config.cfg_debug_enabled })
@@ -448,6 +447,7 @@
 <div class="flex justify-between flex-wrap gap-2 text-sm mx-4 my-1 max-sm:mt-2">
 	<span class="font-bold flex gap-1">
 		<a
+			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
 			title="Looking to get started? Start here!"
 			href="http://wiki.disphone.com"
@@ -456,6 +456,7 @@
 		</a>
 		<span class="opacity-70"> • </span>
 		<a
+			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-yellow-500 transition"
 			title="Your support is appreciated & motivates further development."
 			href="http://donate.disphone.com"
@@ -464,6 +465,7 @@
 		</a>
 		<span class="opacity-70"> • </span>
 		<a
+			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
 			href="http://git.disphone.com"
 		>
@@ -471,6 +473,7 @@
 		</a>
 		<span class="opacity-70"> • </span>
 		<a
+			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-emerald-500 transition"
 			href="http://status.disphone.com"
 		>
@@ -478,8 +481,16 @@
 		</a>
 	</span>
 	<span class="font-semibold">
-		<span class="opacity-70">v{version} • Proudly brought to you by</span>
 		<a
+			target="_blank"
+			class="opacity-70 hover:opacity-100 hover:text-lime-500 transition"
+			href="https://github.com/ThatRex/DisPhone.com/blob/master/CHANGELOG.md"
+		>
+			v{version}
+		</a>
+		<span class="opacity-70"> • Proudly brought to you by </span>
+		<a
+			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-amber-500 transition"
 			href="http://rexslab.com">RexsLab.com</a
 		><span class="opacity-70">.</span>

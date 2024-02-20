@@ -13,7 +13,7 @@
 
 	const sync = createSync(states)
 	$: sync.checked(value, (v) => {
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 		value = v
 	})
 </script>
@@ -25,15 +25,16 @@
 			class="
 				border-2 transition duration-75 rounded-md p-1 !bg-opacity-10
 				border-neutral-500 bg-neutral-500 dark:border-neutral-300 dark:bg-neutral-300
-				!border-opacity-40 hover:!border-opacity-60 focus:!border-opacity-100
+				!border-opacity-40 hover:!border-opacity-60 focus:!border-opacity-100 group
 				"
 		>
 			<span
 				class="
-					thumb flex rounded-sm transition duration-75 items-center justify-center
-					bg-neutral-500 dark:bg-neutral-300 text-neutral-100 dark:text-neutral-700"
+					thumb flex rounded-sm transition duration-75 items-center justify-center pointer-events-none
+					bg-neutral-500 dark:bg-neutral-300 text-neutral-100 dark:text-neutral-700
+					"
 			>
-				<svelte:component this={value ? IconCheck : IconX} size={14} stroke={4} />
+				<svelte:component this={value ? IconCheck : IconX} size={12} stroke={4.5} />
 			</span>
 		</button>
 		<input use:melt={$input} />

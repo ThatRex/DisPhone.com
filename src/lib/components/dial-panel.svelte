@@ -27,7 +27,27 @@
 		if (!call_last) $dial_string = ''
 	}
 
-	const dtmf = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#', 'A', 'B', 'C', 'D']
+	const dialpad_keys = [
+		'1',
+		'2',
+		'3',
+		'4',
+		'5',
+		'6',
+		'7',
+		'8',
+		'9',
+		'*',
+		'0',
+		'#',
+		'A',
+		'B',
+		'C',
+		'D',
+		',',
+		'+',
+		';'
+	]
 
 	const clear = () => {
 		const input = document.getElementById('dial-input') as HTMLInputElement
@@ -85,7 +105,7 @@
 					if (key === 'Delete') clear()
 					if (ctrlKey || altKey || metaKey) return
 					const k = key.toUpperCase()
-					if (!dtmf.includes(k)) return
+					if (!dialpad_keys.includes(k)) return
 					dispatch('dtmf', k)
 					addActiveKey(k)
 					const selected_call_ids = getSelectedCallIDs()

@@ -11,6 +11,11 @@ declare global {
 		readonly stopped: boolean
 	}
 
+	interface Navigator {
+		// vibrate is undefined in safari
+		vibrate?: (pattern: VibratePattern) => boolean
+	}
+
 	namespace App {
 		// interface Error {}
 		// interface Locals {}
