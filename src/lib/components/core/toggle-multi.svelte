@@ -55,7 +55,7 @@
 		value = modes[current_mode_idx].value
 		blurred = false
 		dispatch('toggle')
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 	}
 </script>
 

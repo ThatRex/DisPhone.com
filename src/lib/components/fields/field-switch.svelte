@@ -13,7 +13,7 @@
 
 	const sync = createSync(states)
 	$: sync.checked(value, (v) => {
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 		value = v
 	})
 </script>

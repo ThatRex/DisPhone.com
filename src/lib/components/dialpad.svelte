@@ -112,7 +112,7 @@
 				on:mousedown={(e) => {
 					if (e.button !== 0) return
 					bg_color_active = randomColorActive()
-					navigator.vibrate(10)
+					navigator.vibrate?.(10)
 					sendDTMF(main)
 				}}
 			>

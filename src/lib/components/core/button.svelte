@@ -40,7 +40,7 @@
 		if (disabled) return
 		if (![0, 1].includes(e.button)) return
 		dispatch('trigger', e.button === 0 ? 'left-click' : 'middle-click')
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 	}}
 	on:keydown={(e) => disabled || ![' ', 'Enter'].includes(e.key) || dispatch('trigger', 'keydown')}
 	use:melt={$trigger}

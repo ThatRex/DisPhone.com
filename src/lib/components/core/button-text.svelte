@@ -11,7 +11,7 @@
 
 <button
 	on:click={() => {
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 		dispatch('click')
 	}}
 	{disabled}

@@ -35,7 +35,7 @@
 		if (e.button !== 0) return
 		value = !value
 		dispatch('toggle')
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 	}}
 	on:keydown={({ key }) => {
 		if (disabled) return

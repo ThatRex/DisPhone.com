@@ -27,7 +27,7 @@
 		if (disabled) return
 		if (e.button !== 0) return
 		dispatch('trigger')
-		navigator.vibrate(6)
+		navigator.vibrate?.(6)
 	}}
 	{disabled}
 	class="

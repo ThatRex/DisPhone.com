@@ -19,7 +19,7 @@
 
 	const sync = createSync(states)
 	$: sync.value($config.tab_secondary_panel_config, (v) => {
-		if ($config.tab_secondary_panel_config !== v) navigator.vibrate(6)
+		if ($config.tab_secondary_panel_config !== v) navigator.vibrate?.(6)
 		$config.tab_secondary_panel_config = v
 	})
 
