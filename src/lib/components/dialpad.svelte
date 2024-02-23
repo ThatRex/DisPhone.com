@@ -4,7 +4,6 @@
 	import { config } from '$lib/stores/state.persistent'
 	import {
 		active_dialpad_keys,
-		calls,
 		dial_string,
 		getSelectedCallIDs
 	} from '$lib/stores/state.volitile'
@@ -30,7 +29,7 @@
 		$dial_string = before_selection + dtmf + after_selection
 
 		setTimeout(() => {
-			input.focus()
+			if ($config.cfg_dialpad_focus_on_dial_feild) input.focus()
 			if (after_selection.length === 0)
 				input.setSelectionRange($dial_string.length, $dial_string.length)
 			else input.setSelectionRange(before_selection.length + 1, before_selection.length + 1)
@@ -44,7 +43,7 @@
 		['4', 'GHI'],
 		['5', 'JKL'],
 		['6', 'MNO'],
-		['7', 'PQES'],
+		['7', 'PQRS'],
 		['8', 'TUV'],
 		['9', 'WXYZ'],
 		['*', ''],
@@ -56,7 +55,7 @@
 	] as const
 
 	const buttons_layout_numeric = [
-		['7', 'PQES'],
+		['7', 'PQRS'],
 		['8', 'TUV'],
 		['9', 'WXYZ'],
 		['4', 'GHI'],

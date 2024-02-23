@@ -88,7 +88,7 @@
 
 		bot = new Client({
 			token: bot_config.bot_token!,
-			debug: $config.cfg_debug_enabled,
+			debug: $config.cfg_debug_bot,
 			properties: {
 				os: 'linux',
 				browser: 'Discord Android',

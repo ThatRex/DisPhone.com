@@ -2,7 +2,6 @@
 	import Button from '$lib/components/core/button.svelte'
 	import ProfileSelector from '$lib/components/profile-selector.svelte'
 	import Toggle from '$lib/components/core/toggle.svelte'
-	import Panel from '$lib/components/core/panel.svelte'
 	import {
 		IconBellOff,
 		IconBellRinging,
@@ -23,12 +22,11 @@
 	import DialPanel from '$lib/components/dial-panel.svelte'
 	import SecondaryPanel from '$lib/components/secondary-panel/secondary-panel.svelte'
 	import Dialpad from '$lib/components/dialpad.svelte'
-	import { version } from '$app/environment'
 	import { config } from '$lib/stores/state.persistent'
 	import ToggleMulti from '$lib/components/core/toggle-multi.svelte'
 	import { getUserMedia, subscribeKey, DTMFSimulator, AudioPlayer, noop } from '$lib/utils'
 	import { onMount, setContext } from 'svelte'
-	import { addActiveKey, calls } from '$lib/stores/state.volitile'
+	import { addActiveKey, calls, redial_string } from '$lib/stores/state.volitile'
 	import Dialog from '$lib/components/core/dialog.svelte'
 	import ButtonText from '$lib/components/core/button-text.svelte'
 	import DiscordBotBtn from '$lib/components/discord-bot-btn.svelte'
@@ -36,7 +34,7 @@
 	import Level from '$lib/components/core/level.svelte'
 
 	const player = new AudioPlayer()
-	const phone = new Manager({ debug: $config.cfg_debug_enabled })
+	const phone = new Manager({ debug: $config.cfg_debug_phone })
 	setContext('phone', phone)
 
 	let stop_ringger_out: undefined | (() => void)
@@ -112,11 +110,12 @@
 				break
 			}
 			case 'CONNECTED': {
-				if (!calls_connecting && stop_ringger_out) {
-					stop_ringger_out()
+				if (!calls_connecting) {
+					stop_ringger_out?.()
 					stop_ringger_out = undefined
 				}
 				if (call.progress === 'CONNECTED') break
+				if (cu.type === 'INBOUND' && cu.destination) $redial_string = cu.destination
 				const url =
 					call.type === 'INBOUND' && $config.tgl_call_response_mode === 'AA'
 						? $config.snd_auto_answer
@@ -125,8 +124,8 @@
 				break
 			}
 			case 'DISCONNECTED': {
-				if (!calls_connecting && stop_ringger_out) {
-					stop_ringger_out()
+				if (!calls_connecting) {
+					stop_ringger_out?.()
 					stop_ringger_out = undefined
 				}
 				if (call.progress === 'DISCONNECTED') break
@@ -316,183 +315,128 @@
 	</div>
 </Dialog>
 
-<Panel>
-	<div class="flex flex-col gap-4 max-sm:flex-col-reverse">
-		<div class="flex gap-2 flex-wrap max-sm:flex-wrap-reverse">
-			<div class="flex gap-2 flex-wrap max-sm:grow">
-				<Toggle
-					bind:value={$config.tgl_secondary_panel}
-					tip="Secondary Panel"
-					icon={{
-						on: IconLayoutBottombarExpandFilled,
-						off: IconLayoutBottombarCollapse
-					}}
-				/>
-				<div class="flex grow max-sm:hidden">
-					<Toggle
-						bind:value={$config.tgl_dialpad}
-						tip="Dialpad"
-						icon={{ on: IconDialpad, off: IconDialpadOff }}
-					/>
-				</div>
-				<Button
-					tip="{voicemail_qty} {voicemail_qty === 1 ? 'Voicemail' : 'Voicemails'}"
-					on:trigger={() =>
-						phone.dial({ profile_id: $config.cfg_sip_profiles[0].id, input: voicemial_dest })}
-					icon={IconRecordMail}
-					color={voicemail_qty ? 'red' : 'mono'}
-					disabled={!voicemial_dest}
-				/>
-			</div>
-
-			<ProfileSelector
-				on:new={() => {
-					$config.tab_secondary_panel = 'config'
-					$config.tab_secondary_panel_config = 'phone'
-					$config.tgl_secondary_panel = true
+<div class="flex flex-col gap-4 max-sm:flex-col-reverse">
+	<div class="flex gap-2 flex-wrap max-sm:flex-wrap-reverse">
+		<div class="flex gap-2 flex-wrap max-sm:grow">
+			<Toggle
+				bind:value={$config.tgl_secondary_panel}
+				tip="Secondary Panel"
+				icon={{
+					on: IconLayoutBottombarExpandFilled,
+					off: IconLayoutBottombarCollapse
 				}}
 			/>
-
-			<div class="flex gap-2 flex-wrap max-sm:grow">
-				{#if bot_running || ($config.cfg_discord_profiles[0]?.usr_user_id && $config.cfg_discord_profiles[0]?.bot_token)}
-					<DiscordBotBtn
-						bind:connected={bot_connected}
-						bind:running={bot_running}
-						{ac}
-						gin_o={bot_gin_o}
-						dst_i={bot_dst_i}
-					/>
-				{/if}
-				<ToggleMulti
-					bind:value={$config.tgl_call_response_mode}
-					modes={[
-						{
-							icon: IconBellRinging,
-							tip: 'Ring',
-							value: 'RNG'
-						},
-						{
-							icon: IconBellOff,
-							tip: 'Do Not Disturb',
-							value: 'DND',
-							color: 'red',
-							on: true
-						},
-						{
-							icon: IconPhoneIncoming,
-							tip: 'Auto Answer',
-							value: 'AA',
-							color: 'orange',
-							on: true
-						}
-					]}
-				/>
+			<div class="flex grow max-sm:hidden">
 				<Toggle
-					bind:value={$config.tgl_auto_conference}
-					tip="Conference"
-					icon={IconUsersGroup}
-					color={{ on: 'yellow', off: 'mono' }}
+					bind:value={$config.tgl_dialpad}
+					tip="Dialpad"
+					icon={{ on: IconDialpad, off: IconDialpadOff }}
 				/>
 			</div>
+			<Button
+				tip="{voicemail_qty} {voicemail_qty === 1 ? 'Voicemail' : 'Voicemails'}"
+				on:trigger={() =>
+					phone.dial({ profile_id: $config.cfg_sip_profiles[0].id, input: voicemial_dest })}
+				icon={IconRecordMail}
+				color={voicemail_qty ? 'red' : 'mono'}
+				disabled={!voicemial_dest}
+			/>
 		</div>
 
-		<Group>
-			<DialPanel on:dtmf={(e) => dsim?.press(e.detail)} />
-		</Group>
+		<ProfileSelector
+			on:new={() => {
+				$config.tab_secondary_panel = 'config'
+				$config.tab_secondary_panel_config = 'phone'
+				$config.tgl_secondary_panel = true
+			}}
+		/>
 
-		<Group>
-			{#if $config.tgl_dialpad}
-				<div class="max-sm:hidden flex">
-					<Dialpad on:dtmf={(e) => dsim?.press(e.detail)} />
-				</div>
+		<div class="flex gap-2 flex-wrap max-sm:grow">
+			{#if bot_running || ($config.cfg_discord_profiles[0]?.usr_user_id && $config.cfg_discord_profiles[0]?.bot_token)}
+				<DiscordBotBtn
+					bind:connected={bot_connected}
+					bind:running={bot_running}
+					{ac}
+					gin_o={bot_gin_o}
+					dst_i={bot_dst_i}
+				/>
 			{/if}
-			<CallDisplay />
-			<div class="flex gap-2">
-				{#if bot_connected}
-					<Level
-						bind:muted={$config.tgl_deafened}
-						bind:value={$config.lvl_out}
-						tip={{ on: 'Unmute', off: 'Mute' }}
-						icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
-					/>
-					<Level
-						bind:muted={$config.tgl_muted}
-						bind:value={$config.lvl_in}
-						tip={{ on: 'Undeafen', off: 'Deafen' }}
-						icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
-					/>
-				{:else}
-					<Level
-						bind:muted={$config.tgl_muted}
-						bind:value={$config.lvl_in}
-						tip={{ on: 'Unmute', off: 'Mute' }}
-						icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
-					/>
-					<Level
-						bind:muted={$config.tgl_deafened}
-						bind:value={$config.lvl_out}
-						tip={{ on: 'Undeafen', off: 'Deafen' }}
-						icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
-					/>
-				{/if}
-			</div>
-		</Group>
+			<ToggleMulti
+				bind:value={$config.tgl_call_response_mode}
+				modes={[
+					{
+						icon: IconBellRinging,
+						tip: 'Ring',
+						value: 'RNG'
+					},
+					{
+						icon: IconBellOff,
+						tip: 'Do Not Disturb',
+						value: 'DND',
+						color: 'red',
+						on: true
+					},
+					{
+						icon: IconPhoneIncoming,
+						tip: 'Auto Answer',
+						value: 'AA',
+						color: 'orange',
+						on: true
+					}
+				]}
+			/>
+			<Toggle
+				bind:value={$config.tgl_auto_conference}
+				tip="Conference"
+				icon={IconUsersGroup}
+				color={{ on: 'yellow', off: 'mono' }}
+			/>
+		</div>
 	</div>
 
-	{#if $config.tgl_secondary_panel}
-		<SecondaryPanel />
-	{/if}
-</Panel>
+	<Group>
+		<DialPanel on:dtmf={(e) => dsim?.press(e.detail)} />
+	</Group>
 
-<div class="flex justify-between flex-wrap gap-2 text-sm mx-4 my-1 max-sm:mt-2">
-	<span class="font-bold flex gap-1">
-		<a
-			target="_blank"
-			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
-			title="Looking to get started? Start here!"
-			href="http://wiki.disphone.com"
-		>
-			Wiki
-		</a>
-		<span class="opacity-70"> • </span>
-		<a
-			target="_blank"
-			class="opacity-70 hover:opacity-100 hover:text-yellow-500 transition"
-			title="Your support is appreciated & motivates further development."
-			href="http://donate.disphone.com"
-		>
-			Donate
-		</a>
-		<span class="opacity-70"> • </span>
-		<a
-			target="_blank"
-			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
-			href="http://git.disphone.com"
-		>
-			GitHub
-		</a>
-		<span class="opacity-70"> • </span>
-		<a
-			target="_blank"
-			class="opacity-70 hover:opacity-100 hover:text-emerald-500 transition"
-			href="http://status.disphone.com"
-		>
-			Status
-		</a>
-	</span>
-	<span class="font-semibold">
-		<a
-			target="_blank"
-			class="opacity-70 hover:opacity-100 hover:text-lime-500 transition"
-			href="https://github.com/ThatRex/DisPhone.com/blob/master/CHANGELOG.md"
-		>
-			v{version}
-		</a>
-		<span class="opacity-70"> • Proudly brought to you by </span>
-		<a
-			target="_blank"
-			class="opacity-70 hover:opacity-100 hover:text-amber-500 transition"
-			href="http://rexslab.com">RexsLab.com</a
-		><span class="opacity-70">.</span>
-	</span>
+	<Group>
+		{#if $config.tgl_dialpad}
+			<div class="max-sm:hidden flex">
+				<Dialpad on:dtmf={(e) => dsim?.press(e.detail)} />
+			</div>
+		{/if}
+		<CallDisplay />
+		<div class="flex gap-2">
+			{#if bot_connected}
+				<Level
+					bind:muted={$config.tgl_deafened}
+					bind:value={$config.lvl_out}
+					tip={{ on: 'Unmute', off: 'Mute' }}
+					icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
+				/>
+				<Level
+					bind:muted={$config.tgl_muted}
+					bind:value={$config.lvl_in}
+					tip={{ on: 'Undeafen', off: 'Deafen' }}
+					icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
+				/>
+			{:else}
+				<Level
+					bind:muted={$config.tgl_muted}
+					bind:value={$config.lvl_in}
+					tip={{ on: 'Unmute', off: 'Mute' }}
+					icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
+				/>
+				<Level
+					bind:muted={$config.tgl_deafened}
+					bind:value={$config.lvl_out}
+					tip={{ on: 'Undeafen', off: 'Deafen' }}
+					icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
+				/>
+			{/if}
+		</div>
+	</Group>
 </div>
+
+{#if $config.tgl_secondary_panel}
+	<SecondaryPanel />
+{/if}
