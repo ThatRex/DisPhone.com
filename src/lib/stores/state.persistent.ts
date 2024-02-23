@@ -14,10 +14,12 @@ const schema = z.object({
 	tgl_deafened: z.boolean().catch(false),
 	lvl_in: z.number().catch(100),
 	lvl_out: z.number().catch(100),
-	cfg_debug_enabled: z.boolean().catch(dev),
+	cfg_debug_phone: z.boolean().catch(dev),
+	cfg_debug_bot: z.boolean().catch(dev),
 	cfg_simulate_dtmf: z.boolean().catch(true),
 	cfg_dialpad_extended: z.boolean().catch(false),
 	cfg_dialpad_numeric: z.boolean().catch(false),
+	cfg_dialpad_focus_on_dial_feild: z.boolean().catch(true),
 	cfg_sip_selected_profile_id: z.string().optional().catch(undefined),
 	cfg_sip_profiles: z
 		.object({

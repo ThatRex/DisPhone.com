@@ -3,7 +3,7 @@
 	import { config } from '$lib/stores/state.persistent'
 	import FieldText from '../fields/field-text.svelte'
 	import SubGroup from '$lib/components/core/sub-group.svelte'
-	import { IconPhone, IconBrandDiscord, IconAdjustmentsHorizontal } from '@tabler/icons-svelte'
+	import { IconPhone, IconBrandDiscord, IconAccessible } from '@tabler/icons-svelte'
 	import ButtonTab from '../core/button-tab.svelte'
 	import Filler from './filler.svelte'
 	import FieldSwitch from '../fields/field-switch.svelte'
@@ -26,7 +26,7 @@
 	const triggers = [
 		{ id: 'phone', title: 'Softphone', icon: IconPhone },
 		{ id: 'bot', title: 'Discord Bot', icon: IconBrandDiscord },
-		{ id: 'misc', title: 'Miscellaneous', icon: IconAdjustmentsHorizontal }
+		{ id: 'accessibility', title: 'Accessibility', icon: IconAccessible }
 	]
 
 	if (!$config.cfg_discord_profiles.length) {
@@ -49,9 +49,6 @@
 			password: ''
 		})
 	}
-
-	// const dispatch = createEventDispatcher()
-	// dispatch('apply')
 </script>
 
 <div use:melt={$root} class="flex gap-2">
@@ -74,12 +71,10 @@
 			<div use:melt={$content('phone')}>
 				<div class="flex flex-col gap-1">
 					<h1 class="font-bold text-xl">Settings</h1>
-					<FieldSwitch label="Simulate DTMF" bind:value={$config.cfg_simulate_dtmf} />
-					<FieldSwitch label="Extend Dialpad" bind:value={$config.cfg_dialpad_extended} />
-					<FieldSwitch label="Numeric Dialpad" bind:value={$config.cfg_dialpad_numeric} />
 					{#if $config.cfg_show_hidden_settings}
 						<FieldSwitch label="Auto Redial Feature" bind:value={$config.cfg_auto_redial_enabled} />
 					{/if}
+					<FieldSwitch label="Debug" bind:value={$config.cfg_debug_phone} />
 					<h1 class="mt-1 font-bold text-xl">Profile</h1>
 					<span>Refresh page to apply changes.</span>
 					<form>
@@ -99,6 +94,7 @@
 				<div class="flex flex-col gap-1">
 					<h1 class="font-bold text-xl">Settings</h1>
 					<FieldSwitch label="Follow Mode" bind:value={$config.cfg_discord_follow_mode} />
+					<FieldSwitch label="Debug" bind:value={$config.cfg_debug_phone} />
 					<h1 class="mt-1 font-bold text-xl">Profile</h1>
 					<span>Restart bot to apply changes.</span>
 					<form>
@@ -114,12 +110,18 @@
 					</form>
 				</div>
 			</div>
-			<div use:melt={$content('misc')}>
+			<div use:melt={$content('accessibility')}>
 				<div class="flex flex-col gap-1">
 					<h1 class="font-bold text-xl">Settings</h1>
-					<FieldSwitch label="Debug" bind:value={$config.cfg_debug_enabled} />
+					<FieldSwitch label="Simulate DTMF Tones" bind:value={$config.cfg_simulate_dtmf} />
+					<FieldSwitch label="Extend Dialpad" bind:value={$config.cfg_dialpad_extended} />
+					<FieldSwitch label="Numeric Dialpad" bind:value={$config.cfg_dialpad_numeric} />
+					<FieldSwitch
+						label="Dialpad Focus Dial Field"
+						bind:value={$config.cfg_dialpad_focus_on_dial_feild}
+					/>
 				</div>
 			</div>
-		</div></SubGroup
-	>
+		</div>
+	</SubGroup>
 </div>

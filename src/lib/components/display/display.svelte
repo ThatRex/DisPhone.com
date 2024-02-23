@@ -5,7 +5,12 @@
 </script>
 
 <SubGroup>
-	<div class="flex flex-col gap-1 min-h-[156px] max-h-[262px] overflow-auto scrollbar-thin">
+	<div
+		class="
+			flex flex-col gap-1 h-[156px] max-sm:h-[176px]
+			overflow-auto scrollbar-thin @container
+			"
+	>
 		{#each $calls.filter((c) => !c.hidden) as call}
 			<Call bind:call />
 		{/each}

@@ -1,3 +1,16 @@
+# 0.9.3 [23-02-2024]
+
+## Changes
+
+- fixed: dialpad letter R missing
+- added: copy destination call button
+- added: `Dialpad Focus Dial Field` setting 
+- changed: calls scale for small displays and windows
+- changed: moved some settings to accessibility
+- changed: separated bot and phone debug settings
+- changed: answered inbound call destination set as redial value
+- other minor changes
+
 # 0.9.2 [20-02-2024]
 
 ## Changes

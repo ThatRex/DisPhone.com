@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { createTabs, melt, createSync } from '@melt-ui/svelte'
-	import { IconDeviceAudioTape, IconBook2, IconSettings2, IconUsers } from '@tabler/icons-svelte'
+	import { IconBook2, IconSettings2, IconUsers } from '@tabler/icons-svelte'
 	import TabConfig from './tab-config.svelte'
 	import TabLogs from './tab-logs.svelte'
 	import TabContacts from './tab-contacts.svelte'
-	import TabSoundboard from './tab-soundboard.svelte'
 	import ButtonTab from '../core/button-tab.svelte'
 	import { config } from '$lib/stores/state.persistent'
 	import Filler from './filler.svelte'
@@ -25,9 +24,8 @@
 	})
 
 	const triggers = [
-		// { id: 'logs', title: 'Logs', icon: IconBook2 },
-		// { id: 'contacts', title: 'Contacts', icon: IconUsers },
-		// { id: 'soundboard', title: 'Soundboard', icon: IconDeviceAudioTape },
+		{ id: 'logs', title: 'Logs', icon: IconBook2 },
+		{ id: 'contacts', title: 'Contacts', icon: IconUsers },
 		{ id: 'config', title: 'Config', icon: IconSettings2 }
 	]
 </script>
@@ -53,9 +51,6 @@
 		</div>
 		<div use:melt={$content('contacts')}>
 			<TabContacts />
-		</div>
-		<div use:melt={$content('soundboard')}>
-			<TabSoundboard />
 		</div>
 		<div use:melt={$content('config')}>
 			<TabConfig on:apply />

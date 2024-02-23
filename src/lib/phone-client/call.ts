@@ -157,16 +157,16 @@ class Call extends EventEmitter {
 				}
 
 				if (this.detail.auto_redialing) {
-					this.updateState({
-						type: 'OUTBOUND',
-						progress: 'WAITING',
-						start_time: 0
-					})
-
 					const { auto_redial_delay_ms_max, auto_redial_delay_ms_min } = this.settings
 					const ms =
 						Math.floor(Math.random() * (auto_redial_delay_ms_max - auto_redial_delay_ms_min + 1)) +
 						auto_redial_delay_ms_min
+
+					this.updateState({
+						type: 'OUTBOUND',
+						progress: 'WAITING',
+						start_time: Date.now() + ms
+					})
 
 					setTimeout(() => {
 						if (!this.detail.auto_redialing) {
@@ -174,7 +174,6 @@ class Call extends EventEmitter {
 								this.updateState({ progress: 'DISCONNECTED' })
 							return
 						}
-						this.detail.progress === 'INITIAL'
 						this.updateState({ progress: 'INITIAL' })
 						this.init()
 					}, ms)
