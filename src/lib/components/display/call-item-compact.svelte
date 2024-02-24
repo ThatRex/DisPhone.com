@@ -23,15 +23,18 @@
 	type="button"
 	aria-pressed={call.selected}
 	class="
-		{$config.tgl_dialpad && $config.cfg_dialpad_extended
-		? 'h-[60px] pt-0.5'
-		: 'h-[56px]'} max-sm:h-[56px] max-sm:pt-0
-		min-w-[222px] flex flex-col grow gap-0.5 px-0.5 border-2 border-opacity-0
+		{$config.tgl_dialpad && $config.cfg_dialpad_extended ? 'h-[60px]' : 'h-[56px]'} max-sm:h-[56px]
+		min-w-[200px] flex flex-col grow gap-0.5 px-0.5 border-2 border-opacity-0
         rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30
 		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes}
         "
 >
-	<div class="flex justify-between items-center w-full gap-x-1.5">
+	<div
+		class="
+			flex justify-between items-center w-full gap-x-1.5
+			{$config.tgl_dialpad && $config.cfg_dialpad_extended ? 'mt-[2px]' : 'mt-[1px]'}
+			"
+	>
 		<div class="min-w-[24px] flex justify-center">
 			<svelte:component this={style.icon} size={18} />
 		</div>

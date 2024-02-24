@@ -94,7 +94,7 @@
 				<div class="flex flex-col gap-1">
 					<h1 class="font-bold text-xl">Settings</h1>
 					<FieldSwitch label="Follow Mode" bind:value={$config.cfg_discord_follow_mode} />
-					<FieldSwitch label="Debug" bind:value={$config.cfg_debug_phone} />
+					<FieldSwitch label="Debug" bind:value={$config.cfg_debug_bot} />
 					<h1 class="mt-1 font-bold text-xl">Profile</h1>
 					<span>Restart bot to apply changes.</span>
 					<form>
@@ -113,6 +113,7 @@
 			<div use:melt={$content('accessibility')}>
 				<div class="flex flex-col gap-1">
 					<h1 class="font-bold text-xl">Settings</h1>
+					<FieldSwitch label="Window Mode" bind:value={$config.cfg_window_mode} />
 					<FieldSwitch label="Simulate DTMF Tones" bind:value={$config.cfg_simulate_dtmf} />
 					<FieldSwitch label="Extend Dialpad" bind:value={$config.cfg_dialpad_extended} />
 					<FieldSwitch label="Numeric Dialpad" bind:value={$config.cfg_dialpad_numeric} />

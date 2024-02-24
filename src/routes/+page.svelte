@@ -15,7 +15,8 @@
 		IconMicrophone,
 		IconMicrophoneOff,
 		IconHeadphones,
-		IconHeadphonesOff
+		IconHeadphonesOff,
+		IconSwitchHorizontal
 	} from '@tabler/icons-svelte'
 	import Group from '$lib/components/core/group.svelte'
 	import CallDisplay from '$lib/components/display/display.svelte'
@@ -405,34 +406,55 @@
 			</div>
 		{/if}
 		<CallDisplay />
-		<div class="flex gap-2">
-			{#if bot_connected}
-				<Level
-					bind:muted={$config.tgl_deafened}
-					bind:value={$config.lvl_out}
-					tip={{ on: 'Unmute', off: 'Mute' }}
-					icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
+		<div class="flex flex-col gap-2">
+			<div class="flex gap-2 h-full">
+				{#if bot_connected}
+					<div class="flex {$config.tgl_selected_level === 'IN' ? 'max-[340px]:hidden' : ''}">
+						<Level
+							bind:muted={$config.tgl_muted}
+							bind:value={$config.lvl_in}
+							tip={{ on: 'Undeafen', off: 'Deafen' }}
+							icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
+							color="blue"
+						/>
+					</div>
+					<div class="flex {$config.tgl_selected_level === 'OUT' ? 'max-[340px]:hidden' : ''}">
+						<Level
+							bind:muted={$config.tgl_deafened}
+							bind:value={$config.lvl_out}
+							tip={{ on: 'Unmute', off: 'Mute' }}
+							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
+							color="blue"
+						/>
+					</div>
+				{:else}
+					<div class="flex {$config.tgl_selected_level === 'IN' ? 'max-[340px]:hidden' : ''}">
+						<Level
+							bind:muted={$config.tgl_muted}
+							bind:value={$config.lvl_in}
+							tip={{ on: 'Unmute', off: 'Mute' }}
+							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
+						/>
+					</div>
+					<div class="flex {$config.tgl_selected_level === 'OUT' ? 'max-[340px]:hidden' : ''}">
+						<Level
+							bind:muted={$config.tgl_deafened}
+							bind:value={$config.lvl_out}
+							tip={{ on: 'Undeafen', off: 'Deafen' }}
+							icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
+						/>
+					</div>
+				{/if}
+			</div>
+			<div class="max-[340px]:flex hidden grow">
+				<ToggleMulti
+					bind:value={$config.tgl_selected_level}
+					modes={[
+						{ icon: IconSwitchHorizontal, tip: 'Switch Level', value: 'IN' },
+						{ icon: IconSwitchHorizontal, tip: 'Switch Level', value: 'OUT' }
+					]}
 				/>
-				<Level
-					bind:muted={$config.tgl_muted}
-					bind:value={$config.lvl_in}
-					tip={{ on: 'Undeafen', off: 'Deafen' }}
-					icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
-				/>
-			{:else}
-				<Level
-					bind:muted={$config.tgl_muted}
-					bind:value={$config.lvl_in}
-					tip={{ on: 'Unmute', off: 'Mute' }}
-					icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
-				/>
-				<Level
-					bind:muted={$config.tgl_deafened}
-					bind:value={$config.lvl_out}
-					tip={{ on: 'Undeafen', off: 'Deafen' }}
-					icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
-				/>
-			{/if}
+			</div>
 		</div>
 	</Group>
 </div>
