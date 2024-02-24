@@ -65,7 +65,7 @@
 
 		$dial_string = before_selection + after_selection
 
-		input.focus()
+		if ($config.cfg_dialpad_focus_on_dial_feild) input.focus()
 		setTimeout(() => input.setSelectionRange(before_selection.length, before_selection.length), 0)
 	}
 
@@ -114,7 +114,7 @@
 				type="tel"
 				aria-label={label}
 				{placeholder}
-				class="pl-2 placeholder:text-neutral-500 bg-transparent outline-none grow min-w-0"
+				class="pl-2 placeholder:text-neutral-500 bg-transparent outline-none grow !min-w-0"
 			/>
 		</form>
 

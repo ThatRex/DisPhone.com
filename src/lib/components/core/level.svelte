@@ -2,6 +2,7 @@
 	import type { SvelteComponent } from 'svelte'
 	import { createSlider, createSync, melt } from '@melt-ui/svelte'
 	import Toggle from '$lib/components/core/toggle.svelte'
+	import type { ColorsBtn } from './colors'
 
 	type Component = typeof SvelteComponent<any, any, any>
 
@@ -9,6 +10,7 @@
 	export let muted = false
 	export let tip: string | { on: string; off: string } = ''
 	export let icon: Component | { on: Component; off: Component }
+	export let color: ColorsBtn = 'mono'
 
 	const {
 		elements: { root, range, thumbs },
@@ -68,6 +70,6 @@
 		<span class="mt-auto mb-1.5 font-bold text-sm select-none">{value}</span>
 	</span>
 	<div>
-		<Toggle bind:value={muted} {tip} {icon} />
+		<Toggle bind:value={muted} {tip} {icon} {color} />
 	</div>
 </div>
