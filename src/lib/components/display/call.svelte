@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type CallItem } from '$lib/stores/state.volitile'
+	import { type CallItem, calls } from '$lib/stores/state.volitile'
 	import {
 		IconBellRinging2,
 		IconPhoneCalling,
@@ -8,10 +8,12 @@
 		IconPlugConnected
 	} from '@tabler/icons-svelte'
 	import { onDestroy, onMount } from 'svelte'
+	import { config } from '$lib/stores/state.persistent'
 	import CallItemDefault from './call-item-default.svelte'
-	import CallItemCompact from './call-item-compact.svelte'
+	import CallItemSlim from './call-item-slim.svelte'
 
 	export let call: CallItem
+	export let height_display: number
 
 	$: style = ((): { default_text: string; icon: Componenet; classes: string } => {
 		switch (true) {
@@ -74,24 +76,27 @@
 			time = `${hours.toString()}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
 		}, 1000)
 	})
+
+	$: height_call_compact = ($config.dialpad_enabled && $config.dialpad_extended ? 60 : 56) + 4.8
+	$: always_compact = height_display >= height_call_compact * $calls.length
 </script>
 
-<div class="flex call-default">
-	<CallItemDefault bind:call bind:time bind:style />
+<div class="flex {always_compact ? 'hidden' : 'call-slim'}">
+	<CallItemSlim bind:call bind:time bind:style />
 </div>
-<div class="flex call-small">
-	<CallItemCompact bind:call bind:time bind:style />
+<div class="flex {always_compact ? '' : 'call-default'} ">
+	<CallItemDefault bind:call bind:time bind:style />
 </div>
 
 <style>
-	@container (width < 499px) {
-		.call-default {
+	@container (width <= 520px) {
+		.call-slim {
 			display: none;
 		}
 	}
 
-	@container (width >= 500px) {
-		.call-small {
+	@container (width > 520px) {
+		.call-default {
 			display: none;
 		}
 	}
