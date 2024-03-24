@@ -60,7 +60,7 @@ export class GatewaySocket extends EventEmitter {
 
 	private connection_data: {
 		token: string
-		initial_gateway_url?: string
+		initial_gateway_url: string
 		resume_gateway_url?: string
 		max_resume_attempts: number
 		session_id?: string
@@ -69,6 +69,7 @@ export class GatewaySocket extends EventEmitter {
 	} = {
 		token: '',
 		max_resume_attempts: 3,
+		initial_gateway_url: 'gateway.discord.gg',
 		intents: 0,
 		properties: {
 			os: 'linux',
@@ -106,15 +107,25 @@ export class GatewaySocket extends EventEmitter {
 		properties?: GatewayIdentifyProperties
 		presence?: GatewayPresenceUpdateData
 		max_resume_attempts?: number
+		initial_gateway_url?: string
 		debug?: boolean
 	}) {
 		super()
-		const { token, intents, properties, presence, max_resume_attempts, debug } = params
+		const {
+			token,
+			intents,
+			properties,
+			presence,
+			max_resume_attempts,
+			initial_gateway_url,
+			debug
+		} = params
 
 		this.debug = !debug ? undefined : (...args) => console.debug('[Gateway Socket]', ...args)
 
 		this.connection_data.token = token
 		this.connection_data.intents = intents
+		if (initial_gateway_url) this.connection_data.initial_gateway_url = initial_gateway_url
 		if (max_resume_attempts) this.connection_data.max_resume_attempts = max_resume_attempts
 		if (properties) this.connection_data.properties = properties
 		if (presence) this.inital_presence = presence
@@ -132,7 +143,7 @@ export class GatewaySocket extends EventEmitter {
 		}
 
 		this.emit('state', SocketState.INITIALISING)
-		this.openSocket(`wss://gateway.discord.gg/?v=10&encoding=json`)
+		this.openSocket(`wss://${this.connection_data.initial_gateway_url}/?v=10&encoding=json`)
 	}
 
 	private openSocket(address: string) {
