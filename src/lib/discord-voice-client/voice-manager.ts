@@ -188,6 +188,8 @@ export class VoiceManager extends EventEmitter {
 	}
 
 	private async initConnection(endpoint: string, guild_id: string, token: string) {
+		if (this.ac.state === 'suspended') await this.ac.resume()
+
 		this.rtc?.close()
 		this.voice?.destroy()
 
@@ -262,8 +264,8 @@ export class VoiceManager extends EventEmitter {
 			}
 
 			case VoiceOpcodes.Speaking: {
-				const { user_id, ssrc } = packet.d
-				this.rtc!.addUserAudioReceiver(user_id, ssrc)
+				const { user_id, ssrc, speaking } = packet.d
+				if (speaking) this.rtc!.addUserAudioReceiver(user_id, ssrc)
 				break
 			}
 
