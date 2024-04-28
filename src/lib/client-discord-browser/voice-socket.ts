@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from 'eventemitter3'
-import { type Codecs, SocketState } from './types'
+import { type Codecs, SocketState, type VoiceReceivePayload } from './types'
 import { VoiceCloseCodes, VoiceOpcodes } from 'discord-api-types/voice'
 import { GatewayCloseCodes } from 'discord-api-types/v10'
 import { wait } from '$lib/utils/wait'
@@ -146,7 +146,7 @@ export class VoiceSocket extends EventEmitter {
 		}
 	}
 
-	public sendPacket(packet: { op: number; d: any; [key: string]: any }) {
+	public sendPacket(packet: { op: number; d: any }) {
 		if (this.ws.readyState !== WebSocket.OPEN) {
 			throw new VocieSocketNotReadyError(`Unable to send packet. Packet: ${JSON.stringify(packet)}`)
 		}
@@ -159,7 +159,7 @@ export class VoiceSocket extends EventEmitter {
 		}
 	}
 
-	private onPacket(packet: any) {
+	private onPacket(packet: VoiceReceivePayload) {
 		switch (packet.op) {
 			case VoiceOpcodes.Hello: {
 				this.startHartbeat(packet.d.heartbeat_interval)

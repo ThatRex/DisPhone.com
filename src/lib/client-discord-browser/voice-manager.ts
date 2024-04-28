@@ -1,20 +1,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import {
-	SocketState,
-	type AudioSettings,
-	type VoiceStateUpdate,
-	type VoiceServerUpdate,
-	type Codecs
-} from './types'
+import { SocketState, type AudioSettings, type Codecs, type VoiceReceivePayload } from './types'
 import type { GatewaySocket } from './gateway-socket'
 import EventEmitter from 'eventemitter3'
-import { GatewayDispatchEvents, GatewayOpcodes } from 'discord-api-types/v10'
+import {
+	GatewayDispatchEvents,
+	GatewayOpcodes,
+	type GatewayReceivePayload
+} from 'discord-api-types/v10'
 import { VoiceOpcodes } from 'discord-api-types/voice'
 import { VoiceSocket } from './voice-socket'
 import { VoiceRTC } from './voice-rtc'
-import { VoiceManagerConnectionError, VoiceManagerSpeakingError } from './errors'
+import { VoiceManagerConnectionError } from './errors'
 
 export type VoiceManagerState = keyof typeof VoiceManagerState
 export const VoiceManagerState = {
@@ -34,16 +32,20 @@ export interface VoiceManager extends EventEmitter {
 }
 
 export class VoiceManager extends EventEmitter {
-	private readonly ac = new AudioContext()
-	private readonly dst_i = this.ac.createMediaStreamDestination()
-	private readonly dst_o = this.ac.createMediaStreamDestination()
+	private readonly debug?: (...args: any) => void
 
-	public set stream_i(stream: MediaStream) {
-		this.ac.createMediaStreamSource(stream).connect(this.dst_i)
+	private readonly ac: AudioContext
+	private readonly dst_i: MediaStreamAudioDestinationNode
+	private readonly src_i: MediaStreamAudioSourceNode
+	private readonly dst_o: MediaStreamAudioDestinationNode
+	private readonly src_o: MediaStreamAudioSourceNode
+
+	public get dst() {
+		return this.dst_i
 	}
 
-	public get stream_o() {
-		return this.dst_o.stream
+	public get src() {
+		return this.src_o
 	}
 
 	private gateway: GatewaySocket
@@ -73,18 +75,22 @@ export class VoiceManager extends EventEmitter {
 		return this._state
 	}
 
-	private readonly debug?: (...args: any) => void
-
 	constructor(params: {
+		ac: AudioContext
 		gateway_socket: GatewaySocket
 		audio_settings?: Partial<AudioSettings>
 		debug?: boolean
 	}) {
 		super()
-
-		const { gateway_socket, debug, audio_settings } = params
+		const { ac, gateway_socket, debug, audio_settings } = params
 
 		this.debug = !debug ? undefined : (...args) => console.debug('[Voice Manager]', ...args)
+
+		this.ac = ac
+		this.dst_i = this.ac.createMediaStreamDestination()
+		this.src_i = this.ac.createMediaStreamSource(this.dst_i.stream)
+		this.dst_o = this.ac.createMediaStreamDestination()
+		this.src_o = this.ac.createMediaStreamSource(this.dst_o.stream)
 
 		this.gateway = gateway_socket
 		this.gateway.on('packet', (p) => this.onGatewayPacket(p))
@@ -102,7 +108,7 @@ export class VoiceManager extends EventEmitter {
 		})
 	}
 
-	/** Update voice state. This can be used to connect to or move voice channels */
+	/** Update voice state. This can be used to connect/move channels, set speaking and update audio settings. Audio Settings will apply on reconnect. */
 	public update(params: {
 		guild_id?: string | null
 		channel_id?: string | null
@@ -117,17 +123,6 @@ export class VoiceManager extends EventEmitter {
 
 		const { guild_id, channel_id, audio_settings, speaking, self_deaf, self_mute } = params
 
-		this.guild_id = guild_id ?? this.guild_id
-		this.channel_id = channel_id ?? this.channel_id
-		this.self_mute = self_mute ?? this.self_mute
-		this.self_deaf = self_deaf ?? this.self_deaf
-
-		if (this.state !== VoiceManagerState.CONNECTED) {
-			this.speaking = speaking ?? this.speaking
-		} else if (speaking) {
-			this.setSpeaking(speaking)
-		}
-
 		if (audio_settings) {
 			this.audio_settings = {
 				stereo: audio_settings?.stereo ?? this.audio_settings.stereo,
@@ -136,10 +131,26 @@ export class VoiceManager extends EventEmitter {
 			}
 		}
 
+		if (speaking !== undefined) this.setSpeaking(speaking)
+
+		if (
+			guild_id === undefined &&
+			channel_id === undefined &&
+			self_mute === undefined &&
+			self_deaf === undefined
+		) {
+			return
+		}
+
+		this.guild_id = guild_id !== undefined ? guild_id : this.guild_id
+		this.channel_id = channel_id !== undefined ? channel_id : this.channel_id
+		this.self_mute = self_mute !== undefined ? self_mute : this.self_mute
+		this.self_deaf = self_deaf !== undefined ? self_deaf : this.self_deaf
+
 		this.gateway.sendPacket({
 			op: GatewayOpcodes.VoiceStateUpdate,
 			d: {
-				guild_id: this.guild_id,
+				guild_id: this.guild_id!,
 				channel_id: this.channel_id,
 				self_mute: this.self_mute,
 				self_deaf: this.self_deaf
@@ -188,16 +199,14 @@ export class VoiceManager extends EventEmitter {
 	}
 
 	private async initConnection(endpoint: string, guild_id: string, token: string) {
-		if (this.ac.state === 'suspended') await this.ac.resume()
-
 		this.rtc?.close()
 		this.voice?.destroy()
 
-		this.rtc = new VoiceRTC({ debug: !!this.debug })
+		this.rtc = new VoiceRTC({ ac: this.ac, debug: !!this.debug })
 		this.rtc.on('state', () => this.updateState())
 
-		this.rtc.stream_i = this.dst_i.stream
-		this.ac.createMediaStreamSource(this.rtc.stream_o).connect(this.dst_o)
+		this.src_i.connect(this.rtc.dst)
+		this.rtc.src.connect(this.dst_o)
 
 		const { select_protocol_sdp, codecs, ssrc } = await this.rtc.init({
 			audio_settings: this.audio_settings
@@ -212,7 +221,7 @@ export class VoiceManager extends EventEmitter {
 		this.ssrc = ssrc
 
 		this.voice = new VoiceSocket({
-			user_id: this.gateway.identity.id!,
+			user_id: this.gateway.identity!.id,
 			session_id: this.gateway.session_id!,
 			address: endpoint,
 			guild_id,
@@ -223,12 +232,12 @@ export class VoiceManager extends EventEmitter {
 		this.voice.on('packet', (p) => this.onVoicePacket(p))
 	}
 
-	private onGatewayPacket(packet: any) {
+	private onGatewayPacket(packet: GatewayReceivePayload) {
 		switch (packet.t) {
 			case GatewayDispatchEvents.VoiceStateUpdate: {
-				const { channel_id, user_id } = packet.d as VoiceStateUpdate['d']
+				const { channel_id, user_id } = packet.d
 
-				if (user_id !== this.gateway.identity.id) break
+				if (user_id !== this.gateway.identity!.id) break
 				if (channel_id) break
 
 				this.rtc?.close()
@@ -238,14 +247,15 @@ export class VoiceManager extends EventEmitter {
 			}
 
 			case GatewayDispatchEvents.VoiceServerUpdate: {
-				const { endpoint, guild_id, token } = packet.d as VoiceServerUpdate['d']
+				const { endpoint, guild_id, token } = packet.d
+				if (!endpoint) break
 				this.emit('state', VoiceManagerState.CONNECTING)
 				this.initConnection(endpoint, guild_id, token)
 			}
 		}
 	}
 
-	private onVoicePacket(packet: any) {
+	private onVoicePacket(packet: VoiceReceivePayload) {
 		switch (packet.op) {
 			case VoiceOpcodes.Ready: {
 				this.voice!.sendSelectProtocol(this.select_protocol_sdp!, this.codecs!)
@@ -277,14 +287,10 @@ export class VoiceManager extends EventEmitter {
 		}
 	}
 
-	public setSpeaking(speaking: boolean) {
+	private setSpeaking(speaking: boolean) {
 		this.speaking = speaking
 
-		if (!this.voice) {
-			throw new VoiceManagerSpeakingError('Voice socket not open.')
-		}
-
-		this.voice.sendPacket({
+		this.voice?.sendPacket({
 			op: VoiceOpcodes.Speaking,
 			d: {
 				speaking: speaking ? 1 : 0,
@@ -301,7 +307,7 @@ export class VoiceManager extends EventEmitter {
 			this.gateway.sendPacket({
 				op: GatewayOpcodes.VoiceStateUpdate,
 				d: {
-					guild_id: this.guild_id,
+					guild_id: this.guild_id!,
 					channel_id: null,
 					self_mute: this.self_mute,
 					self_deaf: this.self_deaf
@@ -314,8 +320,6 @@ export class VoiceManager extends EventEmitter {
 
 		this.rtc = undefined
 		this.voice = undefined
-		this.guild_id = null
-		this.channel_id = null
 
 		this.emit('state', failed ? VoiceManagerState.FAILED : VoiceManagerState.DISCONNECTED)
 	}
@@ -324,7 +328,7 @@ export class VoiceManager extends EventEmitter {
 		this.gateway.sendPacket({
 			op: GatewayOpcodes.VoiceStateUpdate,
 			d: {
-				guild_id: this.guild_id,
+				guild_id: this.guild_id!,
 				channel_id: null,
 				self_mute: this.self_mute,
 				self_deaf: this.self_deaf

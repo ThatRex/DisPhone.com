@@ -11,23 +11,37 @@ class DTMFSimulator {
 		['*', '0', '#']
 	]
 
-	private readonly ac = new AudioContext()
-	private readonly comp = this.ac.createDynamicsCompressor()
-	public readonly stream: MediaStream
+	private readonly ac: AudioContext
+	private readonly dst: MediaStreamAudioDestinationNode
+	private readonly gin: GainNode
+	private readonly cmp: DynamicsCompressorNode
+	public readonly src: MediaStreamAudioSourceNode
 
-	constructor() {
-		const dest = this.ac.createMediaStreamDestination()
-		this.stream = dest.stream
-		this.comp.connect(dest)
+	set gain(gain: number) {
+		this.gin.gain.value = gain / 100
+	}
+
+	constructor(ac: AudioContext) {
+		this.ac = ac
+
+		this.dst = this.ac.createMediaStreamDestination()
+
+		this.gin = this.ac.createGain()
+		this.gin.connect(this.dst)
+
+		this.cmp = this.ac.createDynamicsCompressor()
+		this.cmp.connect(this.gin)
+
+		this.src = this.ac.createMediaStreamSource(this.dst.stream)
 	}
 
 	public press(digit: string, duration = 160) {
 		const idx_row = this.dtmf.findIndex((v) => v.includes(digit[0]))
 		const idx_col = this.dtmf[idx_row]?.indexOf(digit[0])
-		if (idx_col !== undefined && idx_col !== -1) return this.playTone(idx_row, idx_col, duration)
+		if (idx_col !== undefined && idx_col !== -1) this.playTone(idx_row, idx_col, duration)
 	}
 
-	private playTone(row: number, col: number, duration = 160) {
+	private async playTone(row: number, col: number, duration = 160) {
 		const osc1 = this.ac.createOscillator()
 		const osc2 = this.ac.createOscillator()
 
@@ -35,7 +49,7 @@ class DTMFSimulator {
 		osc2.frequency.value = this.freqs.col[col]
 
 		const gain = this.ac.createGain()
-		gain.connect(this.comp)
+		gain.connect(this.cmp)
 
 		osc1.connect(gain)
 		osc2.connect(gain)

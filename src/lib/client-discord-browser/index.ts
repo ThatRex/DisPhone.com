@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import EventEmitter from 'eventemitter3'
 import {
-	GatewayIntentBits,
 	type GatewayIdentifyProperties,
 	type GatewayPresenceUpdateData,
 	GatewayOpcodes
@@ -19,7 +18,6 @@ interface Client extends EventEmitter {
 
 class Client extends EventEmitter {
 	private _gateway: GatewaySocket
-	private _voice?: VoiceManager
 	private _debug: boolean
 
 	public get gateway() {
@@ -32,7 +30,7 @@ class Client extends EventEmitter {
 
 	constructor(params: {
 		token: string
-		intents?: number
+		intents: number
 		properties?: GatewayIdentifyProperties
 		presence?: GatewayPresenceUpdateData
 		debug?: boolean
@@ -42,7 +40,7 @@ class Client extends EventEmitter {
 		this._debug = params.debug ?? false
 		this._gateway = new GatewaySocket({
 			token: params.token,
-			intents: params.intents ?? GatewayIntentBits.GuildVoiceStates,
+			intents: params.intents,
 			presence: params.presence,
 			properties: params.properties,
 			debug: this._debug
@@ -62,8 +60,9 @@ class Client extends EventEmitter {
 		})
 	}
 
-	public createVoiceManager(params: { audio_settings?: Partial<AudioSettings> }) {
+	public createVoiceManager(params: { ac: AudioContext; audio_settings?: Partial<AudioSettings> }) {
 		return new VoiceManager({
+			ac: params.ac,
 			gateway_socket: this._gateway,
 			debug: this._debug,
 			audio_settings: params.audio_settings
@@ -71,7 +70,6 @@ class Client extends EventEmitter {
 	}
 
 	public shutdown() {
-		this._voice?.disconnect()
 		this._gateway.destroy()
 	}
 }

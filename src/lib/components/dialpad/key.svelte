@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { active_dialpad_keys } from '$lib/stores/state.volitile'
+	import { active_dialpad_keys } from '$lib/stores/dial.volitile'
 	import { createEventDispatcher } from 'svelte'
 
 	const dispatch = createEventDispatcher()
@@ -25,7 +25,6 @@
 
 <button
 	class="flex w-full"
-	on:keyup={(e) => updateActive(false)}
 	on:keydown={(e) => {
 		if (!['Enter', ' '].includes(e.key)) return
 		dispatch('trigger')

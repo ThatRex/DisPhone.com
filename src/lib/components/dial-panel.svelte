@@ -1,14 +1,14 @@
 <script lang="ts">
 	import Button from '$lib/components/core/button.svelte'
-	import type PhoneClient from '$lib/phone-client'
-	import { config } from '$lib/stores/state.persistent'
+	import type PhoneClient from '$lib/client-phone'
+	import { config } from '$lib/stores/config.persistent'
 	import {
-		dial_string,
-		redial_string,
-		addActiveKey,
-		getSelectedCallIDs,
-		calls
-	} from '$lib/stores/state.volitile'
+		calls,
+		call_ids_dtmf_receptible,
+		call_ids_hangupable,
+		call_ids_answerable
+	} from '$lib/stores/calls.volitile'
+	import { dial_string, redial_string, addActiveKey } from '$lib/stores/dial.volitile'
 	import { uppercaseLetterToNumber, type DTMFSimulator, wait } from '$lib/utils'
 	import { IconPhone, IconPhoneX, IconArrowBackUp, IconTrashX } from '@tabler/icons-svelte'
 	import { getContext } from 'svelte'
@@ -17,16 +17,16 @@
 	const dtmf_simulator = getContext<DTMFSimulator>('dtmf_simulator')
 
 	const call = (call_last = false) => {
-		switch ($dial_string) {
-			case 'revealyoursecrets': {
+		switch (true) {
+			case !call_last && $dial_string === 'revealyoursecrets': {
 				$config.hidden_settings_enabled = true
 				break
 			}
-			case 'hideyoursecrets': {
+			case !call_last && $dial_string === 'hideyoursecrets': {
 				$config.hidden_settings_enabled = false
 				break
 			}
-			case 'rainbow': {
+			case !call_last && $dial_string === 'rainbow': {
 				;(async () => {
 					const frames_default = [
 						['1'],
@@ -89,20 +89,8 @@
 		setTimeout(() => input.setSelectionRange(before_selection.length, before_selection.length), 0)
 	}
 
-	$: calls_hangupable = $calls.filter((c) => c.selected).map((c) => c.id)
-	$: calls_answerable = $calls
-		.filter((c) => {
-			return c.selected && c.type === 'INBOUND' && c.progress === 'CONNECTING'
-		})
-		.map((c) => c.id)
-
-	$: selected_active_call_ids = $calls
-		.filter((c) => c.selected)
-		.filter((c) => c.progress !== 'DISCONNECTED')
-		.map((c) => c.id)
-
 	let peek: string | undefined
-	$: label = selected_active_call_ids.length ? 'Destination Number / DTMF' : 'Destination Number'
+	$: label = $call_ids_dtmf_receptible.length ? 'Destination Number / DTMF' : 'Destination Number'
 	$: placeholder = peek ?? label
 </script>
 
@@ -126,9 +114,9 @@
 				id="dial-input"
 				bind:value={$dial_string}
 				on:drop={(e) => {
+					e.preventDefault()
 					const dropped_text = e.dataTransfer?.getData('text/plain')
-					if (!dropped_text) return
-					$dial_string = dropped_text
+					if (dropped_text) $dial_string = dropped_text
 				}}
 				on:keydown={({ key, ctrlKey, altKey, metaKey }) => {
 					if (key === 'Delete') clear()
@@ -137,8 +125,7 @@
 					if (!dialpad_keys.includes(k)) return
 					dtmf_simulator.press(k)
 					addActiveKey(k)
-					const selected_call_ids = getSelectedCallIDs()
-					if (selected_call_ids.length) phone.sendDTMF({ ids: selected_call_ids, dtmf: key })
+					phone.sendDTMF({ ids: $call_ids_dtmf_receptible, dtmf: key })
 				}}
 				type="tel"
 				aria-label={label}
@@ -160,7 +147,7 @@
 		{/if}
 	</div>
 	<div class="flex gap-2 flex-wrap">
-		{#if !calls_answerable.length && !$dial_string && $redial_string}
+		{#if !$call_ids_answerable.length && !$dial_string && $redial_string}
 			<Button
 				on:mouseenter={() => (peek = $redial_string)}
 				on:mouseleave={() => (peek = undefined)}
@@ -177,8 +164,8 @@
 						return
 					}
 
-					if (calls_answerable.length) {
-						phone.answer({ ids: calls_answerable })
+					if ($call_ids_answerable.length) {
+						phone.answer({ ids: $call_ids_answerable })
 						return
 					}
 
@@ -187,15 +174,21 @@
 				tip="Call"
 				icon={IconPhone}
 				color="green"
-				disabled={!$dial_string && !calls_answerable.length}
+				disabled={!$dial_string && !$call_ids_answerable.length}
 			/>
 		{/if}
 		<Button
-			on:trigger={(e) =>
-				phone.hangup({ ids: e.detail === 'left-click' ? calls_hangupable : undefined })}
-			tip={calls_hangupable.length ? 'Hangup Selected' : 'Hangup All'}
+			on:trigger={(e) => {
+				phone.hangup({
+					ids:
+						e.detail === 'left-click' && $call_ids_hangupable.length
+							? $call_ids_hangupable
+							: undefined
+				})
+			}}
+			tip={$call_ids_hangupable.length ? 'Hangup Selected' : 'Hangup All'}
 			icon={IconPhoneX}
-			disabled={!$calls.filter((c) => c.progress !== 'DISCONNECTED').length}
+			disabled={!$calls.length}
 			color="red"
 		/>
 	</div>

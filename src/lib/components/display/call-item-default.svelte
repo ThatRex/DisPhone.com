@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { config } from '$lib/stores/state.persistent'
-	import { calls, type CallItem } from '$lib/stores/state.volitile'
+	import { config } from '$lib/stores/config.persistent'
+	import { type CallItem } from '$lib/stores/calls.volitile'
 	import CallControls from './call-controls.svelte'
 
 	export let time: string
@@ -9,17 +9,8 @@
 </script>
 
 <button
-	on:mouseup={(e) => e.button !== 1 || (call.selected = !call.selected)}
-	on:click={(e) => {
-		const selected_calls = $calls.filter((c) => c.selected).length
-		if (e.ctrlKey || (selected_calls === 1 && call.selected)) call.selected = !call.selected
-		else {
-			$calls = $calls.map((c) => {
-				c.selected = c.id === call.id
-				return c
-			})
-		}
-	}}
+	on:mouseup
+	on:click
 	type="button"
 	aria-pressed={call.selected}
 	class="
@@ -39,7 +30,7 @@
 			<svelte:component this={style.icon} size={18} />
 		</div>
 		<div class="font-medium text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
-			{call.selected ? call.destination : call.identity || call.destination || ''}
+			{call.selected && call.identity ? call.identity : call.destination || ''}
 		</div>
 		<div class="text-right grow mr-1 font-medium whitespace-nowrap text-nowrap">
 			{time}

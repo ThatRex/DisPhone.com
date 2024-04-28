@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { calls, type CallItem } from '$lib/stores/state.volitile'
+	import { type CallItem } from '$lib/stores/calls.volitile'
 	import {
 		IconHeadphonesOff,
 		IconMicrophoneOff,
@@ -14,17 +14,8 @@
 </script>
 
 <button
-	on:mouseup={(e) => e.button !== 1 || (call.selected = !call.selected)}
-	on:click={(e) => {
-		const selected_calls = $calls.filter((c) => c.selected).length
-		if (e.ctrlKey || (selected_calls === 1 && call.selected)) call.selected = !call.selected
-		else {
-			$calls = $calls.map((c) => {
-				c.selected = c.id === call.id
-				return c
-			})
-		}
-	}}
+	on:mouseup
+	on:click
 	type="button"
 	aria-pressed={call.selected}
 	class="
@@ -40,7 +31,7 @@
 	<div
 		class="grow w-full text-left font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
 	>
-		{call.selected ? call.destination : call.identity || call.destination || ''}
+		{call.selected && call.identity ? call.identity : call.destination || ''}
 	</div>
 	<div class="min-w-[62px] text-left">{time}</div>
 	<div

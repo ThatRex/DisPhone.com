@@ -1,8 +1,9 @@
 <script lang="ts">
 	import Group from '$lib/components/core/group.svelte'
-	import type PhoneClient from '$lib/phone-client'
-	import { config } from '$lib/stores/state.persistent'
-	import { dial_string, getSelectedCallIDs } from '$lib/stores/state.volitile'
+	import type PhoneClient from '$lib/client-phone'
+	import { config } from '$lib/stores/config.persistent'
+	import { call_ids_dtmf_receptible } from '$lib/stores/calls.volitile'
+	import { dial_string } from '$lib/stores/dial.volitile'
 	import type { DTMFSimulator } from '$lib/utils'
 	import { getContext } from 'svelte'
 	import Key from './key.svelte'
@@ -13,8 +14,7 @@
 	const sendDTMF = (dtmf: string) => {
 		dtmf_simulator.press(dtmf)
 
-		const selected_call_ids = getSelectedCallIDs()
-		if (selected_call_ids.length) phone.sendDTMF({ ids: selected_call_ids, dtmf })
+		phone.sendDTMF({ ids: $call_ids_dtmf_receptible, dtmf })
 
 		const input = document.getElementById('dial-input') as HTMLInputElement
 

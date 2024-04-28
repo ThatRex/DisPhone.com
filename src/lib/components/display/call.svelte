@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type CallItem, calls } from '$lib/stores/state.volitile'
+	import { type CallItem, calls, call_ids_selected } from '$lib/stores/calls.volitile'
 	import {
 		IconBellRinging2,
 		IconPhoneCalling,
@@ -8,7 +8,7 @@
 		IconPlugConnected
 	} from '@tabler/icons-svelte'
 	import { onDestroy, onMount } from 'svelte'
-	import { config } from '$lib/stores/state.persistent'
+	import { config } from '$lib/stores/config.persistent'
 	import CallItemDefault from './call-item-default.svelte'
 	import CallItemSlim from './call-item-slim.svelte'
 
@@ -77,15 +77,33 @@
 		}, 1000)
 	})
 
-	$: height_call_compact = ($config.dialpad_enabled && $config.dialpad_extended ? 60 : 56) + 4.8
-	$: always_compact = height_display >= height_call_compact * $calls.length
+	$: height_call_compact = ($config.dialpad_enabled && $config.dialpad_extended ? 60 : 56) + 4
+	$: always_compact = height_display >= height_call_compact * $calls.length + 4
+
+	const handleMouseUp = (e: MouseEvent) => e.button !== 1 || (call.selected = !call.selected)
+	const handleClick = (e: MouseEvent) => {
+		if (e.ctrlKey || ($call_ids_selected.length === 1 && call.selected)) {
+			call.selected = !call.selected
+		} else {
+			$calls = $calls.map((c) => {
+				c.selected = c.id === call.id
+				return c
+			})
+		}
+	}
 </script>
 
 <div class="flex {always_compact ? 'hidden' : 'call-slim'}">
-	<CallItemSlim bind:call bind:time bind:style />
+	<CallItemSlim on:click={handleClick} on:mouseup={handleMouseUp} bind:call bind:time bind:style />
 </div>
 <div class="flex {always_compact ? '' : 'call-default'} ">
-	<CallItemDefault bind:call bind:time bind:style />
+	<CallItemDefault
+		on:click={handleClick}
+		on:mouseup={handleMouseUp}
+		bind:call
+		bind:time
+		bind:style
+	/>
 </div>
 
 <style>

@@ -210,8 +210,6 @@ export class Profile extends EventEmitter {
 	}
 
 	private mediaStreamFactory: Web.MediaStreamFactory = async (_, sessionDescriptionHandler) => {
-		if (this.ac.state === 'suspended') await this.ac.resume()
-
 		sessionDescriptionHandler.close = () => {
 			const { peerConnection, dataChannel } = sessionDescriptionHandler
 

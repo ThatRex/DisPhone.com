@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from 'eventemitter3'
-import Profile, { type ProfileDetail } from './profile'
+import { Profile, type ProfileDetail } from './profile'
 import type Call from './call'
 import type { OutboundCallDetail, CallDetail } from './call'
 import { noop } from '$lib/utils'
@@ -10,7 +10,7 @@ import { makeURI } from './utils'
 export type ProfileUpdate = { id: string } & ProfileDetail
 export type CallUpdate = { id: string } & CallDetail
 
-interface Manager extends EventEmitter {
+export interface Manager extends EventEmitter {
 	on(event: 'profile-update', listener: (update: ProfileUpdate) => void): this
 	on(event: 'call-update', listener: (update: CallUpdate) => void): this
 	on(event: 'dtmf', listener: (dtmf: string) => void): this
@@ -19,19 +19,21 @@ interface Manager extends EventEmitter {
 	emit(event: 'dtmf', dtmf: string): boolean
 }
 
-class Manager extends EventEmitter {
+export class Manager extends EventEmitter {
 	private readonly debug?: (...args: any) => void
 
-	public readonly ac = new AudioContext()
-	private readonly dst_i = this.ac.createMediaStreamDestination()
-	private readonly dst_o = this.ac.createMediaStreamDestination()
+	private readonly ac: AudioContext
+	private readonly dst_i: MediaStreamAudioDestinationNode
+	private readonly src_i: MediaStreamAudioSourceNode
+	private readonly dst_o: MediaStreamAudioDestinationNode
+	private readonly src_o: MediaStreamAudioSourceNode
 
-	public set stream_i(stream: MediaStream) {
-		this.ac.createMediaStreamSource(stream).connect(this.dst_i)
+	public get dst() {
+		return this.dst_i
 	}
 
-	public get stream_o() {
-		return this.dst_o.stream
+	public get src() {
+		return this.src_o
 	}
 
 	private profiles: Profile[] = []
@@ -43,9 +45,16 @@ class Manager extends EventEmitter {
 	private processing_transmit = false
 	private processing_conference = false
 
-	constructor(params: { debug?: boolean }) {
+	constructor(params: { ac: AudioContext; debug?: boolean }) {
 		super()
+
 		this.debug = !params.debug ? undefined : (...args) => console.debug('[Manager]', ...args)
+
+		this.ac = params.ac
+		this.dst_i = this.ac.createMediaStreamDestination()
+		this.src_i = this.ac.createMediaStreamSource(this.dst_i.stream)
+		this.dst_o = this.ac.createMediaStreamDestination()
+		this.src_o = this.ac.createMediaStreamSource(this.dst_o.stream)
 	}
 
 	private parsDialInput(input: string) {
@@ -134,14 +143,14 @@ class Manager extends EventEmitter {
 
 		for (const call of this.calls) {
 			if (this.transmitting_call_ids.includes(call.id)) {
-				call.source.disconnect(this.dst_o)
-				this.dst_o.disconnect(call.dest)
+				call.src.disconnect(this.dst_o)
+				this.src_i.disconnect(call.dst)
 			}
 
-			if (params.ids && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
 
-			call.source.connect(this.dst_o)
-			this.dst_o.connect(call.dest)
+			call.src.connect(this.dst_o)
+			this.src_i.connect(call.dst)
 			transmitting_call_ids.push(call.id)
 		}
 
@@ -162,13 +171,13 @@ class Manager extends EventEmitter {
 					if (c.id === call.id) continue
 
 					try {
-						c.source.disconnect(call.dest)
+						c.src.disconnect(call.dst)
 					} catch {
 						noop()
 					}
 
 					try {
-						call.source.disconnect(c.dest)
+						call.src.disconnect(c.dst)
 					} catch {
 						noop()
 					}
@@ -179,8 +188,8 @@ class Manager extends EventEmitter {
 
 			for (const c of this.calls) {
 				if (c.id === call.id) continue
-				c.source.connect(call.dest)
-				call.source.connect(c.dest)
+				c.src.connect(call.dst)
+				call.src.connect(c.dst)
 			}
 
 			conferenced_call_ids.push(call.id)
@@ -223,8 +232,10 @@ class Manager extends EventEmitter {
 				this.calls = this.calls.filter((c) => c.id !== call.id)
 			})
 			this.calls.push(call)
-			call.source.connect(this.dst_o)
-			this.ac.createMediaStreamSource(this.dst_i.stream).connect(call.dest)
+
+			call.src.connect(this.dst_o)
+			this.src_i.connect(call.dst)
+
 			call.init()
 		})
 
@@ -261,60 +272,58 @@ class Manager extends EventEmitter {
 
 	public answer(params?: { ids?: string[] }) {
 		for (const call of this.calls) {
-			if (params?.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params?.ids && !params.ids.includes(call.id)) continue
 			call.answer()
 		}
 	}
 
 	public sendDTMF(params: { ids?: string[]; dtmf: string }) {
 		for (const call of this.calls) {
-			if (params.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
+			console.debug('sending dtmf', call.id, params.ids)
 			call.sendDTMF(params.dtmf)
 		}
 	}
 
 	public setHold(params: { ids?: string[]; value: boolean }) {
 		for (const call of this.calls) {
-			if (params.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
 			call.setHold(params.value)
 		}
 	}
 
 	public setDeaf(params: { ids?: string[]; value: boolean }) {
 		for (const call of this.calls) {
-			if (params.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
 			call.setDeaf(params.value)
 		}
 	}
 
 	public setMute(params: { ids?: string[]; value: boolean }) {
 		for (const call of this.calls) {
-			if (params.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
 			call.setMute(params.value)
 		}
 	}
 
 	public setAutoRedial(params: { ids?: string[]; value: boolean }) {
 		for (const call of this.calls) {
-			if (params.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
 			call.setAutoRedial(params.value)
 		}
 	}
 
 	public transfer(params: { ids?: string[]; destination: string }) {
 		for (const call of this.calls) {
-			if (params.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params.ids && !params.ids.includes(call.id)) continue
 			call.transfer(params.destination)
 		}
 	}
 
 	public hangup(params?: { ids?: string[]; hard?: boolean }) {
 		for (const call of this.calls) {
-			if (params?.ids?.length && !params.ids.includes(call.id)) continue
+			if (!!params?.ids && !params.ids.includes(call.id)) continue
 			call.hangup(params?.hard)
 		}
 	}
 }
-
-export { Manager }
-export default Manager

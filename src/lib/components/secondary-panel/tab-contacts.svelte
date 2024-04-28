@@ -1,7 +1,7 @@
 <script lang="ts">
-	import SubGroup from '../core/sub-group.svelte'
+	import Group from '../core/group.svelte'
 </script>
 
-<SubGroup>
-	<div class="mx-1 h-40">Soon™</div>
-</SubGroup>
+<Group>
+	<div class="mx-1">Soon™</div>
+</Group>

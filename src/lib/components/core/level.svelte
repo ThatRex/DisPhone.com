@@ -19,7 +19,8 @@
 	} = createSlider({
 		orientation: 'vertical',
 		defaultValue: [100],
-		max: 120
+		max: 120,
+		min: 0
 	})
 
 	const sync = createSync(states)
@@ -53,7 +54,8 @@
 		}}
 		on:wheel={(e) => {
 			e.preventDefault()
-			value = e.deltaY > 0 ? value + 2 : value - 2
+			const val = e.deltaY > 0 ? value + 2 : value - 2
+			value = val < 0 ? 0 : val
 		}}
 	>
 		<!-- svelte-ignore a11y-no-static-element-interactions -->

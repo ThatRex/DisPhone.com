@@ -21,16 +21,17 @@ export interface VoiceRTC extends EventEmitter {
 }
 
 export class VoiceRTC extends EventEmitter {
-	private readonly ac = new AudioContext()
-	private readonly dst_i = this.ac.createMediaStreamDestination()
-	private readonly dst_o = this.ac.createMediaStreamDestination()
+	private readonly ac: AudioContext
+	private readonly dst_i: MediaStreamAudioDestinationNode
+	private readonly dst_o: MediaStreamAudioDestinationNode
+	private readonly src_o: MediaStreamAudioSourceNode
 
-	public set stream_i(stream: MediaStream) {
-		this.ac.createMediaStreamSource(stream).connect(this.dst_i)
+	public get dst() {
+		return this.dst_i
 	}
 
-	public get stream_o() {
-		return this.dst_o.stream
+	public get src() {
+		return this.src_o
 	}
 
 	private pc: RTCPeerConnection
@@ -45,9 +46,15 @@ export class VoiceRTC extends EventEmitter {
 
 	private readonly debug?: (...args: any) => void
 
-	constructor(params: { debug?: boolean }) {
+	constructor(params: { ac: AudioContext; debug?: boolean }) {
 		super()
 		this.debug = !params.debug ? undefined : (...args) => console.debug(`[Voice RTC]`, ...args)
+
+		this.ac = params.ac
+		this.dst_i = this.ac.createMediaStreamDestination()
+		this.dst_o = this.ac.createMediaStreamDestination()
+		this.src_o = this.ac.createMediaStreamSource(this.dst_o.stream)
+
 		this.on('state', (s) => this.debug?.('State Update:', s))
 		this.pc = new RTCPeerConnection({ bundlePolicy: 'max-bundle' })
 		this.pc.onconnectionstatechange = () => this.emit('state', this.pc.connectionState)

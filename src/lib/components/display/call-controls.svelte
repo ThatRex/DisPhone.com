@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { Client as PhoneClient } from '$lib/phone-client'
-	import { dial_string, type CallItem } from '$lib/stores/state.volitile'
+	import { Client as PhoneClient } from '$lib/client-phone'
+	import { type CallItem } from '$lib/stores/calls.volitile'
+	import { dial_string } from '$lib/stores/dial.volitile'
 	import { getContext } from 'svelte'
 	import CallButton from './call-button.svelte'
 	import {
@@ -18,7 +19,7 @@
 		IconTransfer,
 		IconX
 	} from '@tabler/icons-svelte'
-	import { config } from '$lib/stores/state.persistent'
+	import { config } from '$lib/stores/config.persistent'
 
 	export let call: CallItem
 	const phone = getContext<PhoneClient>('phone')

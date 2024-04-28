@@ -16,7 +16,8 @@ import {
 	type GatewayPresenceUpdateData,
 	PresenceUpdateStatus,
 	GatewayDispatchEvents,
-	GatewayCloseCodes
+	GatewayCloseCodes,
+	type GatewaySendPayload
 } from 'discord-api-types/v10'
 import { wait } from '$lib/utils'
 
@@ -85,11 +86,12 @@ export class GatewaySocket extends EventEmitter {
 		afk: false
 	}
 
-	private _identity: {
-		id?: string
-		username?: string
-		discriminator?: string
-	} = {}
+	private _identity?: {
+		id: string
+		username: string
+		discriminator: string
+		user_bot: boolean
+	} = undefined
 
 	public get session_id() {
 		return this.connection_data.session_id
@@ -207,7 +209,7 @@ export class GatewaySocket extends EventEmitter {
 		}
 	}
 
-	public sendPacket(packet: { op: number; d: any; [key: string]: any }) {
+	public sendPacket(packet: GatewaySendPayload) {
 		if (this.ws.readyState !== WebSocket.OPEN) {
 			throw new GatewaySocketNotReadyError('Unable to send packet.')
 		}
@@ -263,12 +265,12 @@ export class GatewaySocket extends EventEmitter {
 				const {
 					resume_gateway_url,
 					session_id,
-					user: { id, username, discriminator }
+					user: { id, username, discriminator, bot }
 				} = packet.d
 
 				this.connection_data.resume_gateway_url = resume_gateway_url
 				this.connection_data.session_id = session_id
-				this._identity = { id, username, discriminator }
+				this._identity = { id, username, discriminator, user_bot: !bot }
 
 				this.indentified = true
 				this.emit('state', SocketState.READY)
