@@ -1,4 +1,14 @@
-# 0.9.5 [XX-04-2024]
+# 0.9.6 [29-04-2024]
+
+## Changes
+
+- fixed: voicemail button not working properly
+- fixed: green call button tooltip displaying "Call" when in answer mode
+- fixed: bot not speaking when joining deafned
+- changed: call destination only displays user rather than user and domain for incoming calls
+- other minor changes
+
+# 0.9.5 [28-04-2024]
 
 An update! Finally...
 
@@ -7,13 +17,16 @@ An update! Finally...
 - added: mute on deafen setting
 - added: uppercase letter to number conversion
 - added: voicemail number setting
+- added: dynamic bot status like the original version had
 - fixed: auto redial not automatically stopping if call is not established
 - fixed: bot disconnecting when updating deaf/mute (#41)
-- fixed: sounds now load once during initiation rather than at the time of playing
 - fixed: glitchy dialpad colors
 - fixed: firefox setting the document location to dropped text
 - fixed: level switcher tooltip showing on click/tap
-- changed: DND will now silence inbound ringing
+- changed: sounds now load once during initiation rather than at the time of playing
+- changed: outbound ring will only play when no calls are connected
+- changed: bot only speaks when on call or playing sound
+- changed: setting DND now silences inbound ringing
 - changed: dialpad now positioned to right
 - changed: improved window mode
 - changed: improved call display

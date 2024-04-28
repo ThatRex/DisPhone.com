@@ -18,8 +18,8 @@
 
 		const input = document.getElementById('dial-input') as HTMLInputElement
 
-		const selection_start = input.selectionStart === null ? 0 : input.selectionStart
-		const selection_end = input.selectionEnd === null ? $dial_string.length : input.selectionEnd
+		const selection_start = input.selectionStart ?? 0
+		const selection_end = input.selectionEnd ?? $dial_string.length
 
 		const before_selection = $dial_string.slice(0, selection_start)
 		const after_selection = $dial_string.slice(selection_end)
