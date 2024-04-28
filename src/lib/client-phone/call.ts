@@ -12,7 +12,7 @@ import {
 	type SessionInviteOptions
 } from 'sip.js'
 import { makeURI } from './utils'
-import type Profile from './profile'
+import { type Profile } from './profile'
 import { startMediaFlow, wait } from '$lib/utils'
 
 export type CallType = keyof typeof CallType
@@ -137,13 +137,17 @@ class Call extends EventEmitter {
 			case SessionState.Terminated: {
 				this.updateState({
 					next_sequence_idx: 0,
-					on_hold: false
+					on_hold: false,
+					identity: undefined
 				})
 
 				if (this.detail.auto_redialing && this.detail.start_time) {
 					const sequential_short_calls = this.detail.sequential_short_calls
 
-					if (Date.now() - this.detail.start_time > this.settings.auto_redial_short_call_time_ms) {
+					if (
+						this.detail.progress === 'CONNECTED' &&
+						Date.now() - this.detail.start_time >= this.settings.auto_redial_short_call_time_ms
+					) {
 						this.updateState({ sequential_short_calls: 0 })
 					} else {
 						this.updateState({ sequential_short_calls: sequential_short_calls + 1 })
@@ -196,11 +200,11 @@ class Call extends EventEmitter {
 	private readonly gin_o: GainNode
 	private readonly src_o: MediaStreamAudioSourceNode
 
-	public get dest() {
+	public get dst() {
 		return this.gin_i
 	}
 
-	public get source() {
+	public get src() {
 		return this.src_o
 	}
 
@@ -342,7 +346,7 @@ class Call extends EventEmitter {
 		switch (this.detail.type) {
 			case 'INBOUND': {
 				const identity = this.session.assertedIdentity?.friendlyName
-				this.updateState({ progress: 'CONNECTING', identity })
+				this.updateState({ progress: 'CONNECTING', identity, start_time: Date.now() })
 				break
 			}
 			case 'OUTBOUND': {

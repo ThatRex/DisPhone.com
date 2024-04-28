@@ -52,14 +52,6 @@ export class VoiceManagerConnectionError extends VoiceManagerError {
 	}
 }
 
-export class VoiceManagerSpeakingError extends VoiceManagerError {
-	/** Something went wrong when setting the speaking status. */
-	constructor(message: string) {
-		super(message)
-		this.name = 'VoiceManagerSpeakingError'
-	}
-}
-
 /* 
 VOICE SOCKET
 */

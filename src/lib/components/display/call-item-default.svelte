@@ -1,11 +1,6 @@
 <script lang="ts">
-	import { calls, type CallItem } from '$lib/stores/state.volitile'
-	import {
-		IconHeadphonesOff,
-		IconMicrophoneOff,
-		IconPlayerPause,
-		IconRepeat
-	} from '@tabler/icons-svelte'
+	import { config } from '$lib/stores/config.persistent'
+	import { type CallItem } from '$lib/stores/calls.volitile'
 	import CallControls from './call-controls.svelte'
 
 	export let time: string
@@ -14,69 +9,37 @@
 </script>
 
 <button
-	on:mouseup={(e) => e.button !== 1 || (call.selected = !call.selected)}
-	on:click={(e) => {
-		const selected_calls = $calls.filter((c) => c.selected).length
-		if (e.ctrlKey || (selected_calls === 1 && call.selected)) call.selected = !call.selected
-		else {
-			$calls = $calls.map((c) => {
-				c.selected = c.id === call.id
-				return c
-			})
-		}
-	}}
+	on:mouseup
+	on:click
 	type="button"
 	aria-pressed={call.selected}
 	class="
-        min-w-[500px] grow
-        group flex items-center gap-x-2 pl-0.5 py-0.5 h-7 border-2 border-opacity-0
+		{$config.dialpad_enabled && $config.dialpad_extended ? 'h-[60px]' : 'h-[56px]'} max-sm:h-[56px]
+		min-w-[200px] flex flex-col grow gap-0.5 px-0.5 border-2 border-opacity-0
         rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30
 		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes}
         "
 >
-	<div class="min-w-[24px] flex justify-center">
-		<svelte:component this={style.icon} size={18} />
-	</div>
-	<div class="grid grid-cols-3 gap-x-4 grow w-full">
-		<div
-			class="col-span-2 text-left font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
-		>
-			{call.identity || call.destination || ''}
-		</div>
-		{#if call.identity}
-			<div class="text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
-				{call.destination}
-			</div>
-		{/if}
-	</div>
-	<div class="min-w-[62px] text-left">{time}</div>
 	<div
 		class="
-			w-full max-w-44 flex items-center gap-2 justify-end grow	
-			group-hover:invisible group-focus:invisible group-focus-within:invisible
+			flex justify-between items-center w-full gap-x-1.5
+			{$config.dialpad_enabled && $config.dialpad_extended ? 'mt-[2px]' : 'mt-[1px]'}
 			"
 	>
-		{#if call.progress !== 'DISCONNECTED'}
-			<div class="flex items-center gap-1">
-				{#if call.muted}<IconMicrophoneOff size={16} />{/if}
-				{#if call.deafened}<IconHeadphonesOff size={16} />{/if}
-				{#if call.auto_redialing}<IconRepeat size={16} />{/if}
-				{#if call.on_hold}<IconPlayerPause size={16} />{/if}
-			</div>
-		{/if}
-		<span class="overflow-hidden whitespace-nowrap overflow-ellipsis">
-			{call.reason || style.default_text}
-		</span>
+		<div class="min-w-[24px] flex justify-center">
+			<svelte:component this={style.icon} size={18} />
+		</div>
+		<div class="font-medium text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
+			{call.selected && call.identity ? call.identity : call.destination || ''}
+		</div>
+		<div class="text-right grow mr-1 font-medium whitespace-nowrap text-nowrap">
+			{time}
+		</div>
 	</div>
-	<div class="ml-auto relative w-0">
-		<button
-			tabindex="0"
-			class="
-				absolute right-[1.5px] gap-[1px] -translate-y-1/2 backdrop-blur-xl rounded-[3px]
-				hidden group-focus-within:block group-focus:block group-hover:block
-				"
-		>
-			<CallControls bind:call />
-		</button>
+	<div class="flex grow justify-between items-center gap-x-1 w-full">
+		<div class="ml-1 text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
+			{call.reason || style.default_text}
+		</div>
+		<CallControls bind:call />
 	</div>
 </button>

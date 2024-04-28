@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Manager from '$lib/phone-client/manager'
-	import { config } from '$lib/stores/state.persistent'
+	import PhoneClient from '$lib/client-phone'
+	import { config } from '$lib/stores/config.persistent'
 	import { createSelect, createRadioGroup, melt } from '@melt-ui/svelte'
 	import {
 		IconChevronDown,
@@ -17,7 +17,7 @@
 
 	let options: string[] = []
 	let value: (typeof options)[number] = options[0]
-	const phone = getContext<Manager>('phone')
+	const phone = getContext<PhoneClient>('phone')
 
 	let color: keyof typeof color_classes = 'red'
 	let text = ''
@@ -60,14 +60,14 @@
 
 	open.subscribe(() => navigator.vibrate?.(6))
 
-	const dispatch = createEventDispatcher()
-
 	let last_selected_value: any // i give up...
 	selected.subscribe((v) => {
 		if (v?.value === '__add_new__') {
 			selected.set(last_selected_value)
 			open.set(false)
-			dispatch('new')
+			$config.secondary_panel_tab_root = 'config'
+			$config.secondary_panel_tab_config = 'phone'
+			$config.secondary_panel_enabled = true
 		}
 		last_selected_value = v
 	})
@@ -77,7 +77,7 @@
 	use:melt={$trigger}
 	aria-label="Profile Selector"
 	class="
-		transition duration-75 active:scale-x-[99%] active:scale-y-[97%]
+		transition duration-75 active:scale-x-[99%] active:scale-y-[97%] h-[36px]
 		border-2 border-transparent hover:border-neutral-500/80 dark:hover:border-white/80
 		flex items-center justify-center gap-x-4 grow flex-wrap
 		rounded-md py-[4px] px-[10px] {color_classes[color]}

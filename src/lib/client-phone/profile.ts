@@ -20,18 +20,18 @@ export const ProfileState = {
 
 export type ProfileDetail = {
 	state: ProfileState
-	voicemail_dest: string
 	voicemail_qty: number
+	voicemail_dest?: string
 }
 
-interface Profile extends EventEmitter {
+export interface Profile extends EventEmitter {
 	on(event: 'detail', listener: (detail: ProfileDetail) => void): this
 	on(event: 'call', listener: (call: Call) => void): this
 	emit(event: 'detail', detail: ProfileDetail): boolean
 	emit(event: 'call', call: Call): boolean
 }
 
-class Profile extends EventEmitter {
+export class Profile extends EventEmitter {
 	private readonly debug?: (...args: any) => void
 
 	public readonly ac: AudioContext
@@ -140,12 +140,12 @@ class Profile extends EventEmitter {
 				if (error) this.attemptReconnection()
 				else this.updateDetail({ state: 'DISCONNECTED' })
 			},
-			onNotify: (notification) => {
-				const regex = /sip:(.+);.+\r\n.+: (\w)/
-				const match = notification.request.body.match(regex)
-				if (!match) return
-				const [, dest, qty] = match
-				this.updateDetail({ voicemail_dest: dest, voicemail_qty: Number(qty) })
+			onNotify: ({ request: { body } }) => {
+				const regex_dest = /Message-Account: sip:(\S+)@/
+				const regex_qty = /Voice-Message: (\d+)\//
+				const dest = body.match(regex_dest)?.[1]
+				const qty = body.match(regex_qty)?.[1]
+				this.updateDetail({ voicemail_dest: dest, voicemail_qty: qty ? Number(qty) : 0 })
 			}
 		}
 
@@ -210,8 +210,6 @@ class Profile extends EventEmitter {
 	}
 
 	private mediaStreamFactory: Web.MediaStreamFactory = async (_, sessionDescriptionHandler) => {
-		if (this.ac.state === 'suspended') await this.ac.resume()
-
 		sessionDescriptionHandler.close = () => {
 			const { peerConnection, dataChannel } = sessionDescriptionHandler
 
@@ -257,6 +255,3 @@ class Profile extends EventEmitter {
 		}, timeout)
 	}
 }
-
-export { Profile }
-export default Profile

@@ -1,9 +1,11 @@
 <script lang="ts">
-	import type Manager from '$lib/phone-client/manager'
-	import { dial_string, type CallItem } from '$lib/stores/state.volitile'
+	import { Client as PhoneClient } from '$lib/client-phone'
+	import { type CallItem } from '$lib/stores/calls.volitile'
+	import { dial_string } from '$lib/stores/dial.volitile'
 	import { getContext } from 'svelte'
 	import CallButton from './call-button.svelte'
 	import {
+		IconArrowBackUp,
 		IconCopy,
 		IconHeadphones,
 		IconHeadphonesOff,
@@ -17,10 +19,10 @@
 		IconTransfer,
 		IconX
 	} from '@tabler/icons-svelte'
-	import { config } from '$lib/stores/state.persistent'
+	import { config } from '$lib/stores/config.persistent'
 
 	export let call: CallItem
-	const phone = getContext<Manager>('phone')
+	const phone = getContext<PhoneClient>('phone')
 </script>
 
 <div class="flex">
@@ -40,21 +42,31 @@
 			icon={call.deafened ? IconHeadphonesOff : IconHeadphones}
 			on:trigger={() => phone.setDeaf({ ids: [call.id], value: !call.deafened })}
 		/>
-		{#if call.auto_redialing || $config.cfg_auto_redial_enabled}
-			<CallButton
-				tip={call.auto_redialing ? 'Stop Auto Redial' : 'Start Auto Redial'}
-				icon={call.auto_redialing ? IconRepeat : IconRepeatOff}
-				on:trigger={() => phone.setAutoRedial({ ids: [call.id], value: !call.auto_redialing })}
-			/>
-		{/if}
 	{/if}
-	{#if call.type === 'INBOUND' && call.progress === 'CONNECTING'}
-		<CallButton tip="Answer" icon={IconPhone} on:trigger={() => phone.answer({ ids: [call.id] })} />
-	{:else if call.progress === 'CONNECTED'}
+	{#if call.progress === 'CONNECTED'}
 		<CallButton
 			tip={call.on_hold ? 'Unhold' : 'Hold'}
 			icon={call.on_hold ? IconPlayerPause : IconPlayerPlay}
 			on:trigger={() => phone.setHold({ ids: [call.id], value: !call.on_hold })}
+		/>
+	{/if}
+	{#if !(call.type === 'INBOUND' && call.progress === 'CONNECTING') && call.progress !== 'DISCONNECTED' && (call.auto_redialing || $config.auto_redial_enabled)}
+		<CallButton
+			tip={call.auto_redialing ? 'Stop Auto Redial' : 'Auto Redial'}
+			icon={call.auto_redialing ? IconRepeat : IconRepeatOff}
+			on:trigger={() => phone.setAutoRedial({ ids: [call.id], value: !call.auto_redialing })}
+		/>
+	{/if}
+	{#if !(call.type === 'INBOUND' && call.progress === 'CONNECTING')}
+		<CallButton
+			tip="Redial"
+			icon={IconArrowBackUp}
+			on:trigger={() =>
+				!call.destination ||
+				phone.dial({
+					input: call.destination,
+					profile_id: $config.cfg_sip_profiles[0]?.id
+				})}
 		/>
 	{/if}
 	{#if (call.type === 'INBOUND' && call.progress === 'CONNECTING') || call.progress === 'CONNECTED'}
@@ -65,6 +77,9 @@
 			on:trigger={() =>
 				phone.transfer({ ids: [call.id], destination: $dial_string.replace(/\s/, '') })}
 		/>
+	{/if}
+	{#if call.type === 'INBOUND' && call.progress === 'CONNECTING'}
+		<CallButton tip="Answer" icon={IconPhone} on:trigger={() => phone.answer({ ids: [call.id] })} />
 	{/if}
 	<CallButton
 		tip={call.progress === 'DISCONNECTED' ? 'Close' : 'Hangup'}

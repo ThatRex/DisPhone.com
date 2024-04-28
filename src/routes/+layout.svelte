@@ -1,9 +1,8 @@
 <script lang="ts">
 	import '../app.css'
-	import { browser, dev, version } from '$app/environment'
+	import { browser, dev } from '$app/environment'
 	import { inject } from '@vercel/analytics'
 	import Meta from '$lib/components/core/meta.svelte'
-	import { config } from '$lib/stores/state.persistent'
 
 	inject({ mode: dev ? 'development' : 'production' })
 </script>
@@ -12,75 +11,10 @@
 	description="A fun feature full phone right in your browser. Dial on desktop, mobile and in Discord voice chat."
 />
 
-<div class="{$config.cfg_window_mode || 'mx-auto sm:px-2.5 my-[18px] max-w-[1200px] max-sm:m-2'} ">
-	<div
-		class="
-			flex gap-4 flex-col max-sm:p-3 transition-colors duration-75 bg-none
-			border-black dark:border-white border-opacity-30 dark:border-opacity-30
-			{$config.cfg_window_mode ? 'p-3 bg-transparent' : 'p-4 rounded-2xl bg-base-100 shadow-md dark:shadow-none'} 
-			"
-	>
-		<noscript>
-			<div class="font-medium text-center">
-				DisPhone requires JavaScript to function. Please enable it then refresh this page.
-			</div>
-		</noscript>
-		{#if browser}<slot />{/if}
+{#if browser}<slot />{/if}
+
+<noscript>
+	<div class="font-medium text-center m-4">
+		DisPhone requires JavaScript to function. Please enable it then refresh this page.
 	</div>
-	{#if !$config.cfg_window_mode}
-		<div class="flex justify-between flex-wrap gap-x-3 gap-y-1 text-sm mx-4 my-1 mt-2">
-			<span class="font-bold flex gap-1">
-				<a
-					target="_blank"
-					class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
-					title="Looking to get started? Start here!"
-					href="http://wiki.disphone.com"
-				>
-					Wiki
-				</a>
-				<span class="opacity-70"> • </span>
-				<a
-					target="_blank"
-					class="opacity-70 hover:opacity-100 hover:text-yellow-500 transition"
-					title="Your support is appreciated & motivates further development."
-					href="http://donate.disphone.com"
-				>
-					Donate
-				</a>
-				<span class="opacity-70"> • </span>
-				<a
-					target="_blank"
-					class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
-					href="https://github.com/ThatRex/DisPhone.com/"
-				>
-					GitHub
-				</a>
-				<span class="opacity-70"> • </span>
-				<a
-					target="_blank"
-					class="opacity-70 hover:opacity-100 hover:text-emerald-500 transition"
-					href="http://status.disphone.com"
-				>
-					Status
-				</a>
-			</span>
-			<span class="font-semibold">
-				<a
-					target="_blank"
-					class="opacity-70 hover:opacity-100 hover:text-lime-500 transition"
-					href="https://github.com/ThatRex/DisPhone.com/blob/master/CHANGELOG.md"
-				>
-					v{version}
-				</a>
-				<span class="opacity-70"> • Proudly brought to you by </span>
-				<a
-					target="_blank"
-					class="opacity-70 hover:opacity-100 hover:text-amber-500 transition"
-					href="http://rexslab.com"
-				>
-					RexsLab.com</a
-				><span class="opacity-70">.</span>
-			</span>
-		</div>
-	{/if}
-</div>
+</noscript>

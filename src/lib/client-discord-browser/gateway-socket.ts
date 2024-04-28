@@ -16,7 +16,8 @@ import {
 	type GatewayPresenceUpdateData,
 	PresenceUpdateStatus,
 	GatewayDispatchEvents,
-	GatewayCloseCodes
+	GatewayCloseCodes,
+	type GatewaySendPayload
 } from 'discord-api-types/v10'
 import { wait } from '$lib/utils'
 
@@ -60,7 +61,7 @@ export class GatewaySocket extends EventEmitter {
 
 	private connection_data: {
 		token: string
-		initial_gateway_url?: string
+		initial_gateway_url: string
 		resume_gateway_url?: string
 		max_resume_attempts: number
 		session_id?: string
@@ -69,6 +70,7 @@ export class GatewaySocket extends EventEmitter {
 	} = {
 		token: '',
 		max_resume_attempts: 3,
+		initial_gateway_url: 'gateway.discord.gg',
 		intents: 0,
 		properties: {
 			os: 'linux',
@@ -84,11 +86,12 @@ export class GatewaySocket extends EventEmitter {
 		afk: false
 	}
 
-	private _identity: {
-		id?: string
-		username?: string
-		discriminator?: string
-	} = {}
+	private _identity?: {
+		id: string
+		username: string
+		discriminator: string
+		user_bot: boolean
+	} = undefined
 
 	public get session_id() {
 		return this.connection_data.session_id
@@ -106,15 +109,25 @@ export class GatewaySocket extends EventEmitter {
 		properties?: GatewayIdentifyProperties
 		presence?: GatewayPresenceUpdateData
 		max_resume_attempts?: number
+		initial_gateway_url?: string
 		debug?: boolean
 	}) {
 		super()
-		const { token, intents, properties, presence, max_resume_attempts, debug } = params
+		const {
+			token,
+			intents,
+			properties,
+			presence,
+			max_resume_attempts,
+			initial_gateway_url,
+			debug
+		} = params
 
 		this.debug = !debug ? undefined : (...args) => console.debug('[Gateway Socket]', ...args)
 
 		this.connection_data.token = token
 		this.connection_data.intents = intents
+		if (initial_gateway_url) this.connection_data.initial_gateway_url = initial_gateway_url
 		if (max_resume_attempts) this.connection_data.max_resume_attempts = max_resume_attempts
 		if (properties) this.connection_data.properties = properties
 		if (presence) this.inital_presence = presence
@@ -132,7 +145,7 @@ export class GatewaySocket extends EventEmitter {
 		}
 
 		this.emit('state', SocketState.INITIALISING)
-		this.openSocket(`wss://gateway.discord.gg/?v=10&encoding=json`)
+		this.openSocket(`wss://${this.connection_data.initial_gateway_url}/?v=10&encoding=json`)
 	}
 
 	private openSocket(address: string) {
@@ -196,7 +209,7 @@ export class GatewaySocket extends EventEmitter {
 		}
 	}
 
-	public sendPacket(packet: { op: number; d: any; [key: string]: any }) {
+	public sendPacket(packet: GatewaySendPayload) {
 		if (this.ws.readyState !== WebSocket.OPEN) {
 			throw new GatewaySocketNotReadyError('Unable to send packet.')
 		}
@@ -252,12 +265,12 @@ export class GatewaySocket extends EventEmitter {
 				const {
 					resume_gateway_url,
 					session_id,
-					user: { id, username, discriminator }
+					user: { id, username, discriminator, bot }
 				} = packet.d
 
 				this.connection_data.resume_gateway_url = resume_gateway_url
 				this.connection_data.session_id = session_id
-				this._identity = { id, username, discriminator }
+				this._identity = { id, username, discriminator, user_bot: !bot }
 
 				this.indentified = true
 				this.emit('state', SocketState.READY)
