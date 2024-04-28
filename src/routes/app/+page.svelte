@@ -312,7 +312,6 @@
 	$: speaking = bot_sounds_playing_count > 0 || (!$config.muted_out && !!$call_ids_connected.length)
 	$: if (speaking) bot.update({ speaking: true })
 	else setTimeout(() => speaking || bot.update({ speaking: false }), 125)
-
 	$: calls_connected = !!$call_ids_connected.length
 	$: bot.setPresence({
 		status:
@@ -527,7 +526,7 @@
 					}}
 					icon={IconRecordMail}
 					color={vm_qty ? 'red' : 'mono'}
-					disabled={!vm_dest}
+					disabled={!$config.cfg_sip_profiles[0].voicemail_number && !vm_dest}
 				/>
 			</div>
 

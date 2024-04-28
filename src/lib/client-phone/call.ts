@@ -68,7 +68,7 @@ class Call extends EventEmitter {
 	private readonly sequence: readonly string[]
 
 	private get destination() {
-		const dest = this.uri.toRaw().replace('sip:', '').replace(`@${this.profile.server}`, '')
+		const dest = this.uri.user || this.uri.toRaw().replace('sip:', '')
 		const seq = Array.from(this.sequence)
 		const seq_uri_idx = seq.indexOf('DEST')
 		seq[seq_uri_idx] = dest.replaceAll('%23', '#')
@@ -109,6 +109,7 @@ class Call extends EventEmitter {
 	}
 
 	private sessionStateListener = (state: SessionState) => {
+		this.debug?.('Session State Update:', state)
 		switch (state) {
 			case SessionState.Establishing: {
 				const identity = this.session.assertedIdentity?.friendlyName
@@ -220,7 +221,10 @@ class Call extends EventEmitter {
 		super()
 		this.debug = params.debug ? (...args) => console.debug(`[Call ${this.id}]`, ...args) : undefined
 
-		this.on('detail', (d) => (this.detail = d))
+		this.on('detail', (d) => {
+			this.debug?.('Call Detail Update:', d)
+			this.detail = d
+		})
 
 		this.profile = params.profile
 		this.ac = params.profile.ac
@@ -277,10 +281,12 @@ class Call extends EventEmitter {
 		if (this.detail.type === 'INBOUND') return
 		if (this.detail.progress === 'DISCONNECTED') return
 
+		const next = () => this.updateState({ next_sequence_idx: this.detail.next_sequence_idx + 1 })
+
 		const item = this.sequence[this.detail.next_sequence_idx]
 		if (!item) return
 
-		const next = () => this.updateState({ next_sequence_idx: this.detail.next_sequence_idx + 1 })
+		this.debug?.('Sequence Item:', item)
 
 		switch (item) {
 			case 'DEST': {
@@ -313,12 +319,14 @@ class Call extends EventEmitter {
 	public async answer() {
 		if (this.detail.type !== 'INBOUND') return
 		if (this.detail.progress !== 'CONNECTING') return
+		this.debug?.('Answer')
 		const session_in = this.session as Invitation
 		await session_in.accept()
 	}
 
 	private async invite() {
 		if (this.profile.ua.state === UserAgentState.Stopped) return
+		this.debug?.('Invite')
 
 		const sessionDescriptionHandlerOptions: Web.SessionDescriptionHandlerOptions = {
 			constraints: { audio: true }
@@ -343,6 +351,7 @@ class Call extends EventEmitter {
 
 	public init() {
 		if (this.detail.progress !== 'INITIAL') return
+		this.debug?.('Initiating')
 		switch (this.detail.type) {
 			case 'INBOUND': {
 				const identity = this.session.assertedIdentity?.friendlyName
@@ -358,6 +367,7 @@ class Call extends EventEmitter {
 
 	public sendDTMF(value: string) {
 		const key = value.replace(/[^0-9A-D#*]/g, '')
+		this.debug?.('Sending DTMF:', key)
 		const sent = this.session.sessionDescriptionHandler?.sendDtmf(key, {
 			duration: 150,
 			interToneGap: 0
@@ -403,6 +413,7 @@ class Call extends EventEmitter {
 	public async transfer(destination: string) {
 		const uri = makeURI(destination, this.profile.server)
 		if (!uri) return
+		this.debug?.('Transfer:', uri.toString())
 		if (this.detail.progress === 'CONNECTING' && this.detail.type === 'INBOUND') {
 			this.setDeaf(true)
 			this.setMute(true)
@@ -415,6 +426,7 @@ class Call extends EventEmitter {
 	}
 
 	public async hangup(hard = false) {
+		this.debug?.('Hangup')
 		this.updateState({ next_sequence_idx: 0 })
 
 		if (hard || this.detail.progress === 'WAITING') {

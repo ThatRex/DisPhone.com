@@ -71,7 +71,7 @@
 
 		const input = document.getElementById('dial-input') as HTMLInputElement
 
-		let selection_start = input.selectionStart !== null ? input.selectionStart : 0
+		let selection_start = input.selectionStart ?? 0
 		let selection_end = input.selectionEnd || $dial_string.length
 
 		if (backspace) selection_start = selection_end - 1
@@ -171,7 +171,7 @@
 
 					call()
 				}}
-				tip="Call"
+				tip={$call_ids_answerable.length ? 'Answer' : 'Call'}
 				icon={IconPhone}
 				color="green"
 				disabled={!$dial_string && !$call_ids_answerable.length}

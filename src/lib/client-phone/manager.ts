@@ -280,7 +280,6 @@ export class Manager extends EventEmitter {
 	public sendDTMF(params: { ids?: string[]; dtmf: string }) {
 		for (const call of this.calls) {
 			if (!!params.ids && !params.ids.includes(call.id)) continue
-			console.debug('sending dtmf', call.id, params.ids)
 			call.sendDTMF(params.dtmf)
 		}
 	}

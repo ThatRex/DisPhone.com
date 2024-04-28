@@ -229,7 +229,7 @@ class BotButtonClient extends EventEmitter {
 
 	public update(params: { speaking?: boolean; self_mute?: boolean; self_deaf?: boolean }) {
 		const { speaking, self_deaf, self_mute } = params
-		this.speaking = speaking !== undefined ? speaking : this.self_mute
+		this.speaking = speaking !== undefined ? speaking : this.speaking
 		this.self_deaf = self_deaf !== undefined ? self_deaf : this.self_deaf
 		this.self_mute = self_mute !== undefined ? self_mute : this.self_mute
 		this.voice?.update(params)
