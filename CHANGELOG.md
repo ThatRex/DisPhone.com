@@ -1,3 +1,12 @@
+# 0.9.7 [30-04-2024]
+
+## Changes
+
+- fixed: page not loading for users with no previous config
+- changed: improved call keyboard navigation 
+- changed: improved accessibility
+- other minor changes
+
 # 0.9.6 [29-04-2024]
 
 ## Changes

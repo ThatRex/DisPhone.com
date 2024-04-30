@@ -63,7 +63,7 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 			const url = sounds[key]
 
 			try {
-				const response = await fetch(url)
+				const response = await fetch(url, { cache: 'no-cache' })
 				const array_buffer = await response.arrayBuffer()
 				audio_buffer = await ac.decodeAudioData(array_buffer)
 			} catch {

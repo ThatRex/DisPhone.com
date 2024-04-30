@@ -8,6 +8,7 @@
 
 	export let value = 100
 	export let muted = false
+	export let level_label: string
 	export let tip: string | { on: string; off: string } = ''
 	export let icon: Component | { on: Component; off: Component }
 	export let color: ColorsBtn = 'mono'
@@ -60,6 +61,7 @@
 	>
 		<!-- svelte-ignore a11y-no-static-element-interactions -->
 		<span
+			aria-label="{level_label}"
 			use:melt={$thumbs[0]}
 			use:melt={$range}
 			on:keydown={(e) => !['Enter', ' '].includes(e.key) || (value = 100)}

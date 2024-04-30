@@ -60,7 +60,7 @@ const schema = z.object({
 		.catch([]),
 	// Discord Bot
 	bot_discord_debug_enabled: z.boolean().catch(dev),
-	bot_discord_autostart: z.boolean().catch(false),
+	bot_discord_autostart_enabled: z.boolean().catch(false),
 	bot_discord_follow_mode_enabled: z.boolean().catch(true),
 	bot_discord_selected_profile_id: z.string().optional().catch(undefined),
 	cfg_discord_profiles: z

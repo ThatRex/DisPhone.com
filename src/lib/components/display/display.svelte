@@ -9,8 +9,8 @@
 <Group bind:height={height_display}>
 	<div class="h-0">
 		<div class="flex flex-col grow gap-1 @container">
-			{#each $calls.filter((c) => !c.hidden) as call (call.id)}
-				<Call bind:call bind:height_display />
+			{#each $calls.filter((c) => !c.hidden) as call, index (call.id)}
+				<Call {index} bind:call bind:height_display />
 			{/each}
 		</div>
 	</div>

@@ -13,15 +13,11 @@
 	export let style: { default_text: string; icon: Componenet; classes: string }
 </script>
 
-<button
-	on:mouseup
-	on:click
-	type="button"
-	aria-pressed={call.selected}
+<div
 	class="
         min-w-[500px] grow
-        group flex items-center gap-x-2 pl-0.5 py-0.5 h-7 border-2 border-opacity-0
-        rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30
+        flex items-center gap-x-2 pl-0.5 py-0.5 h-7 border-2 border-opacity-0
+        rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30 group-focus:bg-opacity-30
 		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes}
         "
 >
@@ -63,4 +59,4 @@
 			<CallControls bind:call />
 		</button>
 	</div>
-</button>
+</div>

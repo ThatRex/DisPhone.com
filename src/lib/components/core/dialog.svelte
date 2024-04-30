@@ -4,6 +4,7 @@
 
 	export let open = false
 	export let closable = true
+	export let lebel: string
 	export let role: 'dialog' | 'alertdialog' = 'alertdialog'
 
 	const {
@@ -28,6 +29,7 @@
 			transition:fade={{ duration: 75 }}
 		/>
 		<div
+			aria-label={lebel}
 			class="
 				fixed left-[50%] top-[50%] z-50 max-h-[85vh] w-[90vw] translate-x-[-50%] translate-y-[-50%]
 				bg-base-100 max-w-[500px] rounded-xl p-2.5

@@ -24,6 +24,8 @@
 </script>
 
 <button
+	tabindex="-1"
+	aria-hidden="true"
 	class="flex w-full"
 	on:keydown={(e) => {
 		if (!['Enter', ' '].includes(e.key)) return
