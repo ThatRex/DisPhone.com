@@ -65,7 +65,7 @@
 				!call.destination ||
 				phone.dial({
 					input: call.destination,
-					profile_id: $config.cfg_sip_profiles[0]?.id
+					profile_id: $config.cfg_sip_profiles[0].id
 				})}
 		/>
 	{/if}

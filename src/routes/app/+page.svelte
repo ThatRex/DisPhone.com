@@ -429,7 +429,7 @@
 			})
 		}
 
-		if ($config.cfg_discord_profiles[0].bot_token && $config.bot_discord_autostart) {
+		if ($config.cfg_discord_profiles[0]?.bot_token && $config.bot_discord_autostart_enabled) {
 			bot.init({
 				token: $config.cfg_discord_profiles[0].bot_token,
 				debug: $config.bot_discord_debug_enabled
@@ -479,12 +479,13 @@
 
 	subscribeKey(config, 'muted_in', (v) => bot.update({ self_deaf: v }))
 	subscribeKey(config, 'muted_out', (v) => bot.update({ self_mute: v }))
-	subscribeKey(config, 'bot_discord_follow_mode_enabled', (v) =>
+	subscribeKey(config, 'bot_discord_follow_mode_enabled', (v) => {
+		if (!$config.cfg_discord_profiles[0]?.usr_user_id) return
 		bot.setFollowMode({ mode: v, user_id: $config.cfg_discord_profiles[0].usr_user_id })
-	)
+	})
 </script>
 
-<Dialog open={!!alert_dialog_issue} closable={false} role="alertdialog">
+<Dialog open={!!alert_dialog_issue} closable={false} lebel="Media Issue" role="alertdialog">
 	<div class="flex flex-col gap-6">
 		<span class="font-medium text-lg">
 			{#if alert_dialog_issue === 'webrtc'}
@@ -522,11 +523,11 @@
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"
 					on:trigger={() => {
 						const input = $config.cfg_sip_profiles[0].voicemail_number || vm_dest
-						phone.dial({ profile_id: $config.cfg_sip_profiles[0].id, input })
+						phone.dial({ profile_id: $config.cfg_sip_profiles[0]?.id, input })
 					}}
 					icon={IconRecordMail}
 					color={vm_qty ? 'red' : 'mono'}
-					disabled={!$config.cfg_sip_profiles[0].voicemail_number && !vm_dest}
+					disabled={!$config.cfg_sip_profiles[0]?.voicemail_number && !vm_dest}
 				/>
 			</div>
 
@@ -606,6 +607,7 @@
 						<Level
 							bind:muted={$config.muted_in}
 							bind:value={$config.level_in}
+							level_label="Level In"
 							tip={{ on: 'Undeafen', off: 'Deafen' }}
 							icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
 							color="blue"
@@ -615,6 +617,7 @@
 						<Level
 							bind:muted={$config.muted_out}
 							bind:value={$config.level_out}
+							level_label="Level Out"
 							tip={{ on: 'Unmute', off: 'Mute' }}
 							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
 							color="blue"
@@ -625,6 +628,7 @@
 						<Level
 							bind:muted={$config.muted_in}
 							bind:value={$config.level_in}
+							level_label="Level In"
 							tip={{ on: 'Unmute', off: 'Mute' }}
 							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
 						/>
@@ -633,6 +637,7 @@
 						<Level
 							bind:muted={$config.muted_out}
 							bind:value={$config.level_out}
+							level_label="Level Out"
 							tip={{ on: 'Undeafen', off: 'Deafen' }}
 							icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
 						/>

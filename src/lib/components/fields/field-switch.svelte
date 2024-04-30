@@ -21,6 +21,7 @@
 <form class="flex">
 	<label class="flex items-center gap-2 mt-1">
 		<button
+			aria-label={label}
 			use:melt={$root}
 			class="
 				border-2 transition duration-75 rounded-md p-1 !bg-opacity-10

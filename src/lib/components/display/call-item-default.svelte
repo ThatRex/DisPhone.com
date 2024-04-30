@@ -8,16 +8,13 @@
 	export let style: { default_text: string; icon: Componenet; classes: string }
 </script>
 
-<button
-	on:mouseup
-	on:click
-	type="button"
-	aria-pressed={call.selected}
+<div
 	class="
 		{$config.dialpad_enabled && $config.dialpad_extended ? 'h-[60px]' : 'h-[56px]'} max-sm:h-[56px]
 		min-w-[200px] flex flex-col grow gap-0.5 px-0.5 border-2 border-opacity-0
         rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30
-		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes}
+		group-focus:bg-opacity-30
+		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes} 
         "
 >
 	<div
@@ -42,4 +39,4 @@
 		</div>
 		<CallControls bind:call />
 	</div>
-</button>
+</div>

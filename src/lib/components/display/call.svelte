@@ -12,6 +12,7 @@
 	import CallItemDefault from './call-item-default.svelte'
 	import CallItemSlim from './call-item-slim.svelte'
 
+	export let index: number
 	export let call: CallItem
 	export let height_display: number
 
@@ -78,7 +79,7 @@
 	})
 
 	$: height_call_compact = ($config.dialpad_enabled && $config.dialpad_extended ? 60 : 56) + 4
-	$: always_compact = height_display >= height_call_compact * $calls.length + 4
+	$: not_slim = height_display >= height_call_compact * $calls.length + 4
 
 	const handleMouseUp = (e: MouseEvent) => e.button !== 1 || (call.selected = !call.selected)
 	const handleClick = (e: MouseEvent) => {
@@ -91,20 +92,56 @@
 			})
 		}
 	}
+	const handleKeydown = ({ key, shiftKey }: KeyboardEvent) => {
+		switch (true) {
+			case key === 'ArrowUp' || key === 'ArrowDown': {
+				const direction = key === 'ArrowUp' ? 'up' : 'down'
+				const next_idx = direction === 'up' ? index - 1 : index + 1
+				const next_call = $calls[next_idx]
+
+				if (next_call && shiftKey) {
+					next_call.selected = true
+					$calls = $calls
+				}
+
+				if (!shiftKey) {
+					$calls = $calls.map((c) => {
+						c.selected = c.id === (next_call?.id || call.id)
+						return c
+					})
+				}
+
+				document.getElementById(`call-item-${next_call?.id || call.id}`)?.focus()
+				break
+			}
+
+			case key === 'a': {
+				$calls = $calls.map((c) => {
+					c.selected = true
+					return c
+				})
+				break
+			}
+		}
+	}
 </script>
 
-<div class="flex {always_compact ? 'hidden' : 'call-slim'}">
-	<CallItemSlim on:click={handleClick} on:mouseup={handleMouseUp} bind:call bind:time bind:style />
-</div>
-<div class="flex {always_compact ? '' : 'call-default'} ">
-	<CallItemDefault
-		on:click={handleClick}
-		on:mouseup={handleMouseUp}
-		bind:call
-		bind:time
-		bind:style
-	/>
-</div>
+<button
+	class="group ring-0 outline-none"
+	type="button"
+	aria-pressed={call.selected}
+	id="call-item-{call.id}"
+	on:click={handleClick}
+	on:mouseup={handleMouseUp}
+	on:keydown={handleKeydown}
+>
+	<div class="flex {not_slim ? 'hidden' : 'call-slim'}">
+		<CallItemSlim bind:call bind:time bind:style />
+	</div>
+	<div class="flex {not_slim ? '' : 'call-default'} ">
+		<CallItemDefault bind:call bind:time bind:style />
+	</div>
+</button>
 
 <style>
 	@container (width <= 520px) {
