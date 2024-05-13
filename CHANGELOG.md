@@ -1,9 +1,23 @@
+# 0.9.8 [13-05-2024]
+
+_the updated mobile experience is here_
+
+## Changes
+
+- added: bot text status field
+- fixed: discord dialing now works on chrome mobile
+- changed: new lines replaced with ampersand when dropping text
+- changed: improved haptics
+- changed: revamped secondary panel
+- removed: non window mode
+- other minor changes
+
 # 0.9.7 [30-04-2024]
 
 ## Changes
 
 - fixed: page not loading for users with no previous config
-- changed: improved call keyboard navigation 
+- changed: improved call keyboard navigation
 - changed: improved accessibility
 - other minor changes
 

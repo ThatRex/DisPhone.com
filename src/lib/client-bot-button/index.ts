@@ -212,7 +212,7 @@ class BotButtonClient extends EventEmitter {
 
 	public setPresence(params: VoiceBotButtonPresence) {
 		const { status, text } = params
-		const activities = !text ? [] : [{ name: '', type: ActivityType.Custom, state: text }]
+		const activities = !text ? [] : [{ name: 'disphone', state: text, type: ActivityType.Custom }]
 		this.bot_presence = { since: 0, afk: false, status, activities }
 		if (this.bot?.state !== 'READY') return
 		this.bot?.setPresence(this.bot_presence)

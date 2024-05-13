@@ -6,6 +6,9 @@ module.exports = {
 			colors: {
 				bg: 'var(--color-bg)',
 				'base-100': 'var(--color-base-100)'
+			},
+			screens: {
+				xs: '440px'
 			}
 		}
 	},
