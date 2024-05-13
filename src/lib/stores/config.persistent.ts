@@ -18,17 +18,13 @@ const schema = z.object({
 	muted_out: z.boolean().catch(false),
 	// Secondary Panel
 	secondary_panel_enabled: z.boolean().catch(true),
-	secondary_panel_tab_root: z.string().catch('config'),
-	secondary_panel_tab_config: z.string().catch('phone'),
+	secondary_panel_tab: z.string().catch('about'),
 	hidden_settings_enabled: z.boolean().catch(false),
 	auto_record_enabled: z.boolean().catch(false),
-	// Interface
-	window_mode_enabled: z.boolean().catch(false),
 	// Accessibility
 	haptics_disabled: z.boolean().catch(false),
 	simulate_dtmf: z.boolean().catch(true),
 	mute_on_deafen: z.boolean().catch(true),
-	// Dialpad
 	dialpad_enabled: z.boolean().catch(true),
 	dialpad_extended: z.boolean().catch(false),
 	dialpad_numeric: z.boolean().catch(false),
@@ -53,11 +49,22 @@ const schema = z.object({
 			ws_server: z.string().optional(),
 			stun_server: z.string().optional(),
 			voicemail_number: z.string().optional(),
-			simultaneous_call_limit: z.number().catch(0),
+			simultaneous_call_limit: z.number().optional().catch(0),
 			register: z.boolean().catch(true)
 		})
 		.array()
-		.catch([]),
+		.nonempty()
+		.catch([
+			{
+				id: 'default',
+				username: '',
+				login: '',
+				password: '',
+				sip_server: '',
+				voicemail_number: '',
+				register: true
+			}
+		]),
 	// Discord Bot
 	bot_discord_debug_enabled: z.boolean().catch(dev),
 	bot_discord_autostart_enabled: z.boolean().catch(false),
@@ -73,12 +80,21 @@ const schema = z.object({
 			bot_status_mode: z
 				.enum(['DYNAMIC', 'ONLINE', 'IDLE', 'DND', 'INVISIBLE'])
 				.optional()
-				.default('DYNAMIC'),
+				.catch('DYNAMIC'),
 			bot_gateway: z.string().optional(),
 			webhook: z.string().url().optional()
 		})
 		.array()
-		.catch([]),
+		.nonempty()
+		.catch([
+			{
+				id: 'default',
+				usr_user_id: '',
+				bot_token: '',
+				bot_status_mode: 'DYNAMIC',
+				bot_status_text: ''
+			}
+		]),
 	// Sounds
 	sound_browser_ring_in: z.string().catch('/sounds/ring-in.mp3'),
 	sound_browser_ring_out: z.string().catch('/sounds/ring-out.mp3'),
@@ -97,7 +113,7 @@ const schema = z.object({
 	sound_bot_level_ring_in: z.number().catch(50),
 	sound_bot_level_ring_out: z.number().catch(50),
 	sound_conf_connected: z.string().catch('/sounds/connected.mp3'),
-	sound_conf_disconnected: z.string().catch('/sounds/disconnected.mp3'),
+	sound_conf_disconnected: z.string().catch('/sounds/disconnected.mp3')
 })
 
 export const config = persisted('config', schema.parse({}))

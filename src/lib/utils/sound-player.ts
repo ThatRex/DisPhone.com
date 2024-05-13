@@ -1,3 +1,5 @@
+import { noop } from '.'
+
 class SoundPlayer<T extends Record<string, AudioBuffer>> {
 	private readonly ac: AudioContext
 	private readonly dst: MediaStreamAudioDestinationNode
@@ -19,7 +21,7 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 		this.audio_buffers = audio_buffers
 	}
 
-	public async play(params: {
+	public play(params: {
 		name: keyof T
 		volume?: number
 		loop?: boolean
@@ -32,15 +34,18 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 		gain.gain.value = (volume ?? 100) / 100
 		gain.connect(this.dst)
 
-		const stop = () => {
-			gain.disconnect()
-			onended?.()
-		}
-
 		const buffer = this.audio_buffers[name]
 		if (!buffer) throw Error('Sound not loaded.')
 
 		const buffer_source = this.ac.createBufferSource()
+
+		const stop = () => {
+			buffer_source.onended = noop
+			buffer_source.stop()
+			gain.disconnect()
+			onended?.()
+		}
+
 		buffer_source.buffer = buffer
 		buffer_source.loop = loop ?? false
 		buffer_source.onended = stop

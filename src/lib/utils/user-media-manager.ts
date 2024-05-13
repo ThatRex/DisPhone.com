@@ -6,6 +6,7 @@ class UserMediaManager {
 	private readonly gin: GainNode
 	public readonly src: MediaStreamAudioSourceNode
 	private stream?: MediaStream
+	private gettig_media = false
 
 	set gain(gain: number) {
 		this.gin.gain.value = gain / 100
@@ -20,14 +21,19 @@ class UserMediaManager {
 	}
 
 	public async start() {
+		if (this.gettig_media) return false
 		if (this.stream) return true
 		if (!navigator.mediaDevices) new Error('Media devices not available in insecure contexts.')
+
+		this.gettig_media = true
 
 		try {
 			this.stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 		} catch {
 			noop()
 		}
+
+		this.gettig_media = false
 
 		if (!this.stream) return false
 		this.ac.createMediaStreamSource(this.stream).connect(this.gin)

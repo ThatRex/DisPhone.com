@@ -2,7 +2,7 @@
 	import '../app.css'
 	import { browser, dev } from '$app/environment'
 	import { inject } from '@vercel/analytics'
-	import Meta from '$lib/components/core/meta.svelte'
+	import Meta from '$lib/components/meta.svelte'
 
 	inject({ mode: dev ? 'development' : 'production' })
 </script>
