@@ -10,7 +10,7 @@
 		IconVolume
 	} from '@tabler/icons-svelte'
 	import { slide } from 'svelte/transition'
-	import Categories from './setting-categories'
+	import Category from './setting-categories'
 
 	const {
 		elements: { content, item, trigger, root },
@@ -22,47 +22,46 @@
 			id: 'phone',
 			title: 'Softphone',
 			icon: IconPhone,
-			component: Categories.Phone
+			component: Category.Phone
 		},
 		{
 			id: 'bot',
 			title: 'Discord Bot',
 			icon: IconBrandDiscord,
-			component: Categories.Bot
+			component: Category.Bot
 		},
 		{
 			id: 'sound',
 			title: 'Sounds',
 			icon: IconVolume,
-			component: Categories.Sound
+			component: Category.Sound
 		},
 		{
 			id: 'accessibility',
 			title: 'Accessibility',
 			icon: IconAccessible,
-			component: Categories.Accessibility
+			component: Category.Accessibility
 		},
 		{
 			id: 'hidden',
 			title: 'Hidden Features',
 			icon: IconEye,
-			component: Categories.Hidden
+			component: Category.Hidden
 		},
 		{
 			id: 'developer',
 			title: 'Developer',
 			icon: IconTool,
-			component: Categories.Developer
+			component: Category.Developer
 		}
 	]
 </script>
 
-<div {...$root} class="h-full flex flex-col max-xs:justify-end mx-auto max-w-5xl">
+<div {...$root} class="h-full flex flex-col max-xs:justify-end">
 	{#each items as { id, title, icon, component }, i}
 		<div
 			use:melt={$item(id)}
 			class="
-				overflow-hidden transition-colors duration-75
 				{id === 'hidden' && !$config.hidden_settings_enabled && 'hidden'} 
 				"
 		>
@@ -71,20 +70,24 @@
 					use:melt={$trigger(id)}
 					on:pointerdown={() => navigator.vibrate?.(6)}
 					class="
-						flex flex-1 cursor-pointer items-center gap-2.5
-						py-4 px-2 font-bold leading-none focus:!ring-0
+					
+						flex-1 cursor-pointer py-4 px-4 font-bold leading-none focus:!ring-0
 						{i !== 0 && 'border-t border-black dark:border-white !border-opacity-30'}
-						{i === 0 && 'pt-2'}
-						{i === items.length - 1 && 'pb-2'}
 						"
 				>
-					<svelte:component this={icon} size={20} />
-					{title}
+					<div class="flex items-center gap-2.5 mx-auto max-w-5xl">
+						<svelte:component this={icon} size={20} />
+						{title}
+					</div>
 				</button>
 			</h2>
 			{#if $isSelected(id)}
-				<div class="overflow-hidden" use:melt={$content(id)} transition:slide>
-					<div class="mx-2.5 mb-7 mt-3 flex flex-col gap-3">
+				<div
+					class="overflow-hidden px-[18px]"
+					use:melt={$content(id)}
+					transition:slide={{ duration: 250 }}
+				>
+					<div class="mb-6 mt-3 flex flex-col gap-3 mx-auto max-w-5xl">
 						<svelte:component this={component}></svelte:component>
 					</div>
 				</div>

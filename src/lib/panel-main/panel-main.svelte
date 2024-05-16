@@ -173,7 +173,7 @@
 			case 'disconnected':
 			case 'auto_answered': {
 				const name = sound === 'auto_answered' ? 'connected' : sound
-				if ($config.conference_play_sounds) await player_conf.play({ name })
+				if ($config.conference_play_sounds) player_conf.play({ name })
 			}
 			default: {
 				player_browser.play({ name: sound })
@@ -366,28 +366,14 @@
 			return false
 		}
 
+		await ac.resume()
 		await audio_browser.play()
-		if (ac.state === 'suspended') await ac.resume()
 
 		alert_dialog_issue = undefined
 		return true
 	}
 
-	async function init() {
-		if (initiated) return
-
-		console.info('Initiating')
-
-		alert_dialog_issue = undefined
-
-		if (!window.RTCPeerConnection) {
-			alert_dialog_issue = 'webrtc'
-			return
-		}
-
-		const got_media = await getMedia()
-		if (!got_media) return
-
+	async function loadSounds() {
 		console.info('Loading Sounds')
 
 		const loaded_sounds_browser = await SoundPlayer.load({
@@ -416,11 +402,29 @@
 		player_browser.loadSounds(loaded_sounds_browser)
 		player_bot.loadSounds(loaded_sounds_bot)
 		player_conf.loadSounds(loaded_sounds_conf)
+	}
+
+	async function init() {
+		if (initiated) return
+
+		console.info('Initiating')
+
+		alert_dialog_issue = undefined
+
+		if (!window.RTCPeerConnection) {
+			alert_dialog_issue = 'webrtc'
+			return
+		}
+
+		const got_media = await getMedia()
+		if (!got_media) return
+
+		loadSounds()
 
 		const profile = $config.cfg_sip_profiles[0]
 
 		if (profile) {
-			await phone.addProfile({
+			phone.addProfile({
 				id: profile.id,
 				sip_server: profile.sip_server,
 				username: profile.username,
@@ -511,7 +515,7 @@
 <section
 	class="
 		flex flex-col max-xs:flex-col-reverse basis-full
-		max-xs:h-svh xs:max-h-[576px] max-xs:min-h-[438px]
+		max-xs:h-svh xs:max-h-[576px] max-xs:min-h-[360px]
 		p-3 gap-y-4 snap-start scroll-mt-3
 		"
 >
@@ -595,7 +599,7 @@
 		<DialPanel />
 	</div>
 
-	<div class="flex grow gap-2 h-[166.5px]">
+	<div class="flex grow gap-2 h-[166px]">
 		<Display />
 		{#if $config.dialpad_enabled}
 			<Dialpad />

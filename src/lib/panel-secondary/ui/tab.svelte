@@ -4,7 +4,7 @@
 	import { ColorsBtn } from '../../components/colors'
 
 	export let tip: string = ''
-	export let icon: Component 
+	export let icon: Component
 	export let value = false
 
 	const {
@@ -20,6 +20,7 @@
 </script>
 
 <div
+	on:pointerdown={() => navigator.vibrate?.(6)}
 	use:melt={$trigger}
 	class="
 		w-9 h-9 border-2 rounded-md cursor-pointer

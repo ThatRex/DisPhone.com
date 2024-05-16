@@ -15,16 +15,13 @@
 	})
 
 	const sync = createSync(states)
-	$: sync.value($config.secondary_panel_tab, (v) => {
-		if ($config.secondary_panel_tab !== v) navigator.vibrate?.(6)
-		$config.secondary_panel_tab = v
-	})
+	$: sync.value($config.secondary_panel_tab, (v) => ($config.secondary_panel_tab = v))
 
 	const triggers = [
-		{ id: 'logs', title: 'Logs', icon: IconBook2, tab: Tab.Logs },
-		{ id: 'contacts', title: 'Contacts', icon: IconUsers, tab: Tab.Contacts },
-		{ id: 'settings', title: 'Settings', icon: IconSettings2, tab: Tab.Settings },
-		{ id: 'about', title: 'About', icon: IconInfoCircle, tab: Tab.About }
+		{ id: 'logs', title: 'Logs', icon: IconBook2, tab: Tab.Logs, padding: true },
+		{ id: 'contacts', title: 'Contacts', icon: IconUsers, tab: Tab.Contacts, padding: true },
+		{ id: 'settings', title: 'Settings', icon: IconSettings2, tab: Tab.Settings, padding: false },
+		{ id: 'about', title: 'About', icon: IconInfoCircle, tab: Tab.About, padding: true }
 	]
 </script>
 
@@ -59,12 +56,12 @@
 	<!-- Content -->
 	<div
 		class="
-			w-0 flex grow rounded-md p-2.5 mr-3 my-3
+			w-0 flex grow rounded-md mr-3 my-3
 			border border-black dark:border-white !border-opacity-30
 			"
 	>
-		{#each triggers as { id, tab }}
-			<div use:melt={$content(id)} class="flex-1">
+		{#each triggers as { id, tab, padding }}
+			<div use:melt={$content(id)} class="flex-1 {padding && 'p-2.5'}">
 				<svelte:component this={tab}></svelte:component>
 			</div>
 		{/each}

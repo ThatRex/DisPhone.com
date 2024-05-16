@@ -22,6 +22,7 @@
 
 <button
 	use:melt={$trigger}
+	on:pointerdown={() => navigator.vibrate?.(6)}
 	on:keydown={(e) => {
 		e.stopPropagation()
 		disabled || ![' ', 'Enter'].includes(e.key) || dispatch('trigger')
@@ -30,7 +31,6 @@
 		if (disabled) return
 		if (e.button !== 0) return
 		dispatch('trigger')
-		navigator.vibrate?.(6)
 	}}
 	on:click={(e) => e.stopPropagation()}
 	{disabled}
