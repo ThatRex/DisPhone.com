@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PhoneClient from '$lib/client-phone'
 	import { config } from '$lib/stores/config.persistent'
-	import { createSelect, melt } from '@melt-ui/svelte'
+	import { createSelect, melt, type SelectOption } from '@melt-ui/svelte'
 	import {
 		IconChevronDown,
 		IconChevronUp,
@@ -59,7 +59,7 @@
 	open.subscribe(() => navigator.vibrate?.(6))
 
 	// i chose this jank to keep the list keyboard navigable
-	let last_selected_value: any // the ListboxOption type is not exposed
+	let last_selected_value: SelectOption<string> | undefined
 	selected.subscribe((v) => {
 		if (v?.value === '__add_new__') {
 			selected.set(last_selected_value)
@@ -82,8 +82,10 @@
 		hover:border-neutral-500/80 dark:hover:border-white/80
 		"
 >
-	<div class="flex font-medium overflow-hidden whitespace-nowrap overflow-ellipsis w-0 grow justify-start">
-		{$config.cfg_sip_profiles[0]?.username}@{$config.cfg_sip_profiles[0]?.sip_server}
+	<div
+		class="flex font-medium overflow-hidden whitespace-nowrap overflow-ellipsis w-0 grow justify-start"
+	>
+		{$config.sip_profiles[0]?.username}@{$config.sip_profiles[0]?.sip_server}
 	</div>
 	<div class="flex items-center gap-x-4 justify-end">
 		<div class="max-sm:hidden font-semibold capitalize">{state.toLowerCase()}</div>

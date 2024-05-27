@@ -39,11 +39,8 @@ export class Manager extends EventEmitter {
 	private profiles: Profile[] = []
 	private calls: Call[] = []
 
-	private transmitting_call_ids: string[] = []
-	private conferenced_call_ids: string[] = []
-
-	private processing_transmit = false
 	private processing_conference = false
+	private conferenced_call_ids: string[] = []
 
 	constructor(params: { ac: AudioContext; debug?: boolean }) {
 		super()
@@ -134,30 +131,6 @@ export class Manager extends EventEmitter {
 	Manager
 	*/
 
-	/** Set which call audio is transmitted to and from. */
-	public transmit(params: { ids?: string[] }) {
-		if (this.processing_transmit) return
-		this.processing_transmit = true
-
-		const transmitting_call_ids: string[] = []
-
-		for (const call of this.calls) {
-			if (this.transmitting_call_ids.includes(call.id)) {
-				call.src.disconnect(this.dst_o)
-				this.src_i.disconnect(call.dst)
-			}
-
-			if (!!params.ids && !params.ids.includes(call.id)) continue
-
-			call.src.connect(this.dst_o)
-			this.src_i.connect(call.dst)
-			transmitting_call_ids.push(call.id)
-		}
-
-		this.transmitting_call_ids = transmitting_call_ids
-		this.processing_transmit = false
-	}
-
 	/** Provide 1 or more IDs to conference. Provide none to unconference all. */
 	public conference(params: { ids: string[] }) {
 		if (this.processing_conference) return
@@ -211,16 +184,12 @@ export class Manager extends EventEmitter {
 		sip_server: string
 		ws_server?: string
 		register?: boolean
+		early_media?: boolean
 	}) {
 		const profile = new Profile({
 			ac: this.ac,
-			id: params.id,
-			username: params.username,
-			login: params.login,
-			password: params.password,
-			sip_server: params.sip_server,
-			ws_server: params.ws_server,
-			debug: !!this.debug
+			debug: !!this.debug,
+			...params
 		})
 
 		profile.on('detail', (d) => this.emit('profile-update', { id: params.id, ...d }))
@@ -239,7 +208,7 @@ export class Manager extends EventEmitter {
 			call.init()
 		})
 
-		await profile.start(params.register)
+		await profile.start()
 		this.profiles.push(profile)
 	}
 
@@ -305,10 +274,17 @@ export class Manager extends EventEmitter {
 		}
 	}
 
-	public setAutoRedial(params: { ids?: string[]; value: boolean }) {
+	public setAutoRedial(params: {
+		ids?: string[]
+		value?: boolean
+		limit?: number
+		delay_ms_min_max?: [number, number]
+		max_sequential_failed_calls?: number
+		short_call_duration_ms?: number
+	}) {
 		for (const call of this.calls) {
 			if (!!params.ids && !params.ids.includes(call.id)) continue
-			call.setAutoRedial(params.value)
+			call.setAutoRedial(params)
 		}
 	}
 

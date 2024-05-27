@@ -48,6 +48,7 @@
 			tip={call.on_hold ? 'Unhold' : 'Hold'}
 			icon={call.on_hold ? IconPlayerPause : IconPlayerPlay}
 			on:trigger={() => phone.setHold({ ids: [call.id], value: !call.on_hold })}
+			disabled={!$config.conference_enabled && $config.hold_unselected_calls}
 		/>
 	{/if}
 	{#if !(call.type === 'INBOUND' && call.progress === 'CONNECTING') && call.progress !== 'DISCONNECTED' && (call.auto_redialing || $config.auto_redial_enabled)}
@@ -65,7 +66,7 @@
 				!call.destination ||
 				phone.dial({
 					input: call.destination,
-					profile_id: $config.cfg_sip_profiles[0].id
+					profile_id: $config.sip_profiles[0].id
 				})}
 		/>
 	{/if}

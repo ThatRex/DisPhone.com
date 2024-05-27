@@ -24,7 +24,16 @@
 	import ToggleMulti from './ui/toggle-multi.svelte'
 	import { DTMFSimulator, subscribeKey } from '$lib/utils'
 	import { onMount, setContext } from 'svelte'
-	import { call_ids_active, call_ids_connected, calls } from '$lib/stores/calls.volitile'
+	import {
+		calls,
+		call_ids_active,
+		call_ids_selected,
+		call_ids_unselected,
+		call_ids_connected,
+		call_ids_connecting_o,
+		call_ids_connecting_i,
+		call_ids_has_media
+	} from '$lib/stores/calls.volitile'
 	import { addActiveKey, redial_string } from '$lib/stores/dial.volitile'
 	import Dialog from '$lib/components/dialog.svelte'
 	import ButtonText from '$lib/components/button-text.svelte'
@@ -35,6 +44,17 @@
 	import UserMediaManager from '$lib/utils/user-media-manager'
 	import type { ColorsBtn } from '$lib/components/colors'
 	import { PresenceUpdateStatus } from 'discord-api-types/v10'
+
+	$: ({
+		muted_in,
+		level_in,
+		muted_out,
+		level_out,
+		simulate_dtmf,
+		conference_enabled,
+		hold_unselected_calls,
+		bot_discord_profiles
+	} = $config)
 
 	const ac = new AudioContext()
 
@@ -70,17 +90,17 @@
 	src_i_bot.connect(dst_i_phone)
 	src_o_phone.connect(gin_o_bot)
 
-	$: gin_i_browser.gain.value = !$config.muted_in && !bot_connected ? $config.level_in / 100 : 0
+	$: gin_i_browser.gain.value = !muted_in && !bot_connected ? level_in / 100 : 0
 	$: {
 		// prevents the popping when adjusting the volume.
-		const lvl = !$config.muted_out && !bot_connected ? $config.level_out / 100 : 0
+		const lvl = !muted_out && !bot_connected ? level_out / 100 : 0
 		gin_o_browser.gain.linearRampToValueAtTime(lvl === 0 ? 0.0001 : lvl, ac.currentTime + 0.02)
 	}
 
-	$: gin_i_bot.gain.value = !$config.muted_in && bot_connected ? $config.level_in / 100 : 0
+	$: gin_i_bot.gain.value = !muted_in && bot_connected ? level_in / 100 : 0
 	$: {
 		// prevents the popping when adjusting the volume.
-		const lvl = !$config.muted_out && bot_connected ? $config.level_out / 100 : 0
+		const lvl = !muted_out && bot_connected ? level_out / 100 : 0
 		gin_o_bot.gain.linearRampToValueAtTime(lvl === 0 ? 0.0001 : lvl, ac.currentTime + 0.02)
 	}
 
@@ -90,12 +110,12 @@
 
 	// User Media Manager
 	const user_media_manager = new UserMediaManager(ac)
-	$: user_media_manager.gain = $config.muted_in ? 0 : 100
+	$: user_media_manager.gain = muted_in ? 0 : 100
 	user_media_manager.src.connect(gin_i_browser)
 
 	// DTMF Simulator
 	const dtmf_simulator = new DTMFSimulator(ac)
-	$: dtmf_simulator.gain = $config.simulate_dtmf ? 10 : 0
+	$: dtmf_simulator.gain = simulate_dtmf ? 10 : 0
 	dtmf_simulator.src.connect(dst_o_browser)
 	setContext('dtmf_simulator', dtmf_simulator)
 
@@ -109,62 +129,47 @@
 		done: AudioBuffer
 	}
 
+	const player = new SoundPlayer<LoadedSounds>(ac)
 	const player_conf = new SoundPlayer<Pick<LoadedSounds, 'connected' | 'disconnected'>>(ac)
 	player_conf.src.connect(dst_i_phone)
 
-	const player_browser = new SoundPlayer<LoadedSounds>(ac)
-	const player_bot = new SoundPlayer<LoadedSounds>(ac)
-
 	$: {
-		player_browser.src.disconnect()
-		player_bot.src.disconnect()
-		if (bot_connected) player_bot.src.connect(dst_o_bot)
-		else player_browser.src.connect(dst_o_browser)
+		player.src.disconnect()
+		if (bot_connected) player.src.connect(dst_o_bot)
+		else player.src.connect(dst_o_browser)
 	}
 
 	let stopRingIn: (() => void) | undefined
 	let stopRingOut: (() => void) | undefined
 
-	const playSound = async (sound: keyof LoadedSounds) => {
+	const playSound = (sound: keyof LoadedSounds) => {
 		switch (sound) {
 			case 'ring_in': {
 				if (stopRingIn) break
-				const stopRingInBrowser = player_browser.play({
+				const stopRing = player.play({
 					name: sound,
 					loop: true,
-					volume: $config.sound_browser_level_ring_in
-				})
-				const stopRingInBot = player_bot.play({
-					name: sound,
-					loop: true,
-					volume: $config.sound_bot_level_ring_in,
+					volume: $config.sound_level_ring_in,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
 				stopRingIn = () => {
-					stopRingInBrowser()
-					stopRingInBot()
+					stopRing()
 					stopRingIn = undefined
 				}
 				break
 			}
 			case 'ring_out': {
 				if (stopRingOut) break
-				const stopRingOutBrowser = player_browser.play({
+				const stopRing = player.play({
 					name: sound,
 					loop: true,
-					volume: $config.sound_browser_level_ring_in
-				})
-				const stopRingOutBot = player_bot.play({
-					name: sound,
-					loop: true,
-					volume: $config.sound_bot_level_ring_out,
+					volume: $config.sound_level_ring_out,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
 				stopRingOut = () => {
-					stopRingOutBrowser()
-					stopRingOutBot()
+					stopRing()
 					stopRingOut = undefined
 				}
 				break
@@ -176,13 +181,34 @@
 				if ($config.conference_play_sounds) player_conf.play({ name })
 			}
 			default: {
-				player_browser.play({ name: sound })
-				player_bot.play({
+				player.play({
 					name: sound,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
 			}
+		}
+	}
+
+	const getSelectedCallWithMedia = () =>
+		$calls
+			.filter((c) => c.selected)
+			.filter((c) => c.media)
+			.map((c) => c.id)
+
+	$: switch (true) {
+		case $call_ids_connecting_o.length && !$call_ids_has_media.length && conference_enabled: {
+			playSound('ring_out')
+			break
+		}
+		case $call_ids_connecting_o.length &&
+			!conference_enabled &&
+			(!hold_unselected_calls || !getSelectedCallWithMedia().length): {
+			playSound('ring_out')
+			break
+		}
+		default: {
+			stopRingOut?.()
 		}
 	}
 
@@ -220,9 +246,29 @@
 			phone.conference({ ids })
 
 			const hidden = cu.type === 'INBOUND' && $config.inbound_call_mode === 'DND'
-			const selected = !$calls.filter((c) => c.selected).length
-			$calls.push({ ...cu, selected, hidden })
-			$calls = $calls
+
+			const unselect_all =
+				$config.after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND'
+
+			let selected = false
+			switch (true) {
+				case $config.after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND': {
+					selected = true
+					break
+				}
+				case $config.after_dial_call_selection_mode !== 'never' || cu.type === 'INBOUND': {
+					selected = !$call_ids_selected.length
+					break
+				}
+			}
+
+			$calls = [
+				...$calls.map((c) => {
+					c.selected = unselect_all ? false : c.selected
+					return c
+				}),
+				{ ...cu, hidden, selected }
+			]
 
 			if (cu.type !== 'INBOUND') return
 
@@ -262,11 +308,7 @@
 			call.progress === 'DISCONNECTED' && cu.progress !== 'DISCONNECTED' ? false : call.hidden
 		$calls[initial_call_idx] = { ...call, ...cu, hidden }
 
-		const connecting_i = $calls.filter((c) => c.progress === 'CONNECTING' && c.type === 'INBOUND')
-		if (!connecting_i.length) stopRingIn?.()
-
-		const connecting_o = $calls.filter((c) => c.progress === 'CONNECTING' && c.type === 'OUTBOUND')
-		!$call_ids_connected.length && connecting_o.length ? playSound('ring_out') : stopRingOut?.()
+		if (!$call_ids_connecting_i.length) stopRingIn?.()
 
 		switch (cu.progress) {
 			case 'CONNECTED': {
@@ -306,18 +348,25 @@
 
 	const botBtnBlink = () => (bot_btn_color_on = bot_btn_color_on === 'mono' ? 'blue' : 'mono')
 
-	$: if (initiated) bot_connected ? user_media_manager.stop() : user_media_manager.start()
+	const statMedia = () => user_media_manager.start()
+	const stopMedia = () => user_media_manager.stop()
+	$: if (initiated) bot_connected ? stopMedia() : statMedia()
+
+	$: calls_connected = !!$call_ids_connected.length
+	$: media_available = !!$call_ids_has_media.length
+
 	let bot_sounds_playing_count = 0
-	$: speaking = bot_sounds_playing_count > 0 || (!$config.muted_out && !!$call_ids_connected.length)
+	$: speaking = bot_sounds_playing_count > 0 || (!muted_out && (calls_connected || media_available))
 	$: if (speaking) bot.update({ speaking: true })
 	else setTimeout(() => speaking || bot.update({ speaking: false }), 125)
-	$: calls_connected = !!$call_ids_connected.length
-	const getTextStatus = () => $config.cfg_discord_profiles[0]?.bot_status_text
-	$: bot.setPresence({
-		status:
-			bot_connected && calls_connected ? PresenceUpdateStatus.Online : PresenceUpdateStatus.Idle,
-		text: getTextStatus()
-	})
+
+	$: status = bot_discord_profiles[0].bot_invisible
+		? PresenceUpdateStatus.Invisible
+		: bot_connected && calls_connected
+			? PresenceUpdateStatus.Online
+			: PresenceUpdateStatus.Idle
+	const getTextStatus = () => bot_discord_profiles[0].bot_status_text
+	$: bot.setPresence({ status, text: getTextStatus() })
 
 	bot.on('state', (s) => {
 		bot_running = !['DONE', 'FAILED'].includes(s)
@@ -352,13 +401,13 @@
 		bot_state = s
 	})
 
-	async function getMedia() {
+	const getMedia = async () => {
 		console.info('Getting Media')
 
-		if (!interaction && 'chrome' in window) {
-			alert_dialog_issue = 'interaction'
-			return false
-		}
+		// if (!interaction && 'chrome' in window) {
+		// 	alert_dialog_issue = 'interaction'
+		// 	return false
+		// }
 
 		const got_user_media = await user_media_manager.start()
 		if (!got_user_media) {
@@ -376,31 +425,21 @@
 	async function loadSounds() {
 		console.info('Loading Sounds')
 
-		const loaded_sounds_browser = await SoundPlayer.load({
-			ring_in: $config.sound_browser_ring_in,
-			ring_out: $config.sound_browser_ring_out,
-			connected: $config.sound_browser_connected,
-			disconnected: $config.sound_browser_disconnected,
-			auto_answered: $config.sound_browser_auto_answered,
-			done: $config.sound_browser_done
-		})
-
-		const loaded_sounds_bot = await SoundPlayer.load({
-			ring_in: $config.sound_bot_ring_in,
-			ring_out: $config.sound_bot_ring_out,
-			connected: $config.sound_bot_connected,
-			disconnected: $config.sound_bot_disconnected,
-			auto_answered: $config.sound_bot_auto_answered,
-			done: $config.sound_bot_done
+		const loaded_sounds = await SoundPlayer.load({
+			ring_in: $config.sound_ring_in,
+			ring_out: $config.sound_ring_out,
+			connected: $config.sound_connected,
+			disconnected: $config.sound_disconnected,
+			auto_answered: $config.sound_auto_answered,
+			done: $config.sound_done
 		})
 
 		const loaded_sounds_conf = await SoundPlayer.load({
-			connected: $config.sound_conf_connected,
-			disconnected: $config.sound_conf_disconnected
+			connected: $config.sound_connected,
+			disconnected: $config.sound_disconnected
 		})
 
-		player_browser.loadSounds(loaded_sounds_browser)
-		player_bot.loadSounds(loaded_sounds_bot)
+		player.loadSounds(loaded_sounds)
 		player_conf.loadSounds(loaded_sounds_conf)
 	}
 
@@ -421,22 +460,14 @@
 
 		loadSounds()
 
-		const profile = $config.cfg_sip_profiles[0]
+		const profile_sip = $config.sip_profiles[0]
+		phone.addProfile(profile_sip)
 
-		if (profile) {
-			phone.addProfile({
-				id: profile.id,
-				sip_server: profile.sip_server,
-				username: profile.username,
-				login: profile.login ? profile.login : undefined,
-				password: profile.password ? profile.password : undefined,
-				register: profile.register
-			})
-		}
+		const profile_bot = $config.bot_discord_profiles[0]
 
-		if ($config.cfg_discord_profiles[0]?.bot_token && $config.bot_discord_autostart_enabled) {
+		if (profile_bot.bot_token && $config.bot_discord_autostart_enabled) {
 			bot.init({
-				token: $config.cfg_discord_profiles[0].bot_token,
+				token: profile_bot.bot_token,
 				debug: $config.bot_discord_debug_enabled
 			})
 		}
@@ -445,9 +476,13 @@
 		console.info('Initiated')
 	}
 
-	onMount(init)
+	onMount(() => {
+		document.documentElement.addEventListener('click', () => (interaction = true))
+		init()
+	})
 	window.onbeforeunload = () => {
-		if ($call_ids_active.length) return false
+		if ($config.close_confirmation_mode === 'always') return false
+		if ($call_ids_active.length && $config.close_confirmation_mode !== 'never') return false
 	}
 
 	/* Toggles */
@@ -458,7 +493,14 @@
 	subscribeKey(config, 'conference_enabled', (v) => {
 		const ids = !v ? [] : $calls.map((c) => c.id)
 		phone.conference({ ids })
+		if ($config.hold_unselected_calls) phone.setHold({ ids, value: false })
 	})
+
+	subscribeKey(config, 'hold_unselected_calls', (v) => v || phone.setHold({ value: false }))
+	$: if ($config.hold_unselected_calls && !$config.conference_enabled) {
+		phone.setHold({ ids: $call_ids_selected, value: false })
+		phone.setHold({ ids: $call_ids_unselected, value: true })
+	}
 
 	let muted_in_previously = $config.muted_in
 	subscribeKey(config, 'mute_on_deafen', () => {
@@ -485,8 +527,7 @@
 	subscribeKey(config, 'muted_in', (v) => bot.update({ self_deaf: v }))
 	subscribeKey(config, 'muted_out', (v) => bot.update({ self_mute: v }))
 	subscribeKey(config, 'bot_discord_follow_mode_enabled', (v) => {
-		if (!$config.cfg_discord_profiles[0]?.usr_user_id) return
-		bot.setFollowMode({ mode: v, user_id: $config.cfg_discord_profiles[0].usr_user_id })
+		bot.setFollowMode({ mode: v, user_id: $config.bot_discord_profiles[0].usr_user_id })
 	})
 </script>
 
@@ -496,7 +537,7 @@
 			{#if alert_dialog_issue === 'webrtc'}
 				DisPhone requires WebRTC to function. Please enable WebRTC and try again.
 			{:else if alert_dialog_issue === 'media'}
-				DisPhone requires media access to function. Please unblock access and try again.
+				DisPhone requires media access to function. Please clear permissions and try again.
 			{:else if alert_dialog_issue === 'interaction'}
 				Chrome based browsers require user interaction to play audio. Just click okay.
 			{/if}
@@ -515,7 +556,7 @@
 <section
 	class="
 		flex flex-col max-xs:flex-col-reverse basis-full
-		max-xs:h-svh xs:max-h-[576px] max-xs:min-h-[360px]
+		max-xs:h-svh xs:max-h-[576px] max-xs:min-h-[290px]
 		p-3 gap-y-4 snap-start scroll-mt-3
 		"
 >
@@ -533,19 +574,19 @@
 				<Button
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"
 					on:trigger={() => {
-						const input = $config.cfg_sip_profiles[0].voicemail_number || vm_dest
-						phone.dial({ profile_id: $config.cfg_sip_profiles[0]?.id, input })
+						const input = $config.sip_profiles[0].voicemail_number || vm_dest
+						phone.dial({ profile_id: $config.sip_profiles[0].id, input })
 					}}
 					icon={IconRecordMail}
 					color={vm_qty ? 'red' : 'mono'}
-					disabled={!$config.cfg_sip_profiles[0]?.voicemail_number && !vm_dest}
+					disabled={!$config.sip_profiles[0].voicemail_number && !vm_dest}
 				/>
 			</div>
 
 			<ProfileSelector />
 
 			<div class="flex gap-2 flex-wrap max-xs:grow">
-				{#if bot_running || ($config.cfg_discord_profiles[0]?.usr_user_id && $config.cfg_discord_profiles[0]?.bot_token)}
+				{#if bot_running || (bot_discord_profiles[0].usr_user_id && bot_discord_profiles[0].bot_token)}
 					<Toggle
 						value={bot_running}
 						tip="Discord Bot"
@@ -556,7 +597,7 @@
 								bot.shutdown()
 							} else {
 								bot.init({
-									token: $config.cfg_discord_profiles[0].bot_token,
+									token: $config.bot_discord_profiles[0].bot_token,
 									debug: $config.bot_discord_debug_enabled
 								})
 							}

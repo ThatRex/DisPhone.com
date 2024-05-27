@@ -18,102 +18,92 @@ const schema = z.object({
 	muted_out: z.boolean().catch(false),
 	// Secondary Panel
 	secondary_panel_enabled: z.boolean().catch(true),
-	secondary_panel_tab: z.string().catch('about'),
-	hidden_settings_enabled: z.boolean().catch(false),
-	auto_record_enabled: z.boolean().catch(false),
-	// Accessibility
-	haptics_disabled: z.boolean().catch(false),
-	simulate_dtmf: z.boolean().catch(true),
-	mute_on_deafen: z.boolean().catch(true),
+	secondary_panel_tab: z.enum(['logs', 'contacts', 'settings', 'about']).catch('about'),
+	// Interface
+	hold_unselected_calls: z.boolean().catch(true),
+	after_dial_call_selection_mode: z.enum(['always', 'non-selected', 'never']).catch('always'),
+	close_confirmation_mode: z.enum(['always', 'calls-active', 'never']).catch('calls-active'),
 	dialpad_enabled: z.boolean().catch(true),
 	dialpad_extended: z.boolean().catch(false),
 	dialpad_numeric: z.boolean().catch(false),
 	dialpad_focus_dial_field: z.boolean().catch(true),
-	// Auto Redial
+	// Accessibility
+	haptics_disabled: z.boolean().catch(false),
+	simulate_dtmf: z.boolean().catch(true),
+	mute_on_deafen: z.boolean().catch(true),
+	// Hidden Settings
+	hidden_settings_enabled: z.boolean().catch(false),
+	auto_record_enabled: z.boolean().catch(false),
 	auto_redial_enabled: z.boolean().catch(false),
-	auto_redial_max_sequential_short_calls: z.number().min(0).max(10).catch(3),
-	auto_redial_short_call_time_ms: z.number().min(0).max(60000).catch(4000),
-	auto_redial_delay_ms_min: z.number().min(0).max(300000).catch(2000),
-	auto_redial_delay_ms_max: z.number().min(0).max(300000).catch(4500),
+	auto_redial_delay_ms_min_max: z.number().array().length(2).catch([2000, 4500]),
+	auto_redial_max_sequential_failed_calls: z.number().catch(3),
+	auto_redial_short_call_duration_ms: z.number().catch(4000),
 	// SIP
 	sip_debug_enabled: z.boolean().catch(dev),
 	sip_expert_settings_enabled: z.boolean().catch(false),
-	sip_selected_profile_id: z.string().optional().catch(undefined),
-	cfg_sip_profiles: z
+	sip_selected_profile_id: z.string().catch('default'),
+	sip_profiles: z
 		.object({
 			id: z.string(),
-			username: z.string(),
-			login: z.string().optional(),
-			password: z.string().optional(),
-			sip_server: z.string(),
-			ws_server: z.string().optional(),
-			stun_server: z.string().optional(),
-			voicemail_number: z.string().optional(),
-			simultaneous_call_limit: z.number().optional().catch(0),
-			register: z.boolean().catch(true)
+			ws_server: z.string().catch(''),
+			sip_server: z.string().catch(''),
+			username: z.string().catch(''),
+			login: z.string().catch(''),
+			password: z.string().catch(''),
+			voicemail_number: z.string().catch(''),
+			register: z.boolean().catch(true),
+			early_media: z.boolean().catch(true)
 		})
 		.array()
 		.nonempty()
 		.catch([
 			{
 				id: 'default',
+				ws_server: '',
+				sip_server: '',
 				username: '',
 				login: '',
 				password: '',
-				sip_server: '',
 				voicemail_number: '',
-				register: true
+				register: true,
+				early_media: true
 			}
 		]),
 	// Discord Bot
 	bot_discord_debug_enabled: z.boolean().catch(dev),
 	bot_discord_autostart_enabled: z.boolean().catch(false),
 	bot_discord_follow_mode_enabled: z.boolean().catch(true),
-	bot_discord_selected_profile_id: z.string().optional().catch(undefined),
-	cfg_discord_profiles: z
+	bot_discord_selected_profile_id: z.string().catch('default'),
+	bot_discord_profiles: z
 		.object({
 			id: z.string(),
-			name: z.string().optional(),
-			usr_user_id: z.string(),
-			bot_token: z.string(),
-			bot_status_text: z.string().optional(),
-			bot_status_mode: z
-				.enum(['DYNAMIC', 'ONLINE', 'IDLE', 'DND', 'INVISIBLE'])
-				.optional()
-				.catch('DYNAMIC'),
-			bot_gateway: z.string().optional(),
-			webhook: z.string().url().optional()
+			name: z.string().catch(''),
+			usr_user_id: z.string().catch(''),
+			bot_token: z.string().catch(''),
+			bot_invisible: z.boolean().catch(false),
+			bot_status_text: z.string().catch('')
 		})
 		.array()
 		.nonempty()
 		.catch([
 			{
 				id: 'default',
+				name: 'Default',
 				usr_user_id: '',
 				bot_token: '',
-				bot_status_mode: 'DYNAMIC',
+				bot_invisible: false,
 				bot_status_text: ''
 			}
 		]),
 	// Sounds
-	sound_browser_ring_in: z.string().catch('/sounds/ring-in.mp3'),
-	sound_browser_ring_out: z.string().catch('/sounds/ring-out.mp3'),
-	sound_browser_connected: z.string().catch('/sounds/connected.mp3'),
-	sound_browser_disconnected: z.string().catch('/sounds/disconnected.mp3'),
-	sound_browser_auto_answered: z.string().catch('/sounds/auto-answered.mp3'),
-	sound_browser_done: z.string().catch('/sounds/done.mp3'),
-	sound_browser_level_ring_in: z.number().catch(50),
-	sound_browser_level_ring_out: z.number().catch(50),
-	sound_bot_ring_in: z.string().catch('/sounds/ring-in.mp3'),
-	sound_bot_ring_out: z.string().catch('/sounds/ring-out.mp3'),
-	sound_bot_connected: z.string().catch('/sounds/connected.mp3'),
-	sound_bot_disconnected: z.string().catch('/sounds/disconnected.mp3'),
-	sound_bot_auto_answered: z.string().catch('/sounds/auto-answered.mp3'),
-	sound_bot_done: z.string().catch('/sounds/done.mp3'),
-	sound_bot_level_ring_in: z.number().catch(50),
-	sound_bot_level_ring_out: z.number().catch(50),
-	sound_conf_connected: z.string().catch('/sounds/connected.mp3'),
-	sound_conf_disconnected: z.string().catch('/sounds/disconnected.mp3')
+	sound_ring_in: z.string().catch('/sounds/ring-in.mp3'),
+	sound_ring_out: z.string().catch('/sounds/ring-out.mp3'),
+	sound_connected: z.string().catch('/sounds/connected.mp3'),
+	sound_disconnected: z.string().catch('/sounds/disconnected.mp3'),
+	sound_auto_answered: z.string().catch('/sounds/auto-answered.mp3'),
+	sound_done: z.string().catch('/sounds/done.mp3'),
+	sound_level_ring_in: z.number().catch(50),
+	sound_level_ring_out: z.number().catch(50)
 })
 
 export const config = persisted('config', schema.parse({}))

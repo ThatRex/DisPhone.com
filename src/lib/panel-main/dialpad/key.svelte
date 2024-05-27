@@ -26,7 +26,7 @@
 <button
 	tabindex="-1"
 	aria-hidden="true"
-	class="flex w-full"
+	class="flex w-full overflow-hidden"
 	on:keydown={(e) => {
 		if (!['Enter', ' '].includes(e.key)) return
 		dispatch('trigger')
@@ -43,7 +43,7 @@
 >
 	<div
 		class="
-            pl-[7px] flex items-center gap-1 rounded-[3px] grow h-full transition duration-75
+             pl-[7px] flex items-center gap-1 rounded-[3px] grow h-full transition duration-75
             bg-black dark:bg-white !bg-opacity-10 hover:!bg-opacity-20 {active
 			? `${randomBGC()}`
 			: ''} scale-key
@@ -55,12 +55,12 @@
 </button>
 
 <style lang="postcss">
-	@container container-dialpad (height < 300px) {
+	@container dialpad (height < 300px) {
 		.scale-key {
 			@apply active:scale-x-95 active:scale-y-90;
 		}
 	}
-	@container container-dialpad (height >= 300px) {
+	@container dialpad (height >= 300px) {
 		.scale-key {
 			@apply active:scale-x-95 active:scale-y-95;
 		}

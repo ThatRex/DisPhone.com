@@ -4,6 +4,7 @@ import Developer from './developer.svelte'
 import Hidden from './hidden.svelte'
 import Phone from './phone.svelte'
 import Sound from './sound.svelte'
+import Interface from './interface.svelte'
 
 export default {
 	Accessibility,
@@ -11,5 +12,6 @@ export default {
 	Developer,
 	Hidden,
 	Phone,
-	Sound
+	Sound,
+	Interface
 }

@@ -3,6 +3,7 @@
 	import { createAccordion, melt } from '@melt-ui/svelte'
 	import {
 		IconAccessible,
+		IconAppWindow,
 		IconBrandDiscord,
 		IconEye,
 		IconPhone,
@@ -31,16 +32,22 @@
 			component: Category.Bot
 		},
 		{
-			id: 'sound',
-			title: 'Sounds',
-			icon: IconVolume,
-			component: Category.Sound
+			id: 'interface',
+			title: 'Interface',
+			icon: IconAppWindow,
+			component: Category.Interface
 		},
 		{
 			id: 'accessibility',
 			title: 'Accessibility',
 			icon: IconAccessible,
 			component: Category.Accessibility
+		},
+		{
+			id: 'sound',
+			title: 'Sound',
+			icon: IconVolume,
+			component: Category.Sound
 		},
 		{
 			id: 'hidden',
@@ -70,8 +77,7 @@
 					use:melt={$trigger(id)}
 					on:pointerdown={() => navigator.vibrate?.(6)}
 					class="
-					
-						flex-1 cursor-pointer py-4 px-4 font-bold leading-none focus:!ring-0
+						flex-1 cursor-pointer p-4 font-bold leading-none focus:!ring-0
 						{i !== 0 && 'border-t border-black dark:border-white !border-opacity-30'}
 						"
 				>
@@ -95,9 +101,3 @@
 		</div>
 	{/each}
 </div>
-
-<style lang="postcss">
-	.content {
-		box-shadow: inset 0px 1px 0px theme('colors.neutral.300');
-	}
-</style>

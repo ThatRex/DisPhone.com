@@ -5,7 +5,7 @@ import { type Codecs, SocketState, type VoiceReceivePayload } from './types'
 import { VoiceCloseCodes, VoiceOpcodes } from 'discord-api-types/voice'
 import { GatewayCloseCodes } from 'discord-api-types/v10'
 import { wait } from '$lib/utils/wait'
-import { VocieSocketError, VocieSocketNotReadyError } from './errors'
+import { VoiceSocketError, VoiceSocketNotReadyError } from './errors'
 
 const RECONNECTABLE_CLOSE_CODES = [
 	1005, // No Status Rcvd
@@ -88,7 +88,7 @@ export class VoiceSocket extends EventEmitter {
 			this.ws &&
 			(this.ws.readyState === WebSocket.OPEN || this.ws.readyState === WebSocket.CONNECTING)
 		) {
-			throw new VocieSocketError('Socket is already open or connecting.')
+			throw new VoiceSocketError('Socket is already open or connecting.')
 		}
 
 		this.debug?.('Opening. Address:', address)
@@ -148,7 +148,7 @@ export class VoiceSocket extends EventEmitter {
 
 	public sendPacket(packet: { op: number; d: any }) {
 		if (this.ws.readyState !== WebSocket.OPEN) {
-			throw new VocieSocketNotReadyError(`Unable to send packet. Packet: ${JSON.stringify(packet)}`)
+			throw new VoiceSocketNotReadyError(`Unable to send packet. Packet: ${JSON.stringify(packet)}`)
 		}
 
 		try {

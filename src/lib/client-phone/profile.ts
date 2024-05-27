@@ -38,18 +38,19 @@ export class Profile extends EventEmitter {
 	public readonly id: string
 	public readonly ua: UserAgent
 
-	public get server() {
-		const { host, port } = this.ua.configuration.uri
-		return port ? `${host}:${port}` : host
-	}
+	public readonly register: boolean
+	public readonly early_media: boolean
 
 	private readonly registerer: Registerer
-	private register = false
-
 	private readonly reconnection_attempts = 3
 	private readonly reconnection_delay = 4
 	private attempting_reconnection = false
 	private should_be_connected = true
+
+	public get server() {
+		const { host, port } = this.ua.configuration.uri
+		return port ? `${host}:${port}` : host
+	}
 
 	private detail: ProfileDetail = {
 		state: 'INITIAL',
@@ -66,10 +67,26 @@ export class Profile extends EventEmitter {
 		sip_server: string
 		ws_server?: string
 		stun_server?: string
+		register?: boolean
+		early_media?: boolean
 		debug?: boolean
 	}) {
 		super()
-		const { ac, id, username, login, password, sip_server, ws_server, stun_server, debug } = params
+		const {
+			ac,
+			id,
+			username,
+			login,
+			password,
+			sip_server,
+			ws_server,
+			register,
+			early_media,
+			debug
+		} = params
+
+		this.early_media = early_media ?? true
+		this.register = register ?? true
 
 		this.debug = !debug ? undefined : (...args) => console.debug(`[Profile ${this.id}]`, ...args)
 
@@ -104,18 +121,15 @@ export class Profile extends EventEmitter {
 		}
 
 		const sessionDescriptionHandlerFactoryOptions: SessionDescriptionHandlerConfiguration = {
-			iceGatheringTimeout: 500,
-			peerConnectionConfiguration: {
-				iceServers: stun_server ? [{ urls: `stun:${stun_server}` }] : undefined
-			}
+			peerConnectionConfiguration: { iceServers: [] }
 		}
 
 		this.ua = new UserAgent({
 			uri,
-			authorizationUsername: login ?? username,
+			authorizationUsername: login || username,
 			authorizationPassword: password,
 			transportOptions: {
-				server: ws_server ? `wss://${ws_server}` : `wss://${sip_server}:8089/ws`
+				server: ws_server ? `wss://${ws_server}` : `wss://${sip_server.split(':')[0]}:8089/ws`
 			},
 			sessionDescriptionHandlerFactoryOptions,
 			sessionDescriptionHandlerFactory,
@@ -135,7 +149,7 @@ export class Profile extends EventEmitter {
 				if (this.register) await this.registerer.register()
 				this.updateDetail({ state: 'CONNECTED' })
 			},
-			onDisconnect: async (error?: Error) => {
+			onDisconnect: async (error) => {
 				if (this.register) await this.registerer.unregister()
 				if (error) this.attemptReconnection()
 				else this.updateDetail({ state: 'DISCONNECTED' })
@@ -156,8 +170,7 @@ export class Profile extends EventEmitter {
 		this.emit('detail', { ...this.detail, ...detail })
 	}
 
-	public async start(register = false) {
-		this.register = register
+	public async start() {
 		this.should_be_connected = true
 		this.updateDetail({ state: 'CONNECTING' })
 		await this.ua.start()
@@ -165,15 +178,8 @@ export class Profile extends EventEmitter {
 
 	public async stop() {
 		this.should_be_connected = false
-		await this.ua.start()
+		await this.ua.stop()
 		if (this.registerer.state === RegistererState.Registered) await this.registerer.unregister()
-	}
-
-	public async setRegister(value: boolean) {
-		if (this.register === value) return
-		if (value) await this.registerer.register()
-		else await this.registerer.unregister()
-		this.register = value
 	}
 
 	public initCall(

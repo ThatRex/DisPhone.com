@@ -5,7 +5,7 @@
 	import {
 		calls,
 		call_ids_dtmf_receptible,
-		call_ids_hangupable,
+		call_ids_selected,
 		call_ids_answerable
 	} from '$lib/stores/calls.volitile'
 	import { dial_string, redial_string, addActiveKey, dropText } from '$lib/stores/dial.volitile'
@@ -56,7 +56,7 @@
 			default: {
 				const dial_str = call_last ? $redial_string : $dial_string || $redial_string
 				if (!dial_str) return
-				phone.dial({ profile_id: $config.cfg_sip_profiles[0].id, input: dial_str })
+				phone.dial({ profile_id: $config.sip_profiles[0].id, input: dial_str })
 				if (!call_last && $dial_string) $redial_string = $dial_string
 				break
 			}
@@ -97,7 +97,7 @@
 <div class="flex gap-2">
 	<div
 		class="
-			w-40 grow flex border-2 rounded-md duration-75 transition outline-none
+			w-20 grow flex border-2 rounded-md duration-75 transition outline-none
 			font-semibold bg-opacity-10 dark:bg-opacity-10
 			border-neutral-500 bg-neutral-500 dark:border-neutral-300 dark:bg-neutral-300
 			!border-opacity-40 hover:!border-opacity-60 focus-within:!border-opacity-100 focus-within:hover:!border-opacity-100
@@ -180,12 +180,12 @@
 			on:trigger={(e) => {
 				phone.hangup({
 					ids:
-						e.detail === 'left-click' && $call_ids_hangupable.length
-							? $call_ids_hangupable
+						e.detail === 'left-click' && $call_ids_selected.length
+							? $call_ids_selected
 							: undefined
 				})
 			}}
-			tip={$call_ids_hangupable.length ? 'Hangup Selected' : 'Hangup All'}
+			tip={$call_ids_selected.length ? 'Hangup Selected' : 'Hangup All'}
 			icon={IconPhoneX}
 			disabled={!$calls.length}
 			color="red"

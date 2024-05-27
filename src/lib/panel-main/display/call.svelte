@@ -93,11 +93,11 @@
 		}
 	}
 	const handleKeydown = (e: KeyboardEvent) => {
-		e.preventDefault()
 		const { key, shiftKey } = e
 
 		switch (true) {
 			case key === 'ArrowUp' || key === 'ArrowDown': {
+				e.preventDefault()
 				const direction = key === 'ArrowUp' ? 'up' : 'down'
 				const next_idx = direction === 'up' ? index - 1 : index + 1
 				const next_call = $calls[next_idx]
@@ -119,6 +119,7 @@
 			}
 
 			case key === 'a': {
+				e.preventDefault()
 				$calls = $calls.map((c) => {
 					c.selected = true
 					return c
@@ -134,6 +135,7 @@
 	type="button"
 	aria-pressed={call.selected}
 	id="call-item-{call.id}"
+	on:pointerdown={() => navigator.vibrate?.(4)}
 	on:click={handleClick}
 	on:mouseup={handleMouseUp}
 	on:keydown={handleKeydown}

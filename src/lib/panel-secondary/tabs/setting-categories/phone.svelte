@@ -5,36 +5,45 @@
 	import FieldText from '$lib/panel-secondary/ui/field-text.svelte'
 </script>
 
-<FieldGroup name="Profile" description="Refresh page to apply changes.">
-	<FieldSwitch label="Expert Settings" bind:value={$config.sip_expert_settings_enabled} />
-	{#if $config.sip_expert_settings_enabled}
+{#each $config.sip_profiles as profile}
+	<FieldGroup name="Profile" description="Refresh page to apply changes.">
 		<FieldSwitch
-			label="Register"
-			description="Allow this device to receive calls and voicemail updates."
-			bind:value={$config.cfg_sip_profiles[0].register}
+			label="Expert Settings"
+			bind:value={$config.sip_expert_settings_enabled}
+			default_value={false}
 		/>
-	{/if}
-	<FieldText
-		label="Server"
-		placeholder="yourpbx.tel"
-		required={true}
-		bind:value={$config.cfg_sip_profiles[0].sip_server}
-	/>
-	<FieldText
-		label="User"
-		placeholder="1001"
-		required={true}
-		bind:value={$config.cfg_sip_profiles[0].username}
-	/>
-	{#if $config.sip_expert_settings_enabled}
-		<FieldText label="Login" bind:value={$config.cfg_sip_profiles[0].login} />
-	{/if}
-	<FieldText label="Password" type="password" bind:value={$config.cfg_sip_profiles[0].password} />
-	{#if $config.sip_expert_settings_enabled}
+		{#if $config.sip_expert_settings_enabled}
+			<FieldSwitch
+				label="Register"
+				description="Allow this device to receive calls and voicemail updates."
+				bind:value={profile.register}
+				default_value={true}
+			/>
+			<FieldSwitch
+				label="Early Media"
+				description="Play media sent before the call is connected."
+				bind:value={profile.early_media}
+				default_value={true}
+			/>
+			<FieldText
+				label="WebSocket Server"
+				placeholder="yourpbx.tel:8089/ws"
+				bind:value={profile.ws_server}
+			/>
+		{/if}
 		<FieldText
-			label="Voicemail Number"
-			placeholder="*97"
-			bind:value={$config.cfg_sip_profiles[0].voicemail_number}
+			label="Server"
+			placeholder="yourpbx.tel:5060"
+			required={true}
+			bind:value={profile.sip_server}
 		/>
-	{/if}
-</FieldGroup>
+		<FieldText label="Username" placeholder="1001" required={true} bind:value={profile.username} />
+		{#if $config.sip_expert_settings_enabled}
+			<FieldText label="Login" bind:value={profile.login} />
+		{/if}
+		<FieldText label="Password" type="password" bind:value={profile.password} />
+		{#if $config.sip_expert_settings_enabled}
+			<FieldText label="Voicemail Number" placeholder="*97" bind:value={profile.voicemail_number} />
+		{/if}
+	</FieldGroup>
+{/each}

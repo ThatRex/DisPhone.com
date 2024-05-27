@@ -75,9 +75,9 @@
 
 <div
 	class="
-		max-sm:hidden p-1 rounded-md border
+		max-sm:hidden p-1 rounded-md border h-full
 		border-black dark:border-white !border-opacity-30
-		grid min-w-[222px] select-none grid-cols-3 gap-1 con
+		grid min-w-[222px] select-none grid-cols-3 gap-1 container-dialpad
 		"
 >
 	{#each buttons as [main, secondary]}
@@ -86,8 +86,8 @@
 </div>
 
 <style lang="postcss">
-	.con {
-		container-name: container-dialpad;
+	.container-dialpad {
+		container-name: dialpad;
 		container-type: size;
 	}
 </style>

@@ -4,7 +4,7 @@
 	import { fade } from 'svelte/transition'
 
 	export let tip: string
-	export let icon: Component 
+	export let icon: Component
 	export let disabled = false
 	const dispatch = createEventDispatcher()
 
@@ -22,7 +22,10 @@
 
 <button
 	use:melt={$trigger}
-	on:pointerdown={() => navigator.vibrate?.(6)}
+	on:pointerdown={(e) => {
+		e.stopPropagation()
+		navigator.vibrate?.(2)
+	}}
 	on:keydown={(e) => {
 		e.stopPropagation()
 		disabled || ![' ', 'Enter'].includes(e.key) || dispatch('trigger')

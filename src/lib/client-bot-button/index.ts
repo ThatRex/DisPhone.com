@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import Client from '$lib/client-discord-browser'
 import type { VoiceManager } from '$lib/client-discord-browser/voice-manager'
+import { noop } from '$lib/utils'
 import {
 	ActivityType,
 	GatewayDispatchEvents,
@@ -232,7 +233,11 @@ class BotButtonClient extends EventEmitter {
 		this.speaking = speaking !== undefined ? speaking : this.speaking
 		this.self_deaf = self_deaf !== undefined ? self_deaf : this.self_deaf
 		this.self_mute = self_mute !== undefined ? self_mute : this.self_mute
-		this.voice?.update(params)
+		try {
+			this.voice?.update(params)
+		} catch {
+			noop()
+		}
 	}
 
 	public shutdown() {

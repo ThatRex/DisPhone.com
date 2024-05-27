@@ -19,3 +19,8 @@
         bg-zinc-50 dark:bg-zinc-800 text-black dark:text-white 
         border border-black/20 dark:border-white/20;
 }
+
+.screenreader {
+	position: absolute;
+	left: -9999px;
+}

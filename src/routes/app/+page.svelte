@@ -18,14 +18,11 @@
 	})
 </script>
 
-<div
-	class="
-		block xs:flex flex-col scrollbar-thin
-		h-svh max-xs:snap-y snap-mandatory overflow-auto
-		"
->
-	<PanelMain />
-	{#if $config.secondary_panel_enabled}
-		<PanelSecondary />
-	{/if}
+<div class="overflow-auto h-svh max-xs:snap-y snap-mandatory max-xl:scrollbar-thin">
+	<div class="h-full xs:flex flex-col mx-auto max-w-7xl">
+		<PanelMain />
+		{#if $config.secondary_panel_enabled}
+			<PanelSecondary />
+		{/if}
+	</div>
 </div>

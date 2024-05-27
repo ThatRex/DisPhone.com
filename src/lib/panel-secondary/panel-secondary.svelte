@@ -15,7 +15,10 @@
 	})
 
 	const sync = createSync(states)
-	$: sync.value($config.secondary_panel_tab, (v) => ($config.secondary_panel_tab = v))
+	$: sync.value(
+		$config.secondary_panel_tab,
+		(v) => ($config.secondary_panel_tab = v as typeof $config.secondary_panel_tab)
+	)
 
 	const triggers = [
 		{ id: 'logs', title: 'Logs', icon: IconBook2, tab: Tab.Logs, padding: true },

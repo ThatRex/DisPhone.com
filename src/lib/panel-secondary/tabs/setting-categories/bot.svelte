@@ -5,29 +5,39 @@
 	import FieldText from '$lib/panel-secondary/ui/field-text.svelte'
 </script>
 
-<FieldSwitch label="Auto Start" bind:value={$config.bot_discord_autostart_enabled} />
+<FieldSwitch
+	label="Auto Start"
+	bind:value={$config.bot_discord_autostart_enabled}
+	default_value={false}
+/>
 <FieldSwitch
 	label="Follow Mode"
-	description="Bot will follow you between channels and leave when you leave."
+	description="The bot will follow you between channels and leave when you leave."
 	bind:value={$config.bot_discord_follow_mode_enabled}
+	default_value={true}
 />
 
-<FieldGroup name="Profile" description="Restart bot to apply changes.">
-	<FieldText
-		label="Your User ID"
-        description="User ID of your main Discord account."
-		placeholder="000000000000000000"
-		required={true}
-		bind:value={$config.cfg_discord_profiles[0].usr_user_id}
-	/>
-	<FieldText
-		type="password"
-		label="Dialler Account Token"
-		required={true}
-		bind:value={$config.cfg_discord_profiles[0].bot_token}
-	/>
-	<FieldText
-		label="Text Status"
-		bind:value={$config.cfg_discord_profiles[0].bot_status_text}
-	/>
-</FieldGroup>
+{#each $config.bot_discord_profiles as profile}
+	<FieldGroup name="Profile" description="">
+		<FieldText
+			label="Your User ID"
+			description="User ID of your main Discord account."
+			placeholder="000000000000000000"
+			required={true}
+			bind:value={profile.usr_user_id}
+		/>
+		<FieldText
+			type="password"
+			label="Dialler Account Token"
+			description="Restart bot to apply new token."
+			required={true}
+			bind:value={profile.bot_token}
+		/>
+	</FieldGroup>
+	<FieldGroup name="Presence">
+		<FieldSwitch label="Invisible" bind:value={profile.bot_invisible} default_value={false} />
+		{#if !profile.bot_invisible}
+			<FieldText label="Status" placeholder="Hello Discord!" bind:value={profile.bot_status_text} />
+		{/if}
+	</FieldGroup>
+{/each}

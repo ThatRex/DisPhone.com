@@ -5,7 +5,7 @@
 
 	export let time: string
 	export let call: CallItem
-	export let style: { default_text: string; icon: Component ; classes: string }
+	export let style: { default_text: string; icon: Component; classes: string }
 </script>
 
 <div
@@ -35,7 +35,7 @@
 	</div>
 	<div class="flex grow justify-between items-center gap-x-1 w-full">
 		<div class="ml-1 text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
-			{call.reason || style.default_text}
+			{call.on_hold && call.progress === 'CONNECTED' ? 'Hold' : call.reason || style.default_text}
 		</div>
 		<CallControls bind:call />
 	</div>

@@ -2,19 +2,22 @@
 	import { IconAsteriskSimple } from '@tabler/icons-svelte'
 
 	export let label: string
-	export let value = ''
+	export let value = 0
+	export let min: number = 0
+	export let max: number = 1000000000000
 	export let placeholder = ''
-	export let type: 'text' | 'tel' | 'password' = 'text'
 	export let description = ''
 	export let required = false
 	export let disabled = false
 	export let readonly = false
 
-	const default_type = type
-
 	const handleInput = (e: Event) => {
 		const target = e.target as HTMLInputElement
-		value = target.value
+		let parsed = Number(target.value.replace(/[^0-9.]/g, '') || 0)
+		if (parsed > max) parsed = max
+		if (parsed < min) parsed = min
+		value = parsed
+		target.value = String(value)
 	}
 </script>
 
@@ -29,18 +32,15 @@
 		<p class="text-sm font-semibold opacity-80 select-none">{description}</p>
 	{/if}
 	<input
-		{type}
+		type="number"
+		on:input={handleInput}
 		{value}
+		{min}
+		{max}
 		{disabled}
 		{readonly}
 		{placeholder}
 		aria-label={label}
-		on:input={handleInput}
-		on:blur={() => {
-			type = default_type === 'password' ? default_type : type
-			value = value.trim()
-		}}
-		on:focus={() => (type = type === 'password' ? 'text' : type)}
 		class="
 			py-0.5 px-1.5 min-w-0 w-full grow flex font-semibold
 			border-2 rounded-md duration-75 transition outline-none
@@ -50,3 +50,15 @@
 			"
 	/>
 </label>
+
+<style lang="postcss">
+	input::-webkit-outer-spin-button,
+	input::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	input[type='number'] {
+		-moz-appearance: textfield;
+	}
+</style>
