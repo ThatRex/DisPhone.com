@@ -8,6 +8,7 @@ export const calls = writable<CallItem[]>([])
 export const call_ids_selected = derived(calls, (c) => {
 	return c.filter((c) => c.selected).map((c) => c.id)
 })
+
 export const call_ids_unselected = derived(calls, (c) => {
 	return c.filter((c) => !c.selected).map((c) => c.id)
 })

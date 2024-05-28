@@ -16,7 +16,7 @@
 	const {
 		elements: { content, item, trigger, root },
 		helpers: { isSelected }
-	} = createAccordion()
+	} = createAccordion({})
 
 	const items = [
 		{

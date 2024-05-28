@@ -2,14 +2,14 @@ import { persisted } from 'svelte-persisted-store'
 import z from 'zod'
 import { dev } from '$app/environment'
 
-const schema = z.object({
+export const schema = z.object({
 	// Inbound
 	inbound_call_mode: z.enum(['R', 'DND', 'AA']).catch('R'),
 	auto_answer_delay_ms: z.number().catch(0),
 	disconnected_timeout_ms: z.number().catch(2500),
 	// Conference
 	conference_enabled: z.boolean().catch(false),
-	conference_play_sounds: z.boolean().catch(false),
+	conference_play_sounds: z.boolean().catch(true),
 	// Levels
 	level_selected: z.enum(['IN', 'OUT']).catch('OUT'),
 	level_in: z.number().catch(100),

@@ -9,7 +9,7 @@
 	label="Conference Sounds"
 	description="Play call connect and disconnect sounds in the conference."
 	bind:value={$config.conference_play_sounds}
-	default_value={false}
+	default_value={true}
 />
 <FieldGroup name="Ringer Volume">
 	<FieldSlider

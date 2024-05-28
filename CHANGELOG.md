@@ -6,6 +6,7 @@ _multi sip account support, early media and more_
 
 - added: TODO: multi sip account support
 - added: TODO: auto redial config
+- added: ability to copy past settings
 - added: early media support
 - added: hold unselected calls option
 - added: auto answer delay option
