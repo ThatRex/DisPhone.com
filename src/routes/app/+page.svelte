@@ -5,7 +5,8 @@
 	import { dropText } from '$lib/stores/dial.volitile'
 
 	const vibrate = navigator.vibrate
-	$: navigator.vibrate = $config.haptics_disabled ? undefined : vibrate
+	$: ({ haptics_disabled, secondary_panel_enabled } = $config)
+	$: navigator.vibrate = haptics_disabled ? undefined : vibrate
 
 	// stops firefox setting the document location to dropped text
 	document.documentElement.addEventListener('dragover', (e) => {
@@ -21,7 +22,7 @@
 <div class="overflow-auto h-svh max-xs:snap-y snap-mandatory max-xl:scrollbar-thin">
 	<div class="h-full xs:flex flex-col mx-auto max-w-7xl">
 		<PanelMain />
-		{#if $config.secondary_panel_enabled}
+		{#if secondary_panel_enabled}
 			<PanelSecondary />
 		{/if}
 	</div>

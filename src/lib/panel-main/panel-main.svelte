@@ -46,14 +46,36 @@
 	import { PresenceUpdateStatus } from 'discord-api-types/v10'
 
 	$: ({
+		sound_level_ring_out,
+		sound_level_ring_in,
+		conference_play_sounds,
+		conference_enabled,
+		inbound_call_mode,
+		after_dial_call_selection_mode,
+		auto_answer_delay_ms,
+		disconnected_timeout_ms,
+		sound_ring_in,
+		sound_ring_out,
+		sound_connected,
+		sound_disconnected,
+		sound_auto_answered,
+		sound_done,
+		sip_profiles,
+		sip_debug_enabled,
+		bot_discord_profiles,
+		bot_discord_autostart_enabled,
+		bot_discord_follow_mode_enabled,
+		bot_discord_debug_enabled,
+		close_confirmation_mode,
+		hold_unselected_calls,
 		muted_in,
-		level_in,
 		muted_out,
+		level_in,
 		level_out,
 		simulate_dtmf,
-		conference_enabled,
-		hold_unselected_calls,
-		bot_discord_profiles
+		mute_on_deafen,
+		dialpad_enabled,
+		level_selected
 	} = $config)
 
 	const ac = new AudioContext()
@@ -149,7 +171,7 @@
 				const stopRing = player.play({
 					name: sound,
 					loop: true,
-					volume: $config.sound_level_ring_in,
+					volume: sound_level_ring_in,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
@@ -164,7 +186,7 @@
 				const stopRing = player.play({
 					name: sound,
 					loop: true,
-					volume: $config.sound_level_ring_out,
+					volume: sound_level_ring_out,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
@@ -178,7 +200,7 @@
 			case 'disconnected':
 			case 'auto_answered': {
 				const name = sound === 'auto_answered' ? 'connected' : sound
-				if ($config.conference_play_sounds) player_conf.play({ name })
+				if (conference_play_sounds) player_conf.play({ name })
 			}
 			default: {
 				player.play({
@@ -203,7 +225,7 @@
 		}
 		case $call_ids_connecting_o.length &&
 			!conference_enabled &&
-			(!hold_unselected_calls || !getSelectedCallWithMedia().length): {
+			(hold_unselected_calls ? !getSelectedCallWithMedia().length : !$call_ids_has_media.length): {
 			playSound('ring_out')
 			break
 		}
@@ -213,7 +235,7 @@
 	}
 
 	// Phone
-	const phone = new PhoneClient({ ac, debug: $config.sip_debug_enabled })
+	const phone = new PhoneClient({ ac, debug: sip_debug_enabled })
 	src_i_phone.connect(phone.dst)
 	phone.src.connect(dst_o_phone)
 	setContext('phone', phone)
@@ -242,21 +264,20 @@
 
 		// new call
 		if (initial_call_idx === -1) {
-			const ids = !$config.conference_enabled ? [] : $calls.map((c) => c.id)
+			const ids = !conference_enabled ? [] : $calls.map((c) => c.id)
 			phone.conference({ ids })
 
-			const hidden = cu.type === 'INBOUND' && $config.inbound_call_mode === 'DND'
+			const hidden = cu.type === 'INBOUND' && inbound_call_mode === 'DND'
 
-			const unselect_all =
-				$config.after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND'
+			const unselect_all = after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND'
 
 			let selected = false
 			switch (true) {
-				case $config.after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND': {
+				case after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND': {
 					selected = true
 					break
 				}
-				case $config.after_dial_call_selection_mode !== 'never' || cu.type === 'INBOUND': {
+				case after_dial_call_selection_mode !== 'never' || cu.type === 'INBOUND': {
 					selected = !$call_ids_selected.length
 					break
 				}
@@ -272,7 +293,7 @@
 
 			if (cu.type !== 'INBOUND') return
 
-			switch ($config.inbound_call_mode) {
+			switch (inbound_call_mode) {
 				case 'R': {
 					playSound('ring_in')
 					break
@@ -289,7 +310,7 @@
 						const call = $calls[getCallIdx()]
 						if (!call || call.progress !== 'CONNECTING') return
 						phone.answer({ ids: [cu.id] })
-					}, $config.auto_answer_delay_ms)
+					}, auto_answer_delay_ms)
 					break
 				}
 			}
@@ -314,18 +335,15 @@
 			case 'CONNECTED': {
 				if (call.progress === 'CONNECTED') break
 				if (cu.type === 'INBOUND' && cu.destination) $redial_string = cu.destination
-				call.type === 'INBOUND' && $config.inbound_call_mode === 'AA'
+				call.type === 'INBOUND' && inbound_call_mode === 'AA'
 					? playSound('auto_answered')
 					: playSound('connected')
 				break
 			}
 			case 'DISCONNECTED': {
 				if (call.progress === 'DISCONNECTED') break
-				setTimeout(
-					() => ($calls = $calls.filter((c) => c.id !== call.id)),
-					$config.disconnected_timeout_ms
-				)
-				if (call.type === 'INBOUND' && $config.inbound_call_mode === 'DND') return
+				setTimeout(() => ($calls = $calls.filter((c) => c.id !== call.id)), disconnected_timeout_ms)
+				if (call.type === 'INBOUND' && inbound_call_mode === 'DND') return
 				$call_ids_active.length ? playSound('disconnected') : playSound('done')
 				break
 			}
@@ -336,6 +354,13 @@
 	const bot = new BotBtnClient(ac)
 	bot.src.connect(gin_i_bot)
 	src_o_bot.connect(bot.dst)
+
+	$: bot.update({ self_deaf: muted_in })
+	$: bot.update({ self_mute: muted_out })
+	$: bot.setFollowMode({
+		mode: bot_discord_follow_mode_enabled,
+		user_id: bot_discord_profiles[0].usr_user_id
+	})
 
 	let bot_state: BotButtonClientState = 'INITIAL'
 	let bot_running = false
@@ -426,17 +451,17 @@
 		console.info('Loading Sounds')
 
 		const loaded_sounds = await SoundPlayer.load({
-			ring_in: $config.sound_ring_in,
-			ring_out: $config.sound_ring_out,
-			connected: $config.sound_connected,
-			disconnected: $config.sound_disconnected,
-			auto_answered: $config.sound_auto_answered,
-			done: $config.sound_done
+			ring_in: sound_ring_in,
+			ring_out: sound_ring_out,
+			connected: sound_connected,
+			disconnected: sound_disconnected,
+			auto_answered: sound_auto_answered,
+			done: sound_done
 		})
 
 		const loaded_sounds_conf = await SoundPlayer.load({
-			connected: $config.sound_connected,
-			disconnected: $config.sound_disconnected
+			connected: sound_connected,
+			disconnected: sound_disconnected
 		})
 
 		player.loadSounds(loaded_sounds)
@@ -460,15 +485,15 @@
 
 		loadSounds()
 
-		const profile_sip = $config.sip_profiles[0]
+		const profile_sip = sip_profiles[0]
 		phone.addProfile(profile_sip)
 
-		const profile_bot = $config.bot_discord_profiles[0]
+		const profile_bot = bot_discord_profiles[0]
 
-		if (profile_bot.bot_token && $config.bot_discord_autostart_enabled) {
+		if (profile_bot.bot_token && bot_discord_autostart_enabled) {
 			bot.init({
 				token: profile_bot.bot_token,
-				debug: $config.bot_discord_debug_enabled
+				debug: bot_discord_debug_enabled
 			})
 		}
 
@@ -481,53 +506,47 @@
 		init()
 	})
 	window.onbeforeunload = () => {
-		if ($config.close_confirmation_mode === 'always') return false
-		if ($call_ids_active.length && $config.close_confirmation_mode !== 'never') return false
+		if (close_confirmation_mode === 'always') return false
+		if ($call_ids_active.length && close_confirmation_mode !== 'never') return false
 	}
 
 	/* Toggles */
 
 	// users often try enabling DND to stop inbound ringing
-	subscribeKey(config, 'inbound_call_mode', (v) => v !== 'DND' || stopRingIn?.())
+	$: inbound_call_mode !== 'DND' || stopRingIn?.()
 
 	subscribeKey(config, 'conference_enabled', (v) => {
 		const ids = !v ? [] : $calls.map((c) => c.id)
 		phone.conference({ ids })
-		if ($config.hold_unselected_calls) phone.setHold({ ids, value: false })
+		if (hold_unselected_calls) phone.setHold({ ids, value: false })
 	})
 
 	subscribeKey(config, 'hold_unselected_calls', (v) => v || phone.setHold({ value: false }))
-	$: if ($config.hold_unselected_calls && !$config.conference_enabled) {
+	$: if (hold_unselected_calls && !conference_enabled) {
 		phone.setHold({ ids: $call_ids_selected, value: false })
 		phone.setHold({ ids: $call_ids_unselected, value: true })
 	}
 
-	let muted_in_previously = $config.muted_in
+	let muted_in_previously = muted_in
 	subscribeKey(config, 'mute_on_deafen', () => {
-		if (!$config.muted_out) return
-		muted_in_previously = $config.muted_in
-		$config.muted_in = true
+		if (!muted_out) return
+		muted_in_previously = muted_in
+		muted_in = true
 	})
 	subscribeKey(config, 'muted_in', () => {
-		if (!$config.mute_on_deafen) return
-		if ($config.muted_in) return
+		if (!mute_on_deafen) return
+		if (muted_in) return
 		muted_in_previously = false
-		$config.muted_out = false
+		muted_out = false
 	})
 	subscribeKey(config, 'muted_out', () => {
-		if (!$config.mute_on_deafen) return
-		if ($config.muted_out) {
-			muted_in_previously = $config.muted_in
-			$config.muted_in = true
+		if (!mute_on_deafen) return
+		if (muted_out) {
+			muted_in_previously = muted_in
+			muted_in = true
 		} else {
-			$config.muted_in = muted_in_previously
+			muted_in = muted_in_previously
 		}
-	})
-
-	subscribeKey(config, 'muted_in', (v) => bot.update({ self_deaf: v }))
-	subscribeKey(config, 'muted_out', (v) => bot.update({ self_mute: v }))
-	subscribeKey(config, 'bot_discord_follow_mode_enabled', (v) => {
-		bot.setFollowMode({ mode: v, user_id: $config.bot_discord_profiles[0].usr_user_id })
 	})
 </script>
 
@@ -574,12 +593,12 @@
 				<Button
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"
 					on:trigger={() => {
-						const input = $config.sip_profiles[0].voicemail_number || vm_dest
+						const input = sip_profiles[0].voicemail_number || vm_dest
 						phone.dial({ profile_id: $config.sip_profiles[0].id, input })
 					}}
 					icon={IconRecordMail}
 					color={vm_qty ? 'red' : 'mono'}
-					disabled={!$config.sip_profiles[0].voicemail_number && !vm_dest}
+					disabled={!sip_profiles[0].voicemail_number && !vm_dest}
 				/>
 			</div>
 
@@ -597,8 +616,8 @@
 								bot.shutdown()
 							} else {
 								bot.init({
-									token: $config.bot_discord_profiles[0].bot_token,
-									debug: $config.bot_discord_debug_enabled
+									token: bot_discord_profiles[0].bot_token,
+									debug: bot_discord_debug_enabled
 								})
 							}
 						}}
@@ -642,13 +661,13 @@
 
 	<div class="flex grow gap-2 h-[166px]">
 		<Display />
-		{#if $config.dialpad_enabled}
+		{#if dialpad_enabled}
 			<Dialpad />
 		{/if}
 		<div class="flex flex-col gap-2">
 			<div class="flex gap-2 h-full">
 				{#if bot_connected}
-					<div class="flex {$config.level_selected === 'IN' ? 'max-xs:hidden' : ''}">
+					<div class="flex {level_selected === 'IN' ? 'max-xs:hidden' : ''}">
 						<Level
 							bind:state={$config.muted_in}
 							bind:value={$config.level_in}
@@ -658,7 +677,7 @@
 							color="blue"
 						/>
 					</div>
-					<div class="flex {$config.level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
+					<div class="flex {level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
 						<Level
 							bind:state={$config.muted_out}
 							bind:value={$config.level_out}
@@ -669,7 +688,7 @@
 						/>
 					</div>
 				{:else}
-					<div class="flex {$config.level_selected === 'IN' ? 'max-xs:hidden' : ''}">
+					<div class="flex {level_selected === 'IN' ? 'max-xs:hidden' : ''}">
 						<Level
 							bind:state={$config.muted_in}
 							bind:value={$config.level_in}
@@ -678,7 +697,7 @@
 							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
 						/>
 					</div>
-					<div class="flex {$config.level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
+					<div class="flex {level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
 						<Level
 							bind:state={$config.muted_out}
 							bind:value={$config.level_out}
@@ -691,8 +710,7 @@
 			</div>
 			<div class="max-xs:flex hidden grow">
 				<Toggle
-					on:toggle={() =>
-						($config.level_selected = $config.level_selected === 'IN' ? 'OUT' : 'IN')}
+					on:toggle={() => ($config.level_selected = level_selected === 'IN' ? 'OUT' : 'IN')}
 					tip="Switch Level"
 					value={$config.level_selected === 'IN'}
 					icon={IconSwitchHorizontal}

@@ -34,7 +34,7 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 		gain.gain.value = (volume ?? 100) / 100
 		gain.connect(this.dst)
 
-		const buffer = this.audio_buffers[name]
+		const buffer = this.audio_buffers?.[name]
 		if (!buffer) throw Error('Sound not loaded.')
 
 		const buffer_source = this.ac.createBufferSource()

@@ -1,3 +1,23 @@
+# 0.10.0 [XX-05-2024]
+
+_multi sip account support, early media and more_
+
+## Changes
+
+- added: TODO: multi sip account support
+- added: TODO: auto redial config
+- added: early media support
+- added: hold unselected calls option
+- added: auto answer delay option
+- added: disconnected call visibility option
+- added: close confirmation option
+- added: after dial selection option
+- added: invisible (bot) option
+- added: websocket server field
+- fixed: using sip server with custom port results in an invalid websocket url
+- changed: refined secondary panel settings
+- other minor changes
+
 # 0.9.8 [13-05-2024]
 
 _the updated mobile experience is here_
