@@ -220,12 +220,16 @@ class BotButtonClient extends EventEmitter {
 	}
 
 	private move(params: { guild_id: string | null; channel_id: string | null }) {
-		this.voice?.update({
-			speaking: this.speaking,
-			self_deaf: this.self_deaf,
-			self_mute: this.self_mute,
-			...params
-		})
+		try {
+			this.voice?.update({
+				speaking: this.speaking,
+				self_deaf: this.self_deaf,
+				self_mute: this.self_mute,
+				...params
+			})
+		} catch {
+			noop()
+		}
 	}
 
 	public update(params: { speaking?: boolean; self_mute?: boolean; self_deaf?: boolean }) {

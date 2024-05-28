@@ -357,9 +357,10 @@
 
 	$: bot.update({ self_deaf: muted_in })
 	$: bot.update({ self_mute: muted_out })
+	$: user_id = bot_discord_profiles[0].usr_user_id
 	$: bot.setFollowMode({
 		mode: bot_discord_follow_mode_enabled,
-		user_id: bot_discord_profiles[0].usr_user_id
+		user_id
 	})
 
 	let bot_state: BotButtonClientState = 'INITIAL'
