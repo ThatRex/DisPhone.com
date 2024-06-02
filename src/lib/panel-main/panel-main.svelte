@@ -527,25 +527,25 @@
 		phone.setHold({ ids: $call_ids_unselected, value: true })
 	}
 
-	let muted_in_previously = muted_in
+	let muted_in_previously = $config.muted_in
 	subscribeKey(config, 'mute_on_deafen', () => {
-		if (!muted_out) return
-		muted_in_previously = muted_in
-		muted_in = true
+		if (!$config.muted_out) return
+		muted_in_previously = $config.muted_in
+		$config.muted_in = true
 	})
 	subscribeKey(config, 'muted_in', () => {
-		if (!mute_on_deafen) return
-		if (muted_in) return
+		if (!$config.mute_on_deafen) return
+		if ($config.muted_in) return
 		muted_in_previously = false
-		muted_out = false
+		$config.muted_out = false
 	})
 	subscribeKey(config, 'muted_out', () => {
-		if (!mute_on_deafen) return
-		if (muted_out) {
-			muted_in_previously = muted_in
-			muted_in = true
+		if (!$config.mute_on_deafen) return
+		if ($config.muted_out) {
+			muted_in_previously = $config.muted_in
+			$config.muted_in = true
 		} else {
-			muted_in = muted_in_previously
+			$config.muted_in = muted_in_previously
 		}
 	})
 </script>
