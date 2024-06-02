@@ -181,8 +181,9 @@ export class Manager extends EventEmitter {
 		username: string
 		login?: string
 		password?: string
-		sip_server: string
-		ws_server?: string
+		server_sip: string
+		server_ws?: string
+		server_stun?: string
 		register?: boolean
 		early_media?: boolean
 	}) {

@@ -64,9 +64,9 @@ export class Profile extends EventEmitter {
 		username: string
 		login?: string
 		password?: string
-		sip_server: string
-		ws_server?: string
-		stun_server?: string
+		server_sip: string
+		server_ws?: string
+		server_stun?: string
 		register?: boolean
 		early_media?: boolean
 		debug?: boolean
@@ -78,8 +78,9 @@ export class Profile extends EventEmitter {
 			username,
 			login,
 			password,
-			sip_server,
-			ws_server,
+			server_sip,
+			server_ws,
+			server_stun,
 			register,
 			early_media,
 			debug
@@ -95,7 +96,7 @@ export class Profile extends EventEmitter {
 		this.ac = ac
 		this.id = id
 
-		const uri = makeURI(username, sip_server)
+		const uri = makeURI(username, server_sip)
 		if (!uri) throw new Error('Error creating URI.')
 
 		const sessionDescriptionHandlerFactory = Web.defaultSessionDescriptionHandlerFactory(
@@ -121,7 +122,9 @@ export class Profile extends EventEmitter {
 		}
 
 		const sessionDescriptionHandlerFactoryOptions: SessionDescriptionHandlerConfiguration = {
-			peerConnectionConfiguration: { iceServers: [] }
+			peerConnectionConfiguration: {
+				iceServers: server_stun ? [{ urls: `stun:${server_stun}` }] : undefined
+			}
 		}
 
 		this.ua = new UserAgent({
@@ -129,7 +132,7 @@ export class Profile extends EventEmitter {
 			authorizationUsername: login || username,
 			authorizationPassword: password,
 			transportOptions: {
-				server: ws_server ? `wss://${ws_server}` : `wss://${sip_server.split(':')[0]}:8089/ws`
+				server: server_ws ? `wss://${server_ws}` : `wss://${server_sip.split(':')[0]}:8089/ws`
 			},
 			sessionDescriptionHandlerFactoryOptions,
 			sessionDescriptionHandlerFactory,

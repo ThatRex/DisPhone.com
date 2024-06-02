@@ -61,7 +61,6 @@
 		sound_auto_answered,
 		sound_done,
 		sip_profiles,
-		sip_debug_enabled,
 		bot_discord_profiles,
 		bot_discord_autostart_enabled,
 		bot_discord_follow_mode_enabled,
@@ -235,7 +234,7 @@
 	}
 
 	// Phone
-	const phone = new PhoneClient({ ac, debug: sip_debug_enabled })
+	const phone = new PhoneClient({ ac, debug: $config.sip_debug_enabled })
 	src_i_phone.connect(phone.dst)
 	phone.src.connect(dst_o_phone)
 	setContext('phone', phone)
@@ -594,12 +593,12 @@
 				<Button
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"
 					on:trigger={() => {
-						const input = sip_profiles[0].voicemail_number || vm_dest
+						const input = sip_profiles[0].number_voicemail || vm_dest
 						phone.dial({ profile_id: $config.sip_profiles[0].id, input })
 					}}
 					icon={IconRecordMail}
 					color={vm_qty ? 'red' : 'mono'}
-					disabled={!sip_profiles[0].voicemail_number && !vm_dest}
+					disabled={!sip_profiles[0].number_voicemail && !vm_dest}
 				/>
 			</div>
 

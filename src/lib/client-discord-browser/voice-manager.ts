@@ -321,6 +321,9 @@ export class VoiceManager extends EventEmitter {
 		this.rtc = undefined
 		this.voice = undefined
 
+		this.guild_id = null
+		this.channel_id = null
+
 		this.emit('state', failed ? VoiceManagerState.FAILED : VoiceManagerState.DISCONNECTED)
 	}
 

@@ -45,26 +45,28 @@ export const schema = z.object({
 	sip_profiles: z
 		.object({
 			id: z.string(),
-			ws_server: z.string().catch(''),
-			sip_server: z.string().catch(''),
+			server_ws: z.string().catch(''),
+			server_sip: z.string().catch(''),
+			server_stun: z.string().catch(''),
 			username: z.string().catch(''),
 			login: z.string().catch(''),
 			password: z.string().catch(''),
-			voicemail_number: z.string().catch(''),
+			number_voicemail: z.string().catch(''),
 			register: z.boolean().catch(true),
-			early_media: z.boolean().catch(true)
+			early_media: z.boolean().catch(true),
 		})
 		.array()
 		.nonempty()
 		.catch([
 			{
 				id: 'default',
-				ws_server: '',
-				sip_server: '',
+				server_ws: '',
+				server_sip: '',
+				server_stun: '',
 				username: '',
 				login: '',
 				password: '',
-				voicemail_number: '',
+				number_voicemail: '',
 				register: true,
 				early_media: true
 			}

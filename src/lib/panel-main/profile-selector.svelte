@@ -85,7 +85,7 @@
 	<div
 		class="flex font-medium overflow-hidden whitespace-nowrap overflow-ellipsis w-0 grow justify-start"
 	>
-		{$config.sip_profiles[0]?.username}@{$config.sip_profiles[0]?.sip_server}
+		{$config.sip_profiles[0].username}@{$config.sip_profiles[0].server_sip}
 	</div>
 	<div class="flex items-center gap-x-4 justify-end">
 		<div class="max-sm:hidden font-semibold capitalize">{state.toLowerCase()}</div>

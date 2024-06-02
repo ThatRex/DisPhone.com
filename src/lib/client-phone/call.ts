@@ -155,7 +155,7 @@ class Call extends EventEmitter {
 					identity: undefined,
 					media: false,
 					dtmf_receptible: false,
-					on_hold: false,
+					on_hold: false
 				})
 				;(() => {
 					if (!this.detail.auto_redialing || !this.detail.start_time) return
@@ -502,8 +502,6 @@ class Call extends EventEmitter {
 		if (!uri) return
 		this.debug?.('Transfer:', uri.toString())
 		if (this.detail.progress === 'CONNECTING' && this.detail.type === 'INBOUND') {
-			this.setDeaf(true)
-			this.setMute(true)
 			await this.answer()
 			await wait(100)
 		}

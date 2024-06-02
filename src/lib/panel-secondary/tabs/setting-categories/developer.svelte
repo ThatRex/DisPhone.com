@@ -64,7 +64,7 @@
 
 <FieldGroup
 	name="Copy Past Settings"
-	description="DO NOT SHARE! Passwords and tokens are included."
+	description="Keep this safe! Passwords and tokens are within."
 >
 	<div class="flex gap-2">
 		<Button
@@ -85,9 +85,15 @@
 </FieldGroup>
 
 <FieldGroup name="Debug" description="Logs debug information to the console.">
-	<FieldSwitch label="Softphone" bind:value={$config.sip_debug_enabled} default_value={dev} />
+	<FieldSwitch
+		label="Softphone"
+		description="Refresh page to apply."
+		bind:value={$config.sip_debug_enabled}
+		default_value={dev}
+	/>
 	<FieldSwitch
 		label="Discord Bot"
+		description="Restart bot to apply."
 		bind:value={$config.bot_discord_debug_enabled}
 		default_value={dev}
 	/>

@@ -16,6 +16,7 @@ _multi sip account support, early media and more_
 - added: invisible (bot) option
 - added: websocket server field
 - fixed: using sip server with custom port results in an invalid websocket url
+- fixed: toggling mute or deafen after bot has left channel results in bot re-joining
 - changed: refined secondary panel settings
 - other minor changes
 
