@@ -151,7 +151,7 @@
 
 	const player = new SoundPlayer<Omit<LoadedSounds, 'ring_in' | 'ring_out'>>(ac)
 	const player_conf = new SoundPlayer<Pick<LoadedSounds, 'connected' | 'disconnected'>>(ac)
-	const player_ring_in = new SoundPlayer<Pick<LoadedSounds, 'ring_in'>>(ac)	
+	const player_ring_in = new SoundPlayer<Pick<LoadedSounds, 'ring_in'>>(ac)
 	const player_ring_out = new SoundPlayer<Pick<LoadedSounds, 'ring_out'>>(ac)
 
 	$: player_ring_in.gain = sound_level_ring_in
@@ -161,6 +161,8 @@
 
 	$: {
 		player.src.disconnect()
+		player_ring_in.src.disconnect(dst_o_browser)
+		player_ring_out.src.disconnect(dst_o_browser)
 		if (bot_connected) {
 			player.src.connect(dst_o_bot)
 			player_ring_in.src.connect(dst_o_bot)
