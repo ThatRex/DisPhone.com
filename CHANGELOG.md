@@ -6,7 +6,8 @@ _multi sip account support, early media and more_
 
 - added: TODO: multi sip account support
 - added: TODO: auto redial config
-- added: ability to copy past settings
+- added: call item transition and animation
+- added: ability to copy paste settings
 - added: early media support
 - added: hold unselected calls option
 - added: auto answer delay option
@@ -15,6 +16,7 @@ _multi sip account support, early media and more_
 - added: after dial selection option
 - added: invisible (bot) option
 - added: websocket server field
+- fixed: holding enter spams redial
 - fixed: delay when using STUN server
 - fixed: using sip server with custom port results in an invalid websocket url
 - fixed: toggling mute or deafen after bot has left channel results in bot re-joining

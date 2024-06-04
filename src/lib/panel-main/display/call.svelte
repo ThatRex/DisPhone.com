@@ -131,7 +131,7 @@
 </script>
 
 <button
-	class="group ring-0 outline-none"
+	class="group ring-0 outline-none w-full"
 	type="button"
 	aria-pressed={call.selected}
 	id="call-item-{call.id}"

@@ -5,6 +5,8 @@
 	import ButtonTab from './ui/tab.svelte'
 	import Tab from './tabs/'
 
+	export let hidden = false
+
 	const {
 		elements: { root, list, content, trigger },
 		states
@@ -28,7 +30,10 @@
 	]
 </script>
 
-<section use:melt={$root} class="flex grow gap-2 max-xs:min-h-svh snap-start -mt-2 scroll-mb-3">
+<section
+	use:melt={$root}
+	class="flex grow gap-2 max-xs:min-h-svh snap-start -mt-2 scroll-mb-3 {hidden ? 'hidden' : ''}"
+>
 	<!-- Sidebar -->
 	<div
 		class="

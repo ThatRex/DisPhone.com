@@ -20,12 +20,12 @@
 </script>
 
 <div class="container-wrapper h-svh">
-	<div class="overflow-auto h-svh max-xs:snap-y snap-mandatory max-xl:scrollbar-thin wrapper-min-snap">
+	<div
+		class="overflow-auto h-svh max-xs:snap-y snap-mandatory max-xl:scrollbar-thin wrapper-min-snap"
+	>
 		<div class="h-full xs:flex flex-col mx-auto max-w-7xl">
 			<PanelMain />
-			{#if secondary_panel_enabled}
-				<PanelSecondary />
-			{/if}
+			<PanelSecondary hidden={!secondary_panel_enabled} />
 		</div>
 	</div>
 </div>

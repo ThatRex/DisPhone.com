@@ -89,6 +89,7 @@
 		setTimeout(() => input.setSelectionRange(before_selection.length, before_selection.length), 0)
 	}
 
+	let submitted = false
 	let peek: string | undefined
 	$: label = $call_ids_dtmf_receptible.length ? 'Destination Number / DTMF' : 'Destination Number'
 	$: placeholder = peek ?? label
@@ -107,6 +108,8 @@
 			class="grow min-w-0 flex"
 			on:submit={(e) => {
 				e.preventDefault()
+				if (submitted) return
+				submitted = true
 				call()
 			}}
 		>
@@ -115,7 +118,10 @@
 				bind:value={$dial_string}
 				on:drop={dropText}
 				on:keydown={({ key, ctrlKey, altKey, metaKey }) => {
-					if (key === 'Delete') clear()
+					if (key === 'Delete') {
+						clear()
+						return
+					}
 					if (ctrlKey || altKey || metaKey) return
 					const k = uppercaseLetterToNumber(key).toUpperCase()
 					if (!dialpad_keys.includes(k)) return
@@ -123,6 +129,7 @@
 					addActiveKey(k)
 					phone.sendDTMF({ ids: $call_ids_dtmf_receptible, dtmf: key })
 				}}
+				on:keyup={({ key }) => key !== 'Enter' || (submitted = false)}
 				type="tel"
 				aria-label={label}
 				{placeholder}
@@ -180,9 +187,7 @@
 			on:trigger={(e) => {
 				phone.hangup({
 					ids:
-						e.detail === 'left-click' && $call_ids_selected.length
-							? $call_ids_selected
-							: undefined
+						e.detail === 'left-click' && $call_ids_selected.length ? $call_ids_selected : undefined
 				})
 			}}
 			tip={$call_ids_selected.length ? 'Hangup Selected' : 'Hangup All'}
