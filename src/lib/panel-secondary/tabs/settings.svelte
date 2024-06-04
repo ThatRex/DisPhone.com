@@ -38,16 +38,16 @@
 			component: Category.Interface
 		},
 		{
-			id: 'accessibility',
-			title: 'Accessibility',
-			icon: IconAccessible,
-			component: Category.Accessibility
-		},
-		{
 			id: 'sound',
 			title: 'Sound',
 			icon: IconVolume,
 			component: Category.Sound
+		},
+		{
+			id: 'accessibility',
+			title: 'Accessibility',
+			icon: IconAccessible,
+			component: Category.Accessibility
 		},
 		{
 			id: 'hidden',

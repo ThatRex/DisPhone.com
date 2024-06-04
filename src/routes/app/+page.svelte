@@ -19,11 +19,26 @@
 	})
 </script>
 
-<div class="overflow-auto h-svh max-xs:snap-y snap-mandatory max-xl:scrollbar-thin">
-	<div class="h-full xs:flex flex-col mx-auto max-w-7xl">
-		<PanelMain />
-		{#if secondary_panel_enabled}
-			<PanelSecondary />
-		{/if}
+<div class="container-wrapper h-svh">
+	<div class="overflow-auto h-svh max-xs:snap-y snap-mandatory max-xl:scrollbar-thin wrapper-min-snap">
+		<div class="h-full xs:flex flex-col mx-auto max-w-7xl">
+			<PanelMain />
+			{#if secondary_panel_enabled}
+				<PanelSecondary />
+			{/if}
+		</div>
 	</div>
 </div>
+
+<style lang="postcss">
+	.container-wrapper {
+		container-name: wrapper;
+		container-type: size;
+	}
+
+	@container wrapper (283px <= height <= 298px) {
+		.wrapper-min-snap {
+			@apply snap-y;
+		}
+	}
+</style>

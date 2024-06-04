@@ -16,7 +16,7 @@
 	export let call: CallItem
 	export let height_display: number
 
-	$: style = ((): { default_text: string; icon: Component ; classes: string } => {
+	$: style = ((): { default_text: string; icon: Component; classes: string } => {
 		switch (true) {
 			case call.progress === 'DISCONNECTED': {
 				return {

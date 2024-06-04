@@ -11,7 +11,13 @@
 	bind:value={$config.conference_play_sounds}
 	default_value={true}
 />
-<FieldGroup name="Ringer Volume">
+<FieldGroup name="Levels">
+	<FieldSlider
+		label="Simulated DTMF Tones"
+		bind:value={$config.sound_level_simulated_dtmf}
+		default_value={10}
+		displayValueParser={(n) => (n ? String(n) + '%' : 'Disabled')}
+	/>
 	<FieldSlider
 		label="Ring In"
 		bind:value={$config.sound_level_ring_in}

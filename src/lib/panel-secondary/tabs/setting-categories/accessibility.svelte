@@ -3,7 +3,6 @@
 	import FieldSwitch from '$lib/panel-secondary/ui/field-switch.svelte'
 </script>
 
-<FieldSwitch label="Simulate DTMF Tones" bind:value={$config.simulate_dtmf} default_value={true} />
 <FieldSwitch
 	label="Mute On Deafen"
 	description="Automatically mute input when output muted."

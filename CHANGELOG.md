@@ -15,6 +15,7 @@ _multi sip account support, early media and more_
 - added: after dial selection option
 - added: invisible (bot) option
 - added: websocket server field
+- fixed: delay when using STUN server
 - fixed: using sip server with custom port results in an invalid websocket url
 - fixed: toggling mute or deafen after bot has left channel results in bot re-joining
 - changed: refined secondary panel settings

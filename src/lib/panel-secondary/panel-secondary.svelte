@@ -57,16 +57,26 @@
 		</div>
 	</div>
 	<!-- Content -->
-	<div
-		class="
-			w-0 flex grow rounded-md mr-3 my-3
-			border border-black dark:border-white !border-opacity-30
-			"
-	>
-		{#each triggers as { id, tab, padding }}
-			<div use:melt={$content(id)} class="flex-1 {padding && 'p-2.5'}">
-				<svelte:component this={tab}></svelte:component>
-			</div>
-		{/each}
+	<div class="flex grow wrapper-min-h">
+		<div
+			class="
+				w-0 flex grow rounded-md mr-3 my-3
+				border border-black dark:border-white !border-opacity-30
+				"
+		>
+			{#each triggers as { id, tab, padding }}
+				<div use:melt={$content(id)} class="flex-1 {padding && 'p-2.5'}">
+					<svelte:component this={tab}></svelte:component>
+				</div>
+			{/each}
+		</div>
 	</div>
 </section>
+
+<style lang="postcss">
+	@container wrapper (height <= 298px) {
+		.wrapper-min-h {
+			@apply min-h-svh;
+		}
+	}
+</style>

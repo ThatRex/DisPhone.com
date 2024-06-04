@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { config, schema } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.persistent'
+	import schema from '$lib/schemas'
 	import FieldSwitch from '$lib/panel-secondary/ui/field-switch.svelte'
 	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
 	import { dev } from '$app/environment'
@@ -44,7 +45,7 @@
 			const string = await navigator.clipboard.readText()
 			const base64 = atob(string.trim())
 			const json = JSON.parse(base64)
-			const parsed = schema.parse(json)
+			const parsed = schema.config.parse(json)
 			$config = parsed
 			btn_past_icon = IconCheck
 			btn_past_color = 'green'
@@ -63,7 +64,7 @@
 </script>
 
 <FieldGroup
-	name="Copy Past Settings"
+	name="Copy Paste Settings"
 	description="Keep this safe! Passwords and tokens are within."
 >
 	<div class="flex gap-2">
@@ -75,7 +76,7 @@
 			disabled={copying}
 		/>
 		<Button
-			label="Past"
+			label="Paste"
 			icon={btn_past_icon}
 			color={btn_past_color}
 			on:click={importConfig}

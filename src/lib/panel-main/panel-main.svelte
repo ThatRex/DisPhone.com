@@ -46,6 +46,7 @@
 	import { PresenceUpdateStatus } from 'discord-api-types/v10'
 
 	$: ({
+		sound_level_simulated_dtmf,
 		sound_level_ring_out,
 		sound_level_ring_in,
 		conference_play_sounds,
@@ -71,8 +72,6 @@
 		muted_out,
 		level_in,
 		level_out,
-		simulate_dtmf,
-		mute_on_deafen,
 		dialpad_enabled,
 		level_selected
 	} = $config)
@@ -136,7 +135,7 @@
 
 	// DTMF Simulator
 	const dtmf_simulator = new DTMFSimulator(ac)
-	$: dtmf_simulator.gain = simulate_dtmf ? 10 : 0
+	$: dtmf_simulator.gain = sound_level_simulated_dtmf
 	dtmf_simulator.src.connect(dst_o_browser)
 	setContext('dtmf_simulator', dtmf_simulator)
 
@@ -150,14 +149,27 @@
 		done: AudioBuffer
 	}
 
-	const player = new SoundPlayer<LoadedSounds>(ac)
+	const player = new SoundPlayer<Omit<LoadedSounds, 'ring_in' | 'ring_out'>>(ac)
 	const player_conf = new SoundPlayer<Pick<LoadedSounds, 'connected' | 'disconnected'>>(ac)
+	const player_ring_in = new SoundPlayer<Pick<LoadedSounds, 'ring_in'>>(ac)	
+	const player_ring_out = new SoundPlayer<Pick<LoadedSounds, 'ring_out'>>(ac)
+
+	$: player_ring_in.gain = sound_level_ring_in
+	$: player_ring_out.gain = sound_level_ring_out
+
 	player_conf.src.connect(dst_i_phone)
 
 	$: {
 		player.src.disconnect()
-		if (bot_connected) player.src.connect(dst_o_bot)
-		else player.src.connect(dst_o_browser)
+		if (bot_connected) {
+			player.src.connect(dst_o_bot)
+			player_ring_in.src.connect(dst_o_bot)
+			player_ring_out.src.connect(dst_o_bot)
+		} else {
+			player.src.connect(dst_o_browser)
+			player_ring_in.src.connect(dst_o_browser)
+			player_ring_out.src.connect(dst_o_browser)
+		}
 	}
 
 	let stopRingIn: (() => void) | undefined
@@ -167,10 +179,9 @@
 		switch (sound) {
 			case 'ring_in': {
 				if (stopRingIn) break
-				const stopRing = player.play({
+				const stopRing = player_ring_in.play({
 					name: sound,
 					loop: true,
-					volume: sound_level_ring_in,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
@@ -182,10 +193,9 @@
 			}
 			case 'ring_out': {
 				if (stopRingOut) break
-				const stopRing = player.play({
+				const stopRing = player_ring_out.play({
 					name: sound,
 					loop: true,
-					volume: sound_level_ring_out,
 					onstarted: () => bot_sounds_playing_count++,
 					onended: () => bot_sounds_playing_count--
 				})
@@ -451,8 +461,6 @@
 		console.info('Loading Sounds')
 
 		const loaded_sounds = await SoundPlayer.load({
-			ring_in: sound_ring_in,
-			ring_out: sound_ring_out,
 			connected: sound_connected,
 			disconnected: sound_disconnected,
 			auto_answered: sound_auto_answered,
@@ -464,8 +472,18 @@
 			disconnected: sound_disconnected
 		})
 
+		const loaded_sounds_ring_in = await SoundPlayer.load({
+			ring_in: sound_ring_in
+		})
+
+		const loaded_sounds_ring_out = await SoundPlayer.load({
+			ring_out: sound_ring_out
+		})
+
 		player.loadSounds(loaded_sounds)
 		player_conf.loadSounds(loaded_sounds_conf)
+		player_ring_in.loadSounds(loaded_sounds_ring_in)
+		player_ring_out.loadSounds(loaded_sounds_ring_out)
 	}
 
 	async function init() {
@@ -584,7 +602,7 @@
 			<div class="flex gap-2 flex-wrap max-xs:grow">
 				<Toggle
 					bind:value={$config.secondary_panel_enabled}
-					tip="Secondary Panel"
+					tip={{ on: 'Hide Subpanel', off: 'Show Subpanel' }}
 					icon={{
 						on: IconLayoutBottombarExpandFilled,
 						off: IconLayoutBottombarCollapse

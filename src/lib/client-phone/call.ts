@@ -374,6 +374,7 @@ class Call extends EventEmitter {
 		this._session = new Inviter(this.profile.ua, this.uri, {
 			earlyMedia: this.profile.early_media,
 			sessionDescriptionHandlerOptions
+			// extraHeaders: [`P-Preferred-Identity: <sip:0123456789@${this.profile.ua.configuration.uri.host}>`], // future feature maybe
 		})
 		const session_out = this.session as Inviter
 		session_out.stateChange.addListener(this.sessionStateListener)
@@ -411,6 +412,7 @@ class Call extends EventEmitter {
 				break
 			}
 			case 'OUTBOUND': {
+				this.updateDetail({ progress: 'WAITING', start_time: Date.now() })
 				this.runSequence()
 				break
 			}
@@ -434,10 +436,9 @@ class Call extends EventEmitter {
 			return
 		}
 
-		const sessionDescriptionHandlerOptions: Web.SessionDescriptionHandlerOptions = {
+		this.session.sessionDescriptionHandlerOptionsReInvite = {
 			hold: value
-		}
-		this.session.sessionDescriptionHandlerOptionsReInvite = sessionDescriptionHandlerOptions
+		} as Web.SessionDescriptionHandlerOptions
 
 		try {
 			await new Promise((resolve, reject) => {

@@ -3,7 +3,7 @@
 	
 </script>
 
-<div class="h-full flex flex-col justify-center items-center text-center gap-3 text-sm">
+<div class="h-full flex flex-col justify-center items-center text-center gap-3 text-sm py-6">
 	<img class="w-20" src="./favicons/favicon-192.png" alt="DisPhone Logo">
 	<span class="font-semibold">
 		<a

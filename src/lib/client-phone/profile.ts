@@ -122,6 +122,7 @@ export class Profile extends EventEmitter {
 		}
 
 		const sessionDescriptionHandlerFactoryOptions: SessionDescriptionHandlerConfiguration = {
+			iceGatheringTimeout: 500,
 			peerConnectionConfiguration: {
 				iceServers: server_stun ? [{ urls: `stun:${server_stun}` }] : undefined
 			}

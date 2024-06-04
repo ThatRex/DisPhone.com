@@ -7,8 +7,8 @@
 	$: ({ sip_expert_settings_enabled } = $config)
 </script>
 
-{#each $config.sip_profiles as { register, early_media, server_stun, server_ws, server_sip, username, login, password, number_voicemail }}
-	<FieldGroup name="Profile" description="Refresh page to apply changes.">
+<FieldGroup name="Profile" description="Refresh page to apply changes.">
+	{#each $config.sip_profiles as { register, early_media, server_stun, server_ws, server_sip, username, login, password, number_voicemail }}
 		<FieldSwitch
 			label="Expert Settings"
 			bind:value={$config.sip_expert_settings_enabled}
@@ -58,5 +58,5 @@
 		{#if sip_expert_settings_enabled || number_voicemail}
 			<FieldText label="Voicemail Number" placeholder="*97" bind:value={number_voicemail} />
 		{/if}
-	</FieldGroup>
-{/each}
+	{/each}
+</FieldGroup>
