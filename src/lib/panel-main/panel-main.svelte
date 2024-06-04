@@ -161,8 +161,8 @@
 
 	$: {
 		player.src.disconnect()
-		player_ring_in.src.disconnect(dst_o_browser)
-		player_ring_out.src.disconnect(dst_o_browser)
+		player_ring_in.src.disconnect()
+		player_ring_out.src.disconnect()
 		if (bot_connected) {
 			player.src.connect(dst_o_bot)
 			player_ring_in.src.connect(dst_o_bot)
