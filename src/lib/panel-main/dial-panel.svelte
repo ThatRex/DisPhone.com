@@ -189,7 +189,7 @@
 			on:trigger={({ detail }) => {
 				switch (detail) {
 					case 0: {
-						phone.hangup({ ids: $call_ids_selected })
+						phone.hangup({ ids: $call_ids_selected.length ? $call_ids_selected : undefined })
 						break
 					}
 					case 1: {
