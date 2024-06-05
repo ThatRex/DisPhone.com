@@ -13,8 +13,8 @@
 	let btn_copy_color: ColorsBtn = 'mono'
 
 	let pasting = false
-	let btn_past_icon: Component = IconFileArrowLeft
-	let btn_past_color: ColorsBtn = 'blue'
+	let btn_paste_icon: Component = IconFileArrowLeft
+	let btn_paste_color: ColorsBtn = 'blue'
 
 	const exportConfig = async () => {
 		copying = true
@@ -47,16 +47,16 @@
 			const json = JSON.parse(base64)
 			const parsed = schema.config.parse(json)
 			$config = parsed
-			btn_past_icon = IconCheck
-			btn_past_color = 'green'
+			btn_paste_icon = IconCheck
+			btn_paste_color = 'green'
 		} catch {
-			btn_past_icon = IconX
-			btn_past_color = 'red'
+			btn_paste_icon = IconX
+			btn_paste_color = 'red'
 		}
 
 		setTimeout(() => {
-			btn_past_icon = IconFileArrowLeft
-			btn_past_color = 'blue'
+			btn_paste_icon = IconFileArrowLeft
+			btn_paste_color = 'blue'
 		}, 1000)
 
 		pasting = false
@@ -77,8 +77,8 @@
 		/>
 		<Button
 			label="Paste"
-			icon={btn_past_icon}
-			color={btn_past_color}
+			icon={btn_paste_icon}
+			color={btn_paste_color}
 			on:click={importConfig}
 			disabled={pasting}
 		/>

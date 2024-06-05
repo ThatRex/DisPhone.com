@@ -9,7 +9,7 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 	private audio_buffers!: T
 
 	set gain(gain: number) {
-		this.gin.gain.value = gain / 100
+		this.gin.gain.linearRampToValueAtTime(gain / 100, this.ac.currentTime + 0.02)
 	}
 
 	/** Use `SoundPlayer.load` to load audio. */
