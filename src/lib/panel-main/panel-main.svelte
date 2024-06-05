@@ -353,7 +353,20 @@
 			}
 			case 'DISCONNECTED': {
 				if (call.progress === 'DISCONNECTED') break
-				setTimeout(() => ($calls = $calls.filter((c) => c.id !== call.id)), disconnected_timeout_ms)
+				setTimeout(() => {
+					const calls_new = $calls.filter((c) => c.id !== call.id)
+					const getCurrentlySelected = () => !!$calls.find((c) => c.selected)
+					const nonSelected = () => !calls_new.find((c) => c.selected)
+					if (
+						after_dial_call_selection_mode !== 'never' &&
+						calls_new.length &&
+						getCurrentlySelected() &&
+						nonSelected()
+					) {
+						calls_new[0].selected = true
+					}
+					$calls = calls_new
+				}, disconnected_timeout_ms)
 				if (call.type === 'INBOUND' && inbound_call_mode === 'DND') return
 				$call_ids_active.length ? playSound('disconnected') : playSound('done')
 				break
@@ -612,7 +625,8 @@
 				/>
 				<Button
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"
-					on:trigger={() => {
+					on:trigger={({ detail }) => {
+						if (detail !== 0) return
 						const input = sip_profiles[0].number_voicemail || vm_dest
 						phone.dial({ profile_id: $config.sip_profiles[0].id, input })
 					}}

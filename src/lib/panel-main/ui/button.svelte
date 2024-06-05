@@ -6,7 +6,7 @@
 
 	export let tip: string
 	export let tip_placement: 'top' | 'right' | 'bottom' | 'left' = 'top'
-	export let icon: Component 
+	export let icon: Component
 	export let color: ColorsBtn
 	export let disabled = false
 
@@ -30,10 +30,40 @@
 	on:pointerdown={() => navigator.vibrate?.(6)}
 	on:mouseup={(e) => {
 		if (disabled) return
-		if (![0, 1].includes(e.button)) return
-		dispatch('trigger', e.button === 0 ? 'left-click' : 'middle-click')
+		dispatch('trigger', e.button)
 	}}
-	on:keydown={(e) => disabled || ![' ', 'Enter'].includes(e.key) || dispatch('trigger', 'keydown')}
+	on:keydown={({ repeat, key, ctrlKey, shiftKey, altKey }) => {
+		if (repeat) return
+		if (disabled) return
+		if (key !== 'Enter' && key !== ' ') return
+
+		switch (true) {
+			case ctrlKey && altKey && shiftKey: {
+				dispatch('trigger', 6)
+			}
+			case ctrlKey && altKey: {
+				dispatch('trigger', 5)
+			}
+			case ctrlKey && shiftKey: {
+				dispatch('trigger', 4)
+			}
+			case ctrlKey: {
+				dispatch('trigger', 1)
+				break
+			}
+			case shiftKey: {
+				dispatch('trigger', 2)
+				break
+			}
+			case altKey: {
+				dispatch('trigger', 3)
+				break
+			}
+			default: {
+				dispatch('trigger', 0)
+			}
+		}
+	}}
 	use:melt={$trigger}
 	{disabled}
 	aria-label={tip}

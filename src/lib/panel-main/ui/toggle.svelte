@@ -6,7 +6,7 @@
 
 	export let tip: string | { on: string; off: string } = ''
 	export let tip_placement: 'top' | 'right' | 'bottom' | 'left' = 'top'
-	export let icon: Component  | { on: Component ; off: Component  }
+	export let icon: Component | { on: Component; off: Component }
 	export let color: ColorsBtn | { on: ColorsBtn; off: ColorsBtn } = 'mono'
 	export let value = false
 	export let disabled = false
@@ -37,7 +37,8 @@
 		value = !value
 		dispatch('toggle')
 	}}
-	on:keydown={({ key }) => {
+	on:keydown={({ key, repeat }) => {
+		if (repeat) return
 		if (disabled) return
 		if (![' ', 'Enter'].includes(key)) return
 		value = !value

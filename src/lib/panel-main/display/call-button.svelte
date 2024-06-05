@@ -28,7 +28,10 @@
 	}}
 	on:keydown={(e) => {
 		e.stopPropagation()
-		disabled || ![' ', 'Enter'].includes(e.key) || dispatch('trigger')
+		if (e.repeat) return
+		if (disabled) return
+		if (![' ', 'Enter'].includes(e.key)) return
+		dispatch('trigger')
 	}}
 	on:mouseup={(e) => {
 		if (disabled) return

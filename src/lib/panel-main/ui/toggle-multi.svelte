@@ -61,7 +61,7 @@
 	on:blur={() => (blurred = true)}
 	on:pointerdown={() => navigator.vibrate?.(6)}
 	on:mouseup={(e) => e.button !== 0 || updateSwitch()}
-	on:keydown={({ key }) => ![' ', 'Enter'].includes(key) || updateSwitch()}
+	on:keydown={({ key, repeat }) => repeat || ![' ', 'Enter'].includes(key) || updateSwitch()}
 	use:melt={$trigger}
 	{disabled}
 	aria-label="Toggle {modes[current_mode_idx].tip}"

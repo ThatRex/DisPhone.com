@@ -67,7 +67,7 @@
 	const dialpad_keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#', ',', '+', ';']
 
 	const clear = (backspace: boolean = false) => {
-		navigator.vibrate?.(10)
+		navigator.vibrate?.(6)
 
 		const input = document.getElementById('dial-input') as HTMLInputElement
 
@@ -143,7 +143,7 @@
 		{#if $dial_string}
 			<button
 				aria-label="Delete"
-				on:keypress={(e) => ![' ', 'Enter'].includes(e.key) || clear()}
+				on:keypress={(e) => e.repeat || ![' ', 'Enter'].includes(e.key) || clear()}
 				on:mouseup={(e) => clear(e.button === 1)}
 				disabled={!$dial_string}
 				class="mx-1.5 opacity-40 disabled:opacity-0 hover:opacity-100 focus:opacity-100 transition duration-75"
@@ -157,18 +157,20 @@
 			<Button
 				on:mouseenter={() => (peek = $redial_string)}
 				on:mouseleave={() => (peek = undefined)}
-				on:trigger={() => call(true)}
+				on:trigger={(e) => e.detail !== 0 || call(true)}
 				tip="Redial"
 				icon={IconArrowBackUp}
 				color="purple"
 			/>
 		{:else}
 			<Button
-				on:trigger={(e) => {
-					if (e.detail === 'middle-click') {
+				on:trigger={({ detail }) => {
+					if (detail === 1) {
 						call(true)
 						return
 					}
+
+					if (detail !== 0) return
 
 					if ($call_ids_answerable.length) {
 						phone.answer({ ids: $call_ids_answerable })
@@ -184,11 +186,17 @@
 			/>
 		{/if}
 		<Button
-			on:trigger={(e) => {
-				phone.hangup({
-					ids:
-						e.detail === 'left-click' && $call_ids_selected.length ? $call_ids_selected : undefined
-				})
+			on:trigger={({ detail }) => {
+				switch (detail) {
+					case 0: {
+						phone.hangup({ ids: $call_ids_selected })
+						break
+					}
+					case 1: {
+						phone.hangup()
+						break
+					}
+				}
 			}}
 			tip={$call_ids_selected.length ? 'Hangup Selected' : 'Hangup All'}
 			icon={IconPhoneX}
