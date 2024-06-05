@@ -21,7 +21,7 @@
 
 		try {
 			const string = JSON.stringify($config)
-			const base64 = btoa(string)
+			const base64 = btoa(encodeURI(string))
 			await navigator.clipboard.writeText(base64)
 			btn_copy_icon = IconCheck
 			btn_copy_color = 'green'
@@ -43,7 +43,7 @@
 
 		try {
 			const string = await navigator.clipboard.readText()
-			const base64 = atob(string.trim())
+			const base64 = decodeURI(atob(string.trim()))
 			const json = JSON.parse(base64)
 			const parsed = schema.config.parse(json)
 			$config = parsed
