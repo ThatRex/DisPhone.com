@@ -51,6 +51,7 @@
 			$disabled = true
 		}}
 		on:wheel={(e) => {
+			if (e.shiftKey || e.ctrlKey || e.altKey) return
 			e.preventDefault()
 			const val = e.deltaY > 0 ? value + 2 : value - 2
 			value = val < 0 ? 0 : val

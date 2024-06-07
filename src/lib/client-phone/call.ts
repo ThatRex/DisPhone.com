@@ -32,6 +32,7 @@ export type CallDetail = {
 	auto_redialed_count: number
 	media: boolean
 	dtmf_receptible: boolean
+	hungup: boolean
 
 	on_hold: boolean
 	auto_redialing: boolean
@@ -81,6 +82,7 @@ class Call extends EventEmitter {
 		auto_redialed_count: 0,
 		media: false,
 		dtmf_receptible: false,
+		hungup: false,
 
 		on_hold: false,
 		auto_redialing: false,
@@ -127,7 +129,12 @@ class Call extends EventEmitter {
 		switch (state) {
 			case SessionState.Establishing: {
 				const identity = this.session.assertedIdentity?.friendlyName
-				this.updateDetail({ progress: 'CONNECTING', identity, start_time: Date.now() })
+				this.updateDetail({
+					progress: 'CONNECTING',
+					identity,
+					start_time: Date.now(),
+					hungup: false
+				})
 				break
 			}
 
@@ -200,11 +207,7 @@ class Call extends EventEmitter {
 					})
 
 					setTimeout(() => {
-						if (!this.detail.auto_redialing) {
-							if (this.detail.progress !== 'DISCONNECTED')
-								this.updateDetail({ progress: 'DISCONNECTED' })
-							return
-						}
+						if (this.detail.progress === 'DISCONNECTED') return
 						this.updateDetail({
 							progress: 'INITIAL',
 							auto_redialed_count: this.detail.auto_redial_limit
@@ -513,9 +516,12 @@ class Call extends EventEmitter {
 
 	public async hangup(hard = false) {
 		this.debug?.('Hangup')
-		this.updateDetail({ next_sequence_idx: 0 })
 
-		if (hard || this.detail.progress === 'WAITING') {
+		const { progress, auto_redialing } = this.detail
+
+		this.updateDetail({ next_sequence_idx: 0, hungup: progress === 'WAITING' || !auto_redialing })
+
+		if (hard || progress === 'WAITING') {
 			this.updateDetail({ auto_redialing: false, progress: 'DISCONNECTED' })
 			return
 		}

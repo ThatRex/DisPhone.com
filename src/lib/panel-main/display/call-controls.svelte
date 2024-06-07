@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Client as PhoneClient } from '$lib/client-phone'
-	import { type CallItem } from '$lib/stores/calls.volitile'
+	import { removeCall, type CallItem } from '$lib/stores/calls.volitile'
 	import { dial_string } from '$lib/stores/dial.volitile'
 	import { getContext } from 'svelte'
 	import CallButton from './call-button.svelte'
@@ -86,7 +86,7 @@
 		tip={call.progress === 'DISCONNECTED' ? 'Close' : 'Hangup'}
 		icon={IconX}
 		on:trigger={() => {
-			if (call.progress === 'DISCONNECTED') call.hidden = true
+			if (call.progress === 'DISCONNECTED') removeCall(call.id)
 			else phone.hangup({ ids: [call.id] })
 		}}
 	/>

@@ -5,8 +5,6 @@
 	import {
 		IconBellOff,
 		IconBellRinging,
-		IconLayoutBottombarCollapse,
-		IconLayoutBottombarExpandFilled,
 		IconPhoneIncoming,
 		IconRecordMail,
 		IconUsersGroup,
@@ -15,7 +13,9 @@
 		IconHeadphones,
 		IconHeadphonesOff,
 		IconSwitchHorizontal,
-		IconBrandDiscord
+		IconBrandDiscord,
+		IconChevronDown,
+		IconChevronUp
 	} from '@tabler/icons-svelte'
 	import Display from './display/display.svelte'
 	import DialPanel from './dial-panel.svelte'
@@ -32,7 +32,8 @@
 		call_ids_connected,
 		call_ids_connecting_o,
 		call_ids_connecting_i,
-		call_ids_has_media
+		call_ids_has_media,
+		removeCall
 	} from '$lib/stores/calls.volitile'
 	import { addActiveKey, redial_string } from '$lib/stores/dial.volitile'
 	import Dialog from '$lib/components/dialog.svelte'
@@ -111,18 +112,18 @@
 	src_o_phone.connect(gin_o_bot)
 
 	$: gin_i_browser.gain.value = !muted_in && !bot_connected ? level_in / 100 : 0
-	$: {
-		// prevents the popping when adjusting the volume.
-		const lvl = !muted_out && !bot_connected ? level_out / 100 : 0
-		gin_o_browser.gain.linearRampToValueAtTime(lvl === 0 ? 0.0001 : lvl, ac.currentTime + 0.02)
-	}
+	$: lvl_out_browser = !muted_out && !bot_connected ? level_out / 100 : 0
+	$: gin_o_browser.gain.linearRampToValueAtTime(
+		lvl_out_browser === 0 ? 0.0001 : lvl_out_browser,
+		ac.currentTime + 0.02
+	)
 
 	$: gin_i_bot.gain.value = !muted_in && bot_connected ? level_in / 100 : 0
-	$: {
-		// prevents the popping when adjusting the volume.
-		const lvl = !muted_out && bot_connected ? level_out / 100 : 0
-		gin_o_bot.gain.linearRampToValueAtTime(lvl === 0 ? 0.0001 : lvl, ac.currentTime + 0.02)
-	}
+	$: lvl_out_bot = !muted_out && bot_connected ? level_out / 100 : 0
+	$: gin_o_bot.gain.linearRampToValueAtTime(
+		lvl_out_bot === 0 ? 0.0001 : lvl_out_bot,
+		ac.currentTime + 0.02
+	)
 
 	// Browser Audio
 	const audio_browser = new Audio()
@@ -270,15 +271,14 @@
 	})
 
 	phone.on('call-update', (cu) => {
-		const getCallIdx = () => $calls.findIndex((c) => c.id === cu.id)
-		const initial_call_idx = getCallIdx()
+		const initial_call_idx = $calls.findIndex((c) => c.id === cu.id)
 
 		// new call
 		if (initial_call_idx === -1) {
+			if (cu.progress === 'DISCONNECTED') return // dont re-add a disconnected call after its removed
+			
 			const ids = !conference_enabled ? [] : $calls.map((c) => c.id)
 			phone.conference({ ids })
-
-			const hidden = cu.type === 'INBOUND' && inbound_call_mode === 'DND'
 
 			const unselect_all = after_dial_call_selection_mode === 'always' && cu.type === 'OUTBOUND'
 
@@ -299,7 +299,7 @@
 					c.selected = unselect_all ? false : c.selected
 					return c
 				}),
-				{ ...cu, hidden, selected }
+				{ ...cu, selected }
 			]
 
 			if (cu.type !== 'INBOUND') return
@@ -317,11 +317,7 @@
 
 				case 'AA': {
 					playSound('ring_in')
-					setTimeout(() => {
-						const call = $calls[getCallIdx()]
-						if (!call || call.progress !== 'CONNECTING') return
-						phone.answer({ ids: [cu.id] })
-					}, auto_answer_delay_ms)
+					setTimeout(() => phone.answer({ ids: [cu.id] }), auto_answer_delay_ms)
 					break
 				}
 			}
@@ -331,43 +327,26 @@
 
 		// existing call
 		const call = $calls[initial_call_idx]
+		const disconnect_timeout = cu.hungup ? 0 : disconnected_timeout_ms
+		!disconnect_timeout && cu.progress === 'DISCONNECTED'
+			? removeCall(cu.id)
+			: ($calls[initial_call_idx] = { ...call, ...cu })
 
-		if (call.progress === 'CONNECTED' && cu.progress === 'WAITING') {
-			playSound('disconnected')
-		}
-
-		const hidden =
-			call.progress === 'DISCONNECTED' && cu.progress !== 'DISCONNECTED' ? false : call.hidden
-		$calls[initial_call_idx] = { ...call, ...cu, hidden }
-
+		if (call.progress === cu.progress) return
 		if (!$call_ids_connecting_i.length) stopRingIn?.()
+		if (call.progress === 'CONNECTED' && cu.progress === 'WAITING') playSound('disconnected')
 
 		switch (cu.progress) {
 			case 'CONNECTED': {
-				if (call.progress === 'CONNECTED') break
 				if (cu.type === 'INBOUND' && cu.destination) $redial_string = cu.destination
-				call.type === 'INBOUND' && inbound_call_mode === 'AA'
+				cu.type === 'INBOUND' && inbound_call_mode === 'AA'
 					? playSound('auto_answered')
 					: playSound('connected')
 				break
 			}
 			case 'DISCONNECTED': {
-				if (call.progress === 'DISCONNECTED') break
-				setTimeout(() => {
-					const calls_new = $calls.filter((c) => c.id !== call.id)
-					const getCurrentlySelected = () => !!$calls.find((c) => c.selected)
-					const nonSelected = () => !calls_new.find((c) => c.selected)
-					if (
-						after_dial_call_selection_mode !== 'never' &&
-						calls_new.length &&
-						getCurrentlySelected() &&
-						nonSelected()
-					) {
-						calls_new[0].selected = true
-					}
-					$calls = calls_new
-				}, disconnected_timeout_ms)
-				if (call.type === 'INBOUND' && inbound_call_mode === 'DND') return
+				if (disconnect_timeout) setTimeout(() => removeCall(cu.id), disconnect_timeout)
+				if (cu.type === 'INBOUND' && inbound_call_mode === 'DND') break
 				$call_ids_active.length ? playSound('disconnected') : playSound('done')
 				break
 			}
@@ -410,7 +389,8 @@
 	$: if (speaking) bot.update({ speaking: true })
 	else setTimeout(() => speaking || bot.update({ speaking: false }), 125)
 
-	$: status = bot_discord_profiles[0].bot_invisible
+	$: bot_invisible = bot_discord_profiles[0].bot_invisible
+	$: status = bot_invisible
 		? PresenceUpdateStatus.Invisible
 		: bot_connected && calls_connected
 			? PresenceUpdateStatus.Online
@@ -454,11 +434,6 @@
 	const getMedia = async () => {
 		console.info('Getting Media')
 
-		// if (!interaction && 'chrome' in window) {
-		// 	alert_dialog_issue = 'interaction'
-		// 	return false
-		// }
-
 		const got_user_media = await user_media_manager.start()
 		if (!got_user_media) {
 			alert_dialog_issue = 'media'
@@ -487,13 +462,8 @@
 			disconnected: sound_disconnected
 		})
 
-		const loaded_sounds_ring_in = await SoundPlayer.load({
-			ring_in: sound_ring_in
-		})
-
-		const loaded_sounds_ring_out = await SoundPlayer.load({
-			ring_out: sound_ring_out
-		})
+		const loaded_sounds_ring_in = await SoundPlayer.load({ ring_in: sound_ring_in })
+		const loaded_sounds_ring_out = await SoundPlayer.load({ ring_out: sound_ring_out })
 
 		player.loadSounds(loaded_sounds)
 		player_conf.loadSounds(loaded_sounds_conf)
@@ -522,7 +492,6 @@
 		phone.addProfile(profile_sip)
 
 		const profile_bot = bot_discord_profiles[0]
-
 		if (profile_bot.bot_token && bot_discord_autostart_enabled) {
 			bot.init({
 				token: profile_bot.bot_token,
@@ -590,8 +559,6 @@
 				DisPhone requires WebRTC to function. Please enable WebRTC and try again.
 			{:else if alert_dialog_issue === 'media'}
 				DisPhone requires media access to function. Please clear permissions and try again.
-			{:else if alert_dialog_issue === 'interaction'}
-				Chrome based browsers require user interaction to play audio. Just click okay.
 			{/if}
 		</span>
 		<ButtonText
@@ -618,10 +585,7 @@
 				<Toggle
 					bind:value={$config.secondary_panel_enabled}
 					tip={{ on: 'Hide Subpanel', off: 'Show Subpanel' }}
-					icon={{
-						on: IconLayoutBottombarExpandFilled,
-						off: IconLayoutBottombarCollapse
-					}}
+					icon={{ on: IconChevronUp, off: IconChevronDown }}
 				/>
 				<Button
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"

@@ -1,7 +1,8 @@
 import type { CallDetail } from '$lib/client-phone/call'
-import { derived, writable } from 'svelte/store'
+import { derived, get, writable } from 'svelte/store'
+import { config } from './config.persistent'
 
-export type CallItem = { id: string; selected: boolean; hidden: boolean } & CallDetail
+export type CallItem = { id: string; selected: boolean } & CallDetail
 
 export const calls = writable<CallItem[]>([])
 
@@ -47,3 +48,20 @@ export const call_ids_answerable = derived(calls, (c) => {
 		.filter((c) => c.progress === 'CONNECTING')
 		.map((c) => c.id)
 })
+
+export const removeCall = (id: string) => {
+	const _calls = get(calls)
+	const _config = get(config)
+	const calls_new = _calls.filter((c) => c.id !== id)
+	const getCurrentlySelected = () => !!_calls.find((c) => c.selected)
+	const nonSelected = () => !calls_new.find((c) => c.selected)
+	if (
+		_config.after_dial_call_selection_mode !== 'never' &&
+		calls_new.length &&
+		getCurrentlySelected() &&
+		nonSelected()
+	) {
+		calls_new[0].selected = true
+	}
+	calls.set(calls_new)
+}

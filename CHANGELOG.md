@@ -20,7 +20,8 @@ _multi sip account support, early media and more_
 - fixed: delay when using STUN server
 - fixed: using sip server with custom port results in an invalid websocket url
 - fixed: toggling mute or deafen after bot has left channel results in bot re-joining
-- changed: disabled pull down to refresh on mobile 
+- changed: calls always disappear immediately when disconnected by user 
+- changed: disabled pull down to refresh on mobile
 - changed: refined secondary panel settings
 - other minor changes
 

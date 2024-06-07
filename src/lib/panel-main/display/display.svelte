@@ -22,7 +22,7 @@
 			"
 	>
 		<div class="-mt-1 max-xs:h-full" />
-		{#each $calls.filter((c) => !c.hidden) as call, index (call.id)}
+		{#each $calls as call, index (call.id)}
 			<div
 				class="flex first:mt-0 mt-1"
 				in:fly={{ duration: 75, y: -5 }}
