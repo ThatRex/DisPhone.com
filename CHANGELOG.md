@@ -16,6 +16,7 @@ _multi sip account support, early media and more_
 - added: after dial selection option
 - added: invisible (bot) option
 - added: websocket server field
+- added: per call level indicator
 - fixed: holding enter spams redial
 - fixed: delay when using STUN server
 - fixed: using sip server with custom port results in an invalid websocket url

@@ -260,9 +260,9 @@
 	let vm_qty = 0
 	let vm_dest = ''
 
-	phone.on('dtmf', (dtmf) => {
-		addActiveKey(dtmf)
-		dtmf_simulator.press(dtmf)
+	phone.on('dtmf', ({ value }) => {
+		addActiveKey(value)
+		dtmf_simulator.press(value)
 	})
 
 	phone.on('profile-update', (pu) => {
@@ -276,7 +276,7 @@
 		// new call
 		if (initial_call_idx === -1) {
 			if (cu.progress === 'DISCONNECTED') return // dont re-add a disconnected call after its removed
-			
+
 			const ids = !conference_enabled ? [] : $calls.map((c) => c.id)
 			phone.conference({ ids })
 

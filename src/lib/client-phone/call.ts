@@ -52,8 +52,10 @@ export type CallDetail = {
 interface Call extends EventEmitter {
 	on(event: 'detail', listener: (detail: CallDetail) => void): this
 	on(event: 'dtmf', listener: (dtmf: string) => void): this
+	on(event: 'volume', listener: (volume: number) => void): this
 	emit(event: 'detail', detail: CallDetail): boolean
 	emit(event: 'dtmf', dtmf: string): boolean
+	emit(event: 'volume', volume: number): boolean
 }
 
 class Call extends EventEmitter {
@@ -147,7 +149,7 @@ class Call extends EventEmitter {
 				})
 
 				if (this.detail.on_hold) {
-					if (this.detail.type === 'INBOUND') await wait(200) // less times always results in fail
+					if (this.detail.type === 'INBOUND') await wait(200) // less time always results in fail
 					await this._setHold(true)
 				}
 
@@ -271,6 +273,21 @@ class Call extends EventEmitter {
 		this.gin_o = this.ac.createGain()
 		this.gin_o.connect(this.dst_o)
 		this.src_o = this.ac.createMediaStreamSource(this.dst_o.stream)
+
+		const analyser = this.ac.createAnalyser()
+		analyser.fftSize = 256
+		const frequency_data = new Uint8Array(analyser.frequencyBinCount)
+		this.src_o.connect(analyser)
+
+		const updateVolume = () => {
+			if (this.detail.progress !== 'DISCONNECTED') requestAnimationFrame(updateVolume)
+			analyser.getByteFrequencyData(frequency_data)
+			let sum = 0
+			for (const amplitude of frequency_data) sum += amplitude * amplitude
+			const vol = Math.round(Math.sqrt(sum / frequency_data.length))
+			this.emit('volume', vol)
+		}
+		updateVolume()
 
 		switch (params.type) {
 			case CallType.INBOUND: {

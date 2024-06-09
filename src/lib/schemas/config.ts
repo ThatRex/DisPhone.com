@@ -75,6 +75,7 @@ export const config = z.object({
 	// Accessibility
 	mute_on_deafen: z.boolean().catch(true),
 	haptics_disabled: z.boolean().catch(false),
+	call_level_indicator_disabled: z.boolean().catch(false),
 	// Hidden Settings
 	hidden_settings_enabled: z.boolean().catch(false),
 	auto_record_enabled: z.boolean().catch(false),

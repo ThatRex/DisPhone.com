@@ -6,12 +6,13 @@
 	export let time: string
 	export let call: CallItem
 	export let style: { default_text: string; icon: Component; classes: string }
+	export let volume: number
 </script>
 
 <div
 	class="
 		{$config.dialpad_enabled && $config.dialpad_extended ? 'h-[60px]' : 'h-[56px]'} max-xs:h-[56px]
-		min-w-[200px] flex flex-col grow gap-0.5 px-0.5 border-2 border-opacity-0
+		min-w-[200px] flex flex-col grow px-0.5 border-2 border-opacity-0
         rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30
 		group-focus:bg-opacity-30
 		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes} 

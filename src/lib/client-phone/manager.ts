@@ -7,16 +7,20 @@ import type { OutboundCallDetail, CallDetail } from './call'
 import { noop } from '$lib/utils'
 import { makeURI } from './utils'
 
-export type ProfileUpdate = { id: string } & ProfileDetail
-export type CallUpdate = { id: string } & CallDetail
+export type UpdateProfile = { id: string } & ProfileDetail
+export type UpdateCall = { id: string } & CallDetail
+export type UpdateDTMF = { id: string; value: string }
+export type UpdateVolume = { id: string; value: number }
 
 export interface Manager extends EventEmitter {
-	on(event: 'profile-update', listener: (update: ProfileUpdate) => void): this
-	on(event: 'call-update', listener: (update: CallUpdate) => void): this
-	on(event: 'dtmf', listener: (dtmf: string) => void): this
-	emit(event: 'profile-update', update: ProfileUpdate): boolean
-	emit(event: 'call-update', update: CallUpdate): boolean
-	emit(event: 'dtmf', dtmf: string): boolean
+	on(event: 'profile-update', listener: (update: UpdateProfile) => void): this
+	on(event: 'call-update', listener: (update: UpdateCall) => void): this
+	on(event: 'dtmf', listener: (update: UpdateDTMF) => void): this
+	on(event: 'volume', listener: (update: UpdateVolume) => void): this
+	emit(event: 'profile-update', update: UpdateProfile): boolean
+	emit(event: 'call-update', update: UpdateCall): boolean
+	emit(event: 'dtmf', update: UpdateDTMF): boolean
+	emit(event: 'volume', update: UpdateVolume): boolean
 }
 
 export class Manager extends EventEmitter {
@@ -195,7 +199,8 @@ export class Manager extends EventEmitter {
 
 		profile.on('detail', (d) => this.emit('profile-update', { id: params.id, ...d }))
 		profile.on('call', (call) => {
-			call.on('dtmf', (dtmf) => this.emit('dtmf', dtmf))
+			call.on('volume', (v) => this.emit('volume', { id: call.id, value: v }))
+			call.on('dtmf', (dtmf) => this.emit('dtmf', { id: call.id, value: dtmf }))
 			call.on('detail', (d) => {
 				this.emit('call-update', { id: call.id, ...d })
 				if (d.progress !== 'DISCONNECTED') return
