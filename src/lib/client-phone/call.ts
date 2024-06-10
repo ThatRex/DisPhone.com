@@ -52,10 +52,10 @@ export type CallDetail = {
 interface Call extends EventEmitter {
 	on(event: 'detail', listener: (detail: CallDetail) => void): this
 	on(event: 'dtmf', listener: (dtmf: string) => void): this
-	on(event: 'volume', listener: (volume: number) => void): this
+	on(event: 'level', listener: (level: number) => void): this
 	emit(event: 'detail', detail: CallDetail): boolean
 	emit(event: 'dtmf', dtmf: string): boolean
-	emit(event: 'volume', volume: number): boolean
+	emit(event: 'level', level: number): boolean
 }
 
 class Call extends EventEmitter {
@@ -279,15 +279,15 @@ class Call extends EventEmitter {
 		const frequency_data = new Uint8Array(analyser.frequencyBinCount)
 		this.src_o.connect(analyser)
 
-		const updateVolume = () => {
-			if (this.detail.progress !== 'DISCONNECTED') requestAnimationFrame(updateVolume)
+		const updateLevel = () => {
+			if (this.detail.progress !== 'DISCONNECTED') requestAnimationFrame(updateLevel)
 			analyser.getByteFrequencyData(frequency_data)
 			let sum = 0
-			for (const amplitude of frequency_data) sum += amplitude * amplitude
-			const vol = Math.round(Math.sqrt(sum / frequency_data.length))
-			this.emit('volume', vol)
+			for (const f of frequency_data) sum += f * f
+			const rms = Math.round(Math.sqrt(sum / frequency_data.length))
+			this.emit('level', rms)
 		}
-		updateVolume()
+		updateLevel()
 
 		switch (params.type) {
 			case CallType.INBOUND: {

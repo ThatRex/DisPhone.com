@@ -11,7 +11,6 @@
 	export let time: string
 	export let call: CallItem
 	export let style: { default_text: string; icon: Component; classes: string }
-	export let volume: number
 </script>
 
 <div

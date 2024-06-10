@@ -132,9 +132,9 @@
 		}
 	}
 
-	let volume = 0
+	let level = 0
 	const phone = getContext<Manager>('phone')
-	phone.on('volume', ({ id, value }) => id !== call.id || (volume = value))
+	phone.on('level', ({ id, value }) => id !== call.id || (level = value))
 </script>
 
 <button
@@ -148,10 +148,10 @@
 	on:keydown={handleKeydown}
 >
 	<div class="flex {not_slim ? 'hidden' : 'call-slim'}">
-		<CallItemSlim bind:call bind:time bind:style {volume} />
+		<CallItemSlim bind:call bind:time bind:style />
 	</div>
 	<div class="flex {not_slim ? '' : 'call-default'} ">
-		<CallItemDefault bind:call bind:time bind:style {volume} />
+		<CallItemDefault bind:call bind:time bind:style />
 	</div>
 	{#if !call_level_indicator_disabled}
 		<div
@@ -161,7 +161,7 @@
 				"
 		>
 			<div
-				style="opacity: {volume * 1.9}%; width: {volume}%;"
+				style="opacity: {level * 1.9}%; width: {level}%;"
 				class="h-[2px] bg-black dark:bg-white rounded-full backdrop-"
 			/>
 		</div>
