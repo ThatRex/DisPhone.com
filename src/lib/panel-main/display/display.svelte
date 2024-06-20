@@ -18,7 +18,7 @@
 	<div
 		class="
 			h-full flex flex-col grow scrollbar-thin @container
-			{$calls.length ? 'overflow-auto' : 'overflow-clip'}
+			{$calls.length ? 'overflow-auto xs:overflow-x-clip' : 'overflow-clip'}
 			"
 	>
 		<div class="-mt-1 max-xs:h-full" />
