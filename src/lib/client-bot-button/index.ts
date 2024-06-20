@@ -225,7 +225,10 @@ class BotButtonClient extends EventEmitter {
 				speaking: this.speaking,
 				self_deaf: this.self_deaf,
 				self_mute: this.self_mute,
-				...params
+				...params,
+				// TODO: Remove after VoiceManager FIXME fixed
+				channel_id: this.usr_channel_id,
+				guild_id: this.usr_guild_id
 			})
 		} catch {
 			noop()
@@ -238,7 +241,12 @@ class BotButtonClient extends EventEmitter {
 		this.self_deaf = self_deaf !== undefined ? self_deaf : this.self_deaf
 		this.self_mute = self_mute !== undefined ? self_mute : this.self_mute
 		try {
-			this.voice?.update(params)
+			this.voice?.update({
+				...params,
+				// TODO: Remove after VoiceManager FIXME fixed
+				channel_id: this.usr_channel_id,
+				guild_id: this.usr_guild_id
+			})
 		} catch {
 			noop()
 		}

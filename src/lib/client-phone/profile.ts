@@ -4,7 +4,7 @@ import EventEmitter from 'eventemitter3'
 import { UserAgent, Registerer, Web, Invitation, RegistererState, type LogConnector } from 'sip.js'
 import Call, { type OutboundCallDetail } from './call'
 import { makeURI } from './utils'
-import { generateDummyStream } from '../utils'
+import { generateDummyStream, noop } from '../utils'
 import type { SessionDescriptionHandlerConfiguration } from 'sip.js/lib/platform/web'
 
 export type ProfileState = keyof typeof ProfileState
@@ -96,9 +96,6 @@ export class Profile extends EventEmitter {
 		this.ac = ac
 		this.id = id
 
-		const uri = makeURI(username, server_sip)
-		if (!uri) throw new Error('Error creating URI.')
-
 		const sessionDescriptionHandlerFactory = Web.defaultSessionDescriptionHandlerFactory(
 			this.mediaStreamFactory
 		)
@@ -129,7 +126,7 @@ export class Profile extends EventEmitter {
 		}
 
 		this.ua = new UserAgent({
-			uri,
+			uri: makeURI(username, server_sip),
 			authorizationUsername: login || username,
 			authorizationPassword: password,
 			transportOptions: {
@@ -150,13 +147,13 @@ export class Profile extends EventEmitter {
 		this.ua.delegate = {
 			onInvite: async (invitation) => this.initCall({ type: 'INBOUND', invitation }),
 			onConnect: async () => {
-				if (this.register) await this.registerer.register()
 				this.updateDetail({ state: 'CONNECTED' })
+				if (this.register) this.registerer.register().catch(noop)
 			},
 			onDisconnect: async (error) => {
-				if (this.register) await this.registerer.unregister()
+				this.updateDetail({ state: 'DISCONNECTED' })
+				this.registerer.unregister().catch(noop)
 				if (error) this.attemptReconnection()
-				else this.updateDetail({ state: 'DISCONNECTED' })
 			},
 			onNotify: ({ request: { body } }) => {
 				const regex_dest = /Message-Account: sip:(\S+)@/
@@ -177,13 +174,16 @@ export class Profile extends EventEmitter {
 	public async start() {
 		this.should_be_connected = true
 		this.updateDetail({ state: 'CONNECTING' })
-		await this.ua.start()
+		try {
+			await this.ua.start()
+		} catch {
+			this.updateDetail({ state: 'FAILED' })
+		}
 	}
 
 	public async stop() {
 		this.should_be_connected = false
 		await this.ua.stop()
-		if (this.registerer.state === RegistererState.Registered) await this.registerer.unregister()
 	}
 
 	public initCall(

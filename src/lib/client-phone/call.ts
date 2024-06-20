@@ -284,7 +284,7 @@ class Call extends EventEmitter {
 			analyser.getByteFrequencyData(frequency_data)
 			let sum = 0
 			for (const f of frequency_data) sum += f * f
-			const rms = Math.round(Math.sqrt(sum / frequency_data.length))
+			const rms = Math.sqrt(sum / frequency_data.length)
 			this.emit('level', rms)
 		}
 		updateLevel()
