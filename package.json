@@ -14,7 +14,7 @@
 	"devDependencies": {
 		"@melt-ui/pp": "^0.2.0",
 		"@melt-ui/svelte": "^0.79.1",
-		"@sveltejs/adapter-auto": "^3.1.1",
+		"@sveltejs/adapter-vercel": "^5.3.2",
 		"@sveltejs/kit": "^2.5.0",
 		"@sveltejs/vite-plugin-svelte": "^3.0.2",
 		"@tabler/icons-svelte": "^2.46.0",
@@ -39,7 +39,8 @@
 		"tailwindcss": "^3.4.1",
 		"tslib": "^2.6.2",
 		"typescript": "^5.3.3",
-		"vite": "^5.0.12",
+		"vite": "^5.3.1",
+		"vite-plugin-entry-shaking": "^0.4.3",
 		"vite-plugin-mkcert": "^1.17.3",
 		"zod": "^3.22.4"
 	},
