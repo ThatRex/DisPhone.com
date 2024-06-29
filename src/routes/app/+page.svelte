@@ -4,8 +4,9 @@
 	import { config } from '$lib/stores/config.persistent'
 	import { dropText } from '$lib/stores/dial.volitile'
 
+	$: ({ haptics_disabled, secondary_panel_enabled, sip_debug_enabled } = $config)
+
 	const vibrate = navigator.vibrate
-	$: ({ haptics_disabled, secondary_panel_enabled } = $config)
 	$: navigator.vibrate = haptics_disabled ? undefined : vibrate
 
 	// stops firefox setting the document location to dropped text

@@ -399,6 +399,7 @@
 	$: bot.setPresence({ status, text: getTextStatus() })
 
 	bot.on('state', (s) => {
+		bot_running = !bot_running // makes toggle component value update as would be expected
 		bot_running = !['DONE', 'FAILED'].includes(s)
 		bot_connected = s === 'CONNECTED'
 		bot_btn_color_off = 'mono'

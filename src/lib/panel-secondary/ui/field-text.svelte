@@ -9,12 +9,14 @@
 	export let required = false
 	export let disabled = false
 	export let readonly = false
+	export let max = 0
 
 	const default_type = type
 
 	const handleInput = (e: Event) => {
 		const target = e.target as HTMLInputElement
-		value = target.value
+		const v = max ? target.value.slice(0, max) : target.value
+		value = target.value = v
 	}
 </script>
 

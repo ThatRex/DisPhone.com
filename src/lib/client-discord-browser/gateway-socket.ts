@@ -195,7 +195,7 @@ export class GatewaySocket extends EventEmitter {
 				return
 			}
 
-			this.destroy()
+			this.destroy(e.code === GatewayCloseCodes.AuthenticationFailed)
 		}
 	}
 

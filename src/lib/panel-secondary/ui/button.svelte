@@ -17,16 +17,18 @@
 	}}
 	{disabled}
 	class="
-        flex items-center justify-center gap-2
-		px-2.5 py-1 border-2 rounded-md transition duration-75
+        flex items-center justify-center h-9
+		px-2.5 gap-2.5 border-2 rounded-md transition duration-75
 		!bg-opacity-10 {ColorsBtn[color]}
 		{disabled
 		? `!border-opacity-20 !bg-opacity-5`
 		: `active:scale-y-95 active:scale-x-[97%] hover:!bg-opacity-20 active:!bg-opacity-10`}
 		"
 >
-	<svelte:component this={icon} size={16} stroke={2.5}/>
-	<span class="transition duration-75 font-medium {disabled ? 'opacity-60' : ''}">
+	<div class={disabled ? 'opacity-60' : ''}>
+		<svelte:component this={icon} size={18} />
+	</div>
+	<span class="text-center transition duration-75 font-medium {disabled ? 'opacity-60' : ''}">
 		{label}
 	</span>
 </button>

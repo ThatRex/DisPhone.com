@@ -71,7 +71,7 @@
 		>
 			{#each triggers as { id, tab, padding }}
 				<div use:melt={$content(id)} class="flex-1 {padding && 'p-2.5'}">
-					<svelte:component this={tab}></svelte:component>
+					<svelte:component this={tab} />
 				</div>
 			{/each}
 		</div>

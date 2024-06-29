@@ -18,7 +18,7 @@
 />
 
 {#each $config.bot_discord_profiles as profile}
-	<FieldGroup name="Profile" description="">
+	<FieldGroup name="Profile">
 		<FieldText
 			label="Your User ID"
 			description="User ID of your main Discord account."
@@ -37,7 +37,12 @@
 	<FieldGroup name="Presence">
 		<FieldSwitch label="Invisible" bind:value={profile.bot_invisible} default_value={false} />
 		{#if !profile.bot_invisible}
-			<FieldText label="Status" placeholder="Hello Discord!" bind:value={profile.bot_status_text} />
+			<FieldText
+				label="Status"
+				placeholder="Hello Discord!"
+				max={128}
+				bind:value={profile.bot_status_text}
+			/>
 		{/if}
 	</FieldGroup>
 {/each}

@@ -13,7 +13,7 @@
 	} = createDialog({
 		role,
 		forceVisible: true,
-		closeOnEscape: closable,
+		escapeBehavior: closable ? 'ignore' : undefined,
 		closeOnOutsideClick: closable
 	})
 
