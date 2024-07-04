@@ -29,7 +29,7 @@
 		<FieldText
 			type="password"
 			label="Dialer Account Token"
-			description="Restart bot to apply new token."
+			description="Restart dialer to apply new token."
 			required={true}
 			bind:value={profile.bot_token}
 		/>

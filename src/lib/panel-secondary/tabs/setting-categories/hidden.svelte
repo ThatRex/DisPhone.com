@@ -7,14 +7,14 @@
 </script>
 
 <!-- <FieldSwitch label="Auto Record" description="Record calls automatically." /> -->
+<FieldSwitch
+	label="Auto Redial"
+	description="Add an auto redial toggle to each call."
+	bind:value={$config.auto_redial_enabled}
+/>
 
-<FieldGroup name="Auto Redial">
-	<FieldSwitch
-		label="Enabled"
-		description="Add an auto redial toggle to each call item."
-		bind:value={$config.auto_redial_enabled}
-	/>
-	{#if $config.auto_redial_enabled}
+{#if $config.auto_redial_enabled}
+	<FieldGroup name="Auto Redial Defaults">
 		<FieldSliderDuo
 			label="Delay Min Max"
 			displayValueParser={(n) => String(n / 1000) + 's'}
@@ -40,5 +40,5 @@
 			default_value={4000}
 			bind:value={$config.auto_redial_short_call_duration_ms}
 		/>
-	{/if}
-</FieldGroup>
+	</FieldGroup>
+{/if}

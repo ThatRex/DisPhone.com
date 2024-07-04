@@ -26,7 +26,7 @@
 		$dial_string = before_selection + dtmf + after_selection
 
 		setTimeout(() => {
-			if ($config.dialpad_focus_dial_field) input.focus()
+			if (!$config.dialpad_touchescreen_mode) input.focus()
 			if (after_selection.length === 0)
 				input.setSelectionRange($dial_string.length, $dial_string.length)
 			else input.setSelectionRange(before_selection.length + 1, before_selection.length + 1)

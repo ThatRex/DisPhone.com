@@ -6,6 +6,31 @@
 	import FieldSlider from '$lib/panel-secondary/ui/field-slider.svelte'
 </script>
 
+<FieldGroup
+	name="Dialpad"
+	description="Dialpad will always be hidden in views narrower than 640px."
+>
+	<FieldSwitch label="Enabled" bind:value={$config.dialpad_enabled} default_value={true} />
+	{#if $config.dialpad_enabled}
+		<FieldSwitch
+			label="Extended Keypad"
+			bind:value={$config.dialpad_extended}
+			default_value={false}
+		/>
+		<FieldSwitch
+			label="Numeric Layout"
+			bind:value={$config.dialpad_numeric}
+			default_value={false}
+		/>
+		<FieldSwitch
+			label="Touchescreen Mode"
+			description="Stops keyboard opening on keypress."
+			bind:value={$config.dialpad_touchescreen_mode}
+			default_value={false}
+		/>
+	{/if}
+</FieldGroup>
+
 <FieldGroup name="Behaviour">
 	<FieldSwitch
 		label="Hold Unselected Calls"
@@ -75,28 +100,3 @@
 		}
 	]}
 />
-
-<FieldGroup
-	name="Dialpad"
-	description="Dialpad will always be hidden in windows narrower than 640px."
->
-	<FieldSwitch label="Enabled" bind:value={$config.dialpad_enabled} default_value={true} />
-	{#if $config.dialpad_enabled}
-		<FieldSwitch
-			label="Extended Keypad"
-			bind:value={$config.dialpad_extended}
-			default_value={false}
-		/>
-		<FieldSwitch
-			label="Numeric Layout"
-			bind:value={$config.dialpad_numeric}
-			default_value={false}
-		/>
-		<FieldSwitch
-			label="Focus Destination Field"
-			description="On key press focus destination field. Allows dialpad and keyboard to be used simultaneously."
-			bind:value={$config.dialpad_focus_dial_field}
-			default_value={true}
-		/>
-	{/if}
-</FieldGroup>
