@@ -27,7 +27,7 @@
 		},
 		{
 			id: 'bot',
-			title: 'Discord Bot',
+			title: 'Discord Dialer',
 			icon: IconBrandDiscord,
 			component: Category.Bot
 		},
@@ -94,7 +94,7 @@
 					transition:slide={{ duration: 250 }}
 				>
 					<div class="mb-6 mt-3 flex flex-col gap-3 mx-auto max-w-5xl">
-						<svelte:component this={component}></svelte:component>
+						<svelte:component this={component} />
 					</div>
 				</div>
 			{/if}

@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { version } from '$app/environment'
-	
 </script>
 
 <div class="h-full flex flex-col justify-center items-center text-center gap-3 text-sm py-6">
-	<img class="w-20" src="./favicons/favicon-192.png" alt="DisPhone Logo">
+	<img class="w-20" src="./favicons/favicon-192.png" alt="DisPhone Logo" />
 	<span class="font-semibold">
 		<a
 			target="_blank"
@@ -22,14 +21,23 @@
 			RexsLab.com</a
 		><span class="opacity-70">.</span>
 	</span>
-	<span class="font-bold ">
+	<span class="font-bold">
 		<a
 			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
 			title="Looking to get started? Start here!"
-			href="http://wiki.disphone.com"
+			href="https://github.com/ThatRex/DisPhone.com/wiki"
 		>
 			Wiki
+		</a>
+		<span class="opacity-70 mx-0.5"> • </span>
+		<a
+			target="_blank"
+			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
+			title="Looking to get started? Start here!"
+			href="https://github.com/ThatRex/DisPhone.com/discussions"
+		>
+			Discuss
 		</a>
 		<span class="opacity-70 mx-0.5"> • </span>
 		<a

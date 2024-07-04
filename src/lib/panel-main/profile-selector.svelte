@@ -5,15 +5,15 @@
 	import {
 		IconChevronDown,
 		IconChevronUp,
-		// IconSquareDot,
-		// IconSquareDotFilled,
-		IconSquarePlus2
-		// IconSquareCheck,
-		// IconSquareCheckFilled,
-		// IconAlertSquareFilled
+		IconSquareDot,
+		IconSquareDotFilled,
+		IconSquarePlus2,
+		IconSquareCheck,
+		IconSquareCheckFilled,
+		IconAlertSquareFilled
 	} from '@tabler/icons-svelte'
 	import { getContext } from 'svelte'
-	import { fade } from 'svelte/transition'
+	import { fade, fly } from 'svelte/transition'
 
 	const phone = getContext<PhoneClient>('phone')
 
@@ -97,7 +97,7 @@
 
 {#if $open}
 	<div
-		transition:fade={{ delay: 0, duration: 25 }}
+		transition:fly={{ duration: 100, y: -5 }}
 		use:melt={$menu}
 		class="
 			z-10 max-h-[300px] p-1 flex flex-col gap-1 focus:!ring-0 overflow-y-auto
@@ -106,7 +106,7 @@
 			max-sm:!left-0 max-sm:!right-0 max-sm:!w-auto max-sm:!mx-3
 			"
 	>
-		<!-- {#each options as item}
+		{#each [] as item}
 			<div use:melt={$option({ value: item, label: item })} class="item grow">
 				<div class="w-[20px] flex items-center">
 					{#if $isSelected(item)}<IconSquareCheckFilled size={18} />
@@ -117,7 +117,7 @@
 				<div class="max-md:hidden m-auto" />
 				<div class="max-md:hidden">Registered</div>
 			</div>
-		{/each} -->
+		{/each}
 		<button use:melt={$option({ value: '__add_new__' })} class="item">
 			<div class="w-[20px] flex items-center">
 				<IconSquarePlus2 size={18} />

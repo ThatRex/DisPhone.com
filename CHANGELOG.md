@@ -5,7 +5,7 @@ _multi sip account support, early media and more_
 ## Changes
 
 - added: TODO: multi sip account support
-- added: TODO: auto redial config
+- added: auto redial config
 - added: call item transition and animation
 - added: ability to copy paste settings
 - added: early media support
@@ -22,7 +22,7 @@ _multi sip account support, early media and more_
 - fixed: using sip server with custom port results in an invalid websocket url
 - fixed: toggling mute or deafen after bot has left channel results in bot re-joining
 - fixed: failing to reconnect after PC sleeping
-- changed: calls always disappear immediately when disconnected by user 
+- changed: calls always disappear immediately when disconnected by user
 - changed: disabled pull down to refresh on mobile
 - changed: refined secondary panel settings
 - other minor changes
@@ -142,4 +142,4 @@ The first version of the complete overhaul of the UI & phone. The version name i
 
 # 0.5.0 [27-12-2023]
 
-The last version of the ugly discord dialler Proof of Concept phase. The version name is arbitrary.
+The last version of the ugly discord dialer Proof of Concept phase. The version name is arbitrary.

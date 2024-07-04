@@ -21,6 +21,12 @@
 	} from '@tabler/icons-svelte'
 	import { config } from '$lib/stores/config.persistent'
 
+	$: ({
+		auto_redial_delay_ms_min_max: delay_ms_min_max,
+		auto_redial_max_sequential_failed_calls: max_sequential_failed_calls,
+		auto_redial_short_call_duration_ms: short_call_duration_ms
+	} = $config)
+
 	export let call: CallItem
 	const phone = getContext<PhoneClient>('phone')
 </script>
@@ -55,7 +61,14 @@
 		<CallButton
 			tip={call.auto_redialing ? 'Stop Auto Redial' : 'Auto Redial'}
 			icon={call.auto_redialing ? IconRepeat : IconRepeatOff}
-			on:trigger={() => phone.setAutoRedial({ ids: [call.id], value: !call.auto_redialing })}
+			on:trigger={() =>
+				phone.setAutoRedial({
+					ids: [call.id],
+					value: !call.auto_redialing,
+					delay_ms_min_max,
+					max_sequential_failed_calls,
+					short_call_duration_ms
+				})}
 		/>
 	{/if}
 	{#if !(call.type === 'INBOUND' && call.progress === 'CONNECTING')}

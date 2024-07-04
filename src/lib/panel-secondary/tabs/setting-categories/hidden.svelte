@@ -14,7 +14,7 @@
 		description="Add an auto redial toggle to each call item."
 		bind:value={$config.auto_redial_enabled}
 	/>
-	<!-- {#if $config.auto_redial_enabled}
+	{#if $config.auto_redial_enabled}
 		<FieldSliderDuo
 			label="Delay Min Max"
 			displayValueParser={(n) => String(n / 1000) + 's'}
@@ -40,5 +40,5 @@
 			default_value={4000}
 			bind:value={$config.auto_redial_short_call_duration_ms}
 		/>
-	{/if} -->
+	{/if}
 </FieldGroup>

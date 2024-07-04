@@ -15,8 +15,3 @@
 	bind:value={$config.haptics_disabled}
 	default_value={false}
 />
-<FieldSwitch
-	label="Disable Call Level Indicator"
-	bind:value={$config.call_level_indicator_disabled}
-	default_value={false}
-/>

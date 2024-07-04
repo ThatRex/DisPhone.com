@@ -13,7 +13,7 @@
 	import CallItemSlim from './call-item-slim.svelte'
 	import type Manager from '$lib/client-phone'
 
-	$: ({ dialpad_enabled, dialpad_extended, call_level_indicator_disabled } = $config)
+	$: ({ dialpad_enabled, dialpad_extended } = $config)
 
 	export let index: number
 	export let call: CallItem
@@ -96,7 +96,7 @@
 		}
 	}
 	const handleKeydown = (e: KeyboardEvent) => {
-		const { key, shiftKey } = e
+		const { key, shiftKey, ctrlKey } = e
 
 		switch (true) {
 			case key === 'ArrowUp' || key === 'ArrowDown': {
@@ -121,7 +121,7 @@
 				break
 			}
 
-			case key === 'a': {
+			case ctrlKey && key === 'a': {
 				e.preventDefault()
 				$calls = $calls.map((c) => {
 					c.selected = true
@@ -153,19 +153,17 @@
 	<div class="flex {not_slim ? '' : 'call-default'} ">
 		<CallItemDefault bind:call bind:time bind:style />
 	</div>
-	{#if !call_level_indicator_disabled}
-		<div
-			class="
+	<div
+		class="
 				h-0 relative bottom-0.5 flex justify-center transition duration-75
 				{call.selected ? '' : 'opacity-70'}
 				"
-		>
-			<div
-				style="opacity: {level * 1.9}%; width: {level}%;"
-				class="h-[2px] bg-black dark:bg-white rounded-full backdrop-"
-			/>
-		</div>
-	{/if}
+	>
+		<div
+			style="opacity: {level * 1.9}%; width: {level}%;"
+			class="h-[2px] bg-black dark:bg-white rounded-full backdrop-"
+		/>
+	</div>
 </button>
 
 <style>

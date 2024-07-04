@@ -607,7 +607,7 @@
 				{#if bot_running || (bot_discord_profiles[0].usr_user_id && bot_discord_profiles[0].bot_token)}
 					<Toggle
 						value={bot_running}
-						tip="Discord Bot"
+						tip="Discord Dialer"
 						icon={IconBrandDiscord}
 						bind:color={bot_btn_color}
 						on:toggle={() => {

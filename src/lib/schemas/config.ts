@@ -75,12 +75,11 @@ export const config = z.object({
 	// Accessibility
 	mute_on_deafen: z.boolean().catch(true),
 	haptics_disabled: z.boolean().catch(false),
-	call_level_indicator_disabled: z.boolean().catch(false),
 	// Hidden Settings
 	hidden_settings_enabled: z.boolean().catch(false),
 	auto_record_enabled: z.boolean().catch(false),
 	auto_redial_enabled: z.boolean().catch(false),
-	auto_redial_delay_ms_min_max: z.number().array().length(2).catch([2000, 4500]),
+	auto_redial_delay_ms_min_max: z.tuple([z.number(), z.number()]).catch([2000, 4500]),
 	auto_redial_max_sequential_failed_calls: z.number().catch(3),
 	auto_redial_short_call_duration_ms: z.number().catch(4000),
 	// Developer
