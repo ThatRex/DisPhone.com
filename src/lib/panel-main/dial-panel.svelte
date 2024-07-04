@@ -85,7 +85,7 @@
 
 		$dial_string = before_selection + after_selection
 
-		if (!$config.dialpad_touchescreen_mode) input.focus()
+		if (!$config.dialpad_touchscreen_mode) input.focus()
 		setTimeout(() => input.setSelectionRange(before_selection.length, before_selection.length), 0)
 	}
 

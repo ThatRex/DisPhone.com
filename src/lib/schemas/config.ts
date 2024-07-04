@@ -60,7 +60,7 @@ export const config = z.object({
 	dialpad_enabled: z.boolean().catch(true),
 	dialpad_extended: z.boolean().catch(false),
 	dialpad_numeric: z.boolean().catch(false),
-	dialpad_touchescreen_mode: z.boolean().catch(false),
+	dialpad_touchscreen_mode: z.boolean().catch(false),
 	// Sound
 	conference_play_sounds: z.boolean().catch(true),
 	sound_level_simulated_dtmf: z.number().default(10),

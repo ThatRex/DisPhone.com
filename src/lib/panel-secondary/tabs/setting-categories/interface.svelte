@@ -23,9 +23,9 @@
 			default_value={false}
 		/>
 		<FieldSwitch
-			label="Touchescreen Mode"
+			label="Touchscreen Mode"
 			description="Stops keyboard opening on keypress."
-			bind:value={$config.dialpad_touchescreen_mode}
+			bind:value={$config.dialpad_touchscreen_mode}
 			default_value={false}
 		/>
 	{/if}
