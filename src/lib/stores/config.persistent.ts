@@ -7,7 +7,7 @@ config.update((v) => {
 	const res = schema.config.safeParse(v)
 	if (res.success) return res.data
 	else {
-		console.warn('State Resetting. Error:', res.error)
+		console.warn('Resetting Config. Error:', res.error)
 		return schema.config.parse({})
 	}
 })

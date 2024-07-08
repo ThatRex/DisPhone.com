@@ -353,6 +353,26 @@
 		}
 	})
 
+	$: some_calls = !!$calls.length
+	$: calls_connected = !!$call_ids_connected.length
+	$: media_available = !!$call_ids_has_media.length
+
+	// Screen Wake Lock
+	let release: (() => Promise<void>) | undefined
+	$: lock = some_calls || bot_running
+	$: (async () => {
+		try {
+			if (!lock) release?.()
+			else if (lock && !release) {
+				const wls = await navigator.wakeLock.request('screen')
+				release = async () => {
+					await wls.release()
+					release = undefined
+				}
+			}
+		} catch {}
+	})()
+
 	// Bot
 	const bot = new BotBtnClient(ac)
 	bot.src.connect(gin_i_bot)
@@ -371,24 +391,24 @@
 	let bot_connected = false
 	let bot_btn_blink_on = false
 	let bot_btn_blink_interval = 0
-	let bot_btn_color_on: ColorsBtn = 'blue'
+	let bot_btn_color_on: ColorsBtn = 'mono'
 	let bot_btn_color_off: ColorsBtn = 'mono'
 	$: bot_btn_color = { on: bot_btn_color_on, off: bot_btn_color_off }
 
 	const botBtnBlink = () => (bot_btn_color_on = bot_btn_color_on === 'mono' ? 'blue' : 'mono')
 
+	// stop media when bot connected; only only app can use the mic at a time on mobile
 	const statMedia = () => user_media_manager.start()
 	const stopMedia = () => user_media_manager.stop()
 	$: if (initiated) bot_connected ? stopMedia() : statMedia()
 
-	$: calls_connected = !!$call_ids_connected.length
-	$: media_available = !!$call_ids_has_media.length
-
+	// bot speaking
 	let bot_sounds_playing_count = 0
 	$: speaking = bot_sounds_playing_count > 0 || (!muted_out && (calls_connected || media_available))
 	$: if (speaking) bot.update({ speaking: true })
 	else setTimeout(() => speaking || bot.update({ speaking: false }), 125)
 
+	// bot presence
 	$: bot_invisible = bot_discord_profiles[0].bot_invisible
 	$: status = bot_invisible
 		? PresenceUpdateStatus.Invisible
@@ -399,7 +419,6 @@
 	$: bot.setPresence({ status, text: getTextStatus() })
 
 	bot.on('state', (s) => {
-		bot_running = !bot_running // makes toggle component value update as would be expected
 		bot_running = !['DONE', 'FAILED'].includes(s)
 		bot_connected = s === 'CONNECTED'
 		bot_btn_color_off = 'mono'
@@ -419,7 +438,9 @@
 				break
 			}
 			case 'DONE': {
-				if (bot_state !== 'FAILED') bot_state = 'DONE'
+				if (bot_state === 'FAILED') break
+				bot_btn_color_on = 'mono'
+				bot_state = 'DONE'
 				break
 			}
 			case 'FAILED': {
@@ -513,7 +534,7 @@
 		if ($call_ids_active.length && close_confirmation_mode !== 'never') return false
 	}
 
-	/* Toggles */
+	// Toggles
 
 	// users often try enabling DND to stop inbound ringing
 	$: inbound_call_mode !== 'DND' || stopRingIn?.()

@@ -126,6 +126,8 @@ class BotButtonClient extends EventEmitter {
 	}
 
 	public async init(params: { token: string; debug?: boolean }) {
+		this._state = 'INITIAL'
+
 		this.bot = new Client({
 			token: params.token,
 			debug: params.debug,
@@ -259,7 +261,6 @@ class BotButtonClient extends EventEmitter {
 		this.usr_channel_id = null
 		this.usr_guild_id = null
 		this.bot_channel_id = null
-		this._state === 'INITIAL'
 	}
 }
 

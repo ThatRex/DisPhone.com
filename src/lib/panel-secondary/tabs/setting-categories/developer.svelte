@@ -5,7 +5,7 @@
 	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
 	import { dev } from '$app/environment'
 	import Button from '$lib/panel-secondary/ui/button.svelte'
-	import { IconCheck, IconCopy, IconX, IconFileArrowLeft } from '@tabler/icons-svelte'
+	import { IconCheck, IconCopy, IconX, IconFileDownload } from '@tabler/icons-svelte'
 	import type { ColorsBtn } from '$lib/components/colors'
 
 	let copying = false
@@ -13,7 +13,7 @@
 	let btn_copy_color: ColorsBtn = 'mono'
 
 	let pasting = false
-	let btn_paste_icon: Component = IconFileArrowLeft
+	let btn_paste_icon: Component = IconFileDownload
 	let btn_paste_color: ColorsBtn = 'blue'
 
 	const exportConfig = async () => {
@@ -25,7 +25,8 @@
 			await navigator.clipboard.writeText(base64)
 			btn_copy_icon = IconCheck
 			btn_copy_color = 'green'
-		} catch {
+		} catch (e) {
+			console.error('Error exporting config:', e)
 			btn_copy_icon = IconX
 			btn_copy_color = 'red'
 		}
@@ -49,13 +50,14 @@
 			$config = parsed
 			btn_paste_icon = IconCheck
 			btn_paste_color = 'green'
-		} catch {
+		} catch (e) {
+			console.error('Error importing config:', e)
 			btn_paste_icon = IconX
 			btn_paste_color = 'red'
 		}
 
 		setTimeout(() => {
-			btn_paste_icon = IconFileArrowLeft
+			btn_paste_icon = IconFileDownload
 			btn_paste_color = 'blue'
 		}, 1000)
 
