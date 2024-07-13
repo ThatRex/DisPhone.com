@@ -12,6 +12,9 @@
 	import CallItemDefault from './call-item-default.svelte'
 	import CallItemSlim from './call-item-slim.svelte'
 	import type Manager from '$lib/client-phone'
+	import { constants } from '$lib/utils'
+
+	const phone = getContext<Manager>('phone')
 
 	$: ({ dialpad_enabled, dialpad_extended } = $config)
 
@@ -96,6 +99,8 @@
 		}
 	}
 	const handleKeydown = (e: KeyboardEvent) => {
+		if (e.repeat) return
+
 		const { key, shiftKey, ctrlKey } = e
 
 		switch (true) {
@@ -129,11 +134,15 @@
 				})
 				break
 			}
+
+			case constants.KEYS_DTMF.includes(key): {
+				e.preventDefault()
+				phone.sendDTMF({ ids: [call.id], dtmf: key })
+			}
 		}
 	}
 
 	let level = 0
-	const phone = getContext<Manager>('phone')
 	phone.on('level', ({ id, value }) => id !== call.id || (level = value))
 </script>
 

@@ -9,7 +9,7 @@
 		call_ids_answerable
 	} from '$lib/stores/calls.svelte'
 	import { dial_string, redial_string, addActiveKey, dropText } from '$lib/stores/dial.svelte'
-	import { uppercaseLetterToNumber, type DTMFSimulator, wait } from '$lib/utils'
+	import { uppercaseLetterToNumber, type DTMFSimulator, wait, constants } from '$lib/utils'
 	import { IconPhone, IconPhoneX, IconArrowBackUp, IconTrashX } from '@tabler/icons-svelte'
 	import { getContext } from 'svelte'
 
@@ -63,8 +63,6 @@
 		}
 		if (!call_last) $dial_string = ''
 	}
-
-	const dialpad_keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#', ',', '+', ';']
 
 	const clear = (backspace: boolean = false) => {
 		navigator.vibrate?.(6)
@@ -124,7 +122,7 @@
 					}
 					if (ctrlKey || altKey || metaKey) return
 					const k = uppercaseLetterToNumber(key).toUpperCase()
-					if (!dialpad_keys.includes(k)) return
+					if (!constants.KEYS_DIALPAD.includes(k)) return
 					dtmf_simulator.press(k)
 					addActiveKey(k)
 					phone.sendDTMF({ ids: $call_ids_dtmf_receptible, dtmf: key })
