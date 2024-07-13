@@ -36,14 +36,12 @@
 		removeCall
 	} from '$lib/stores/calls.volitile'
 	import { addActiveKey, redial_string } from '$lib/stores/dial.volitile'
-	import Dialog from '$lib/components/dialog.svelte'
-	import ButtonText from '$lib/components/button-text.svelte'
+	import UI from '$lib/components/ui'
+	import type { ColorsBtn } from '$lib/components/ui/colors'
 	import PhoneClient from '$lib/client-phone'
 	import BotBtnClient, { BotButtonClientState } from '$lib/client-bot-button'
-	import Level from './ui/level.svelte'
 	import SoundPlayer from '$lib/utils/sound-player'
 	import UserMediaManager from '$lib/utils/user-media-manager'
-	import type { ColorsBtn } from '$lib/components/colors'
 	import { PresenceUpdateStatus } from 'discord-api-types/v10'
 
 	$: ({
@@ -359,7 +357,7 @@
 
 	// Screen Wake Lock
 	let release: (() => Promise<void>) | undefined
-	$: lock = some_calls || bot_running
+	$: lock = some_calls || bot_connected
 	$: (async () => {
 		try {
 			if (!lock) release?.()
@@ -574,7 +572,7 @@
 	})
 </script>
 
-<Dialog open={!!alert_dialog_issue} closable={false} label="Media Issue" role="alertdialog">
+<UI.Dialog open={!!alert_dialog_issue} closable={false} label="Media Issue" role="alertdialog">
 	<div class="flex flex-col gap-6">
 		<span class="font-medium text-lg">
 			{#if alert_dialog_issue === 'webrtc'}
@@ -583,7 +581,7 @@
 				DisPhone requires media access to function. Please clear permissions and try again.
 			{/if}
 		</span>
-		<ButtonText
+		<UI.ButtonText
 			label={alert_dialog_issue === 'interaction' ? 'Okay' : 'Try Again'}
 			on:click={() => {
 				interaction = true
@@ -592,7 +590,7 @@
 			}}
 		/>
 	</div>
-</Dialog>
+</UI.Dialog>
 
 <section
 	class="
@@ -688,7 +686,7 @@
 			<div class="flex gap-2 h-full">
 				{#if bot_connected}
 					<div class="flex {level_selected === 'IN' ? 'max-xs:hidden' : ''}">
-						<Level
+						<UI.Level
 							bind:state={$config.muted_in}
 							bind:value={$config.level_in}
 							label="Level In"
@@ -698,7 +696,7 @@
 						/>
 					</div>
 					<div class="flex {level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
-						<Level
+						<UI.Level
 							bind:state={$config.muted_out}
 							bind:value={$config.level_out}
 							label="Level Out"
@@ -709,7 +707,7 @@
 					</div>
 				{:else}
 					<div class="flex {level_selected === 'IN' ? 'max-xs:hidden' : ''}">
-						<Level
+						<UI.Level
 							bind:state={$config.muted_in}
 							bind:value={$config.level_in}
 							label="Level In"
@@ -718,7 +716,7 @@
 						/>
 					</div>
 					<div class="flex {level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
-						<Level
+						<UI.Level
 							bind:state={$config.muted_out}
 							bind:value={$config.level_out}
 							label="Level Out"

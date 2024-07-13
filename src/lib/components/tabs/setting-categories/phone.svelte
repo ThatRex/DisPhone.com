@@ -1,21 +1,19 @@
 <script lang="ts">
 	import { config } from '$lib/stores/config.persistent'
-	import FieldSwitch from '$lib/panel-secondary/ui/field-switch.svelte'
-	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
-	import FieldText from '$lib/panel-secondary/ui/field-text.svelte'
+	import UI from '$lib/components/ui'
 
 	$: ({ sip_expert_settings_enabled } = $config)
 </script>
 
-<FieldGroup name="Profile" description="Refresh page to apply changes.">
+<UI.Field.Group name="Profile" description="Refresh page to apply changes.">
 	{#each $config.sip_profiles as { register, early_media, server_stun, server_ws, server_sip, username, login, password, number_voicemail }}
-		<FieldSwitch
+		<UI.Field.Switch
 			label="Expert Settings"
 			bind:value={$config.sip_expert_settings_enabled}
 			default_value={false}
 		/>
 		{#if sip_expert_settings_enabled || !register}
-			<FieldSwitch
+			<UI.Field.Switch
 				label="Register"
 				description="Allow this profile to receive calls and voicemail updates."
 				bind:value={register}
@@ -23,7 +21,7 @@
 			/>
 		{/if}
 		{#if sip_expert_settings_enabled || !early_media}
-			<FieldSwitch
+			<UI.Field.Switch
 				label="Early Media"
 				description="Play media sent before the call is connected."
 				bind:value={early_media}
@@ -31,32 +29,32 @@
 			/>
 		{/if}
 		{#if sip_expert_settings_enabled || server_stun}
-			<FieldText
+			<UI.Field.Text
 				label="STUN Server"
 				placeholder="stun.l.google.com:19302"
 				bind:value={server_stun}
 			/>
 		{/if}
 		{#if sip_expert_settings_enabled || server_ws}
-			<FieldText
+			<UI.Field.Text
 				label="WebSocket Server"
 				placeholder="yourpbx.tel:8089/ws"
 				bind:value={server_ws}
 			/>
 		{/if}
-		<FieldText
+		<UI.Field.Text
 			label="Server"
 			placeholder="yourpbx.tel:5060"
 			required={true}
 			bind:value={server_sip}
 		/>
-		<FieldText label="Username" placeholder="1001" required={true} bind:value={username} />
+		<UI.Field.Text label="Username" placeholder="1001" required={true} bind:value={username} />
 		{#if sip_expert_settings_enabled || login}
-			<FieldText label="Login" bind:value={login} />
+			<UI.Field.Text label="Login" bind:value={login} />
 		{/if}
-		<FieldText label="Password" type="password" bind:value={password} />
+		<UI.Field.Text label="Password" type="password" bind:value={password} />
 		{#if sip_expert_settings_enabled || number_voicemail}
-			<FieldText label="Voicemail Number" placeholder="*97" bind:value={number_voicemail} />
+			<UI.Field.Text label="Voicemail Number" placeholder="*97" bind:value={number_voicemail} />
 		{/if}
 	{/each}
-</FieldGroup>
+</UI.Field.Group>

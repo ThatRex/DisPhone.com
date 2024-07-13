@@ -2,7 +2,7 @@
 	import { createTabs, melt, createSync } from '@melt-ui/svelte'
 	import { IconBook2, IconInfoCircle, IconSettings2, IconUsers } from '@tabler/icons-svelte'
 	import { config } from '$lib/stores/config.persistent'
-	import ButtonTab from './ui/tab.svelte'
+	import UI from './ui'
 	import Tab from './tabs/'
 
 	export let hidden = false
@@ -47,7 +47,7 @@
 		<div use:melt={$list} class="flex flex-col gap-2">
 			{#each triggers as t}
 				<div use:melt={$trigger(t.id)} class="!outline-none">
-					<ButtonTab tip={t.title} icon={t.icon} value={$config.secondary_panel_tab === t.id} />
+					<UI.ButtonTab tip={t.title} icon={t.icon} value={$config.secondary_panel_tab === t.id} />
 				</div>
 			{/each}
 		</div>

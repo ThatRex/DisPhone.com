@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createRadioGroup, createSync, melt } from '@melt-ui/svelte'
 	import { IconCheck } from '@tabler/icons-svelte'
-	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
+	import UI from '$lib/components/ui'
 
 	type ArrayWithTwoPlusItems<T> = [T, T, ...T[]]
 	type OptionValue = $$Generic<string>
@@ -26,7 +26,7 @@
 	$: sync.value(value, (v) => (value = v as OptionValue))
 </script>
 
-<FieldGroup {name} {description}>
+<UI.Field.Group {name} {description}>
 	<div use:melt={$root} class="flex flex-col gap-2.5" aria-label="View density">
 		{#each options as option}
 			<label class="flex items-center gap-3" on:pointerdown={() => navigator.vibrate?.(2)}>
@@ -63,4 +63,4 @@
 		{/each}
 		<input name="line-height" use:melt={$hiddenInput} />
 	</div>
-</FieldGroup>
+</UI.Field.Group>

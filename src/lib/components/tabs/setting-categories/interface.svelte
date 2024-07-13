@@ -1,44 +1,42 @@
 <script lang="ts">
 	import { config } from '$lib/stores/config.persistent'
-	import FieldSwitch from '$lib/panel-secondary/ui/field-switch.svelte'
-	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
-	import FieldRadioGroup from '$lib/panel-secondary/ui/field-radio-group.svelte'
-	import FieldSlider from '$lib/panel-secondary/ui/field-slider.svelte'
+	import UI from '$lib/components/ui'
+	
 </script>
 
-<FieldGroup
+<UI.Field.Group
 	name="Dialpad"
 	description="Dialpad will always be hidden in views narrower than 640px."
 >
-	<FieldSwitch label="Enabled" bind:value={$config.dialpad_enabled} default_value={true} />
+	<UI.Field.Switch label="Enabled" bind:value={$config.dialpad_enabled} default_value={true} />
 	{#if $config.dialpad_enabled}
-		<FieldSwitch
+		<UI.Field.Switch
 			label="Extended Keypad"
 			bind:value={$config.dialpad_extended}
 			default_value={false}
 		/>
-		<FieldSwitch
+		<UI.Field.Switch
 			label="Numeric Layout"
 			bind:value={$config.dialpad_numeric}
 			default_value={false}
 		/>
-		<FieldSwitch
+		<UI.Field.Switch
 			label="Touchscreen Mode"
 			description="Stops keyboard opening on keypress."
 			bind:value={$config.dialpad_touchscreen_mode}
 			default_value={false}
 		/>
 	{/if}
-</FieldGroup>
+</UI.Field.Group>
 
-<FieldGroup name="Behaviour">
-	<FieldSwitch
+<UI.Field.Group name="Behaviour">
+	<UI.Field.Switch
 		label="Hold Unselected Calls"
 		description="When not in conference mode unselected calls will be put on hold."
 		bind:value={$config.hold_unselected_calls}
 		default_value={true}
 	/>
-	<FieldSlider
+	<UI.Field.Slider
 		label="Disconnected Call Visibility Timeout"
 		description="How long a disconnected call remains visible."
 		bind:value={$config.disconnected_timeout_ms}
@@ -47,7 +45,7 @@
 		max={5000}
 		step={500}
 	/>
-	<FieldSlider
+	<UI.Field.Slider
 		label="Auto Answer Delay"
 		bind:value={$config.auto_answer_delay_ms}
 		displayValueParser={(n) => String(n / 1000) + 's'}
@@ -55,9 +53,9 @@
 		max={30000}
 		step={500}
 	/>
-</FieldGroup>
+</UI.Field.Group>
 
-<FieldRadioGroup
+<UI.Field.RadioGroup
 	name="After Dial Call Selection"
 	description="When a new call should be selected."
 	bind:value={$config.after_dial_call_selection_mode}
@@ -79,7 +77,7 @@
 	]}
 />
 
-<FieldRadioGroup
+<UI.Field.RadioGroup
 	name="Close Confirmation"
 	description="When confirmation should be requested before exiting."
 	bind:value={$config.close_confirmation_mode}

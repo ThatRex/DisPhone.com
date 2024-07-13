@@ -1,10 +1,10 @@
 <script lang="ts">
-	import PanelSecondary from '$lib/panel-secondary/panel-secondary.svelte'
-	import PanelMain from '$lib/panel-main/panel-main.svelte'
+	import PanelSecondary from '$lib/components/panel-secondary.svelte'
+	import PanelMain from '$lib/components/panel-main.svelte'
 	import { config } from '$lib/stores/config.persistent'
 	import { dropText } from '$lib/stores/dial.volitile'
 
-	$: ({ haptics_disabled, secondary_panel_enabled, sip_debug_enabled } = $config)
+	$: ({ haptics_disabled, secondary_panel_enabled } = $config)
 
 	const vibrate = navigator.vibrate
 	$: navigator.vibrate = haptics_disabled ? undefined : vibrate

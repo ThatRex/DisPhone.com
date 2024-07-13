@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createTooltip, melt } from '@melt-ui/svelte'
 	import { fade } from 'svelte/transition'
-	import { ColorsBtn } from '../../components/colors'
+	import { ColorsBtn } from './colors'
 
 	export let tip: string = ''
 	export let icon: Component

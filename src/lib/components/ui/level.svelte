@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createSlider, createSync, melt } from '@melt-ui/svelte'
 	import Toggle from './toggle.svelte'
-	import { ColorsBtn } from '../../components/colors'
+	import { ColorsBtn } from './colors'
 
 	export let value = 100
 	export let state = false

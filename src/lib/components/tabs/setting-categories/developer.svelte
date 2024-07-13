@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { config } from '$lib/stores/config.persistent'
 	import schema from '$lib/schemas'
-	import FieldSwitch from '$lib/panel-secondary/ui/field-switch.svelte'
-	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
 	import { dev } from '$app/environment'
-	import Button from '$lib/panel-secondary/ui/button.svelte'
 	import { IconCheck, IconCopy, IconX, IconFileDownload } from '@tabler/icons-svelte'
-	import type { ColorsBtn } from '$lib/components/colors'
+	import type { ColorsBtn } from '$lib/components/ui/colors'
+	import UI from '$lib/components/ui'
 
 	let copying = false
 	let btn_copy_icon: Component = IconCopy
@@ -65,19 +63,19 @@
 	}
 </script>
 
-<FieldGroup
+<UI.Field.Group
 	name="Copy Paste Settings"
 	description="Keep this safe! Passwords and tokens are within."
 >
 	<div class="flex gap-2">
-		<Button
+		<UI.ButtonText
 			label="Copy"
 			icon={btn_copy_icon}
 			color={btn_copy_color}
 			on:click={exportConfig}
 			disabled={copying}
 		/>
-		<Button
+		<UI.ButtonText
 			label="Paste"
 			icon={btn_paste_icon}
 			color={btn_paste_color}
@@ -85,19 +83,19 @@
 			disabled={pasting}
 		/>
 	</div>
-</FieldGroup>
+</UI.Field.Group>
 
-<FieldGroup name="Debug" description="Logs debug information to the console.">
-	<FieldSwitch
+<UI.Field.Group name="Debug" description="Logs debug information to the console.">
+	<UI.Field.Switch
 		label="Softphone"
 		description="Refresh page to apply."
 		bind:value={$config.sip_debug_enabled}
 		default_value={dev}
 	/>
-	<FieldSwitch
+	<UI.Field.Switch
 		label="Discord Dialer"
 		description="Restart dialer to apply."
 		bind:value={$config.bot_discord_debug_enabled}
 		default_value={dev}
 	/>
-</FieldGroup>
+</UI.Field.Group>

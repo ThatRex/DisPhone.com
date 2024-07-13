@@ -2,7 +2,7 @@
 	import { createEventDispatcher } from 'svelte'
 	import { createTooltip, melt } from '@melt-ui/svelte'
 	import { fade } from 'svelte/transition'
-	import { ColorsBtn } from '../../components/colors'
+	import { ColorsBtn } from './colors'
 
 	type ArrayWithTwoPlusItems<T> = [T, T, ...T[]]
 	type ModeValue = $$Generic<string>

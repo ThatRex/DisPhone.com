@@ -1,8 +1,9 @@
 <script lang="ts">
+	import { ColorsBtn } from '$lib/components/ui/colors'
 	import { createEventDispatcher } from 'svelte'
-	import { ColorsBtn } from './colors'
 
 	export let label: string
+	export let icon: undefined | Component = undefined
 	export let color: ColorsBtn = 'mono'
 	export let disabled = false
 
@@ -16,15 +17,18 @@
 	}}
 	{disabled}
 	class="
-		px-2 py-0.5 border-2 rounded-md transition duration-75
-		grow flex items-center justify-center
+        flex items-center justify-center h-9
+		px-2.5 gap-2.5 border-2 rounded-md transition duration-75
 		!bg-opacity-10 {ColorsBtn[color]}
 		{disabled
 		? `!border-opacity-20 !bg-opacity-5`
 		: `active:scale-y-95 active:scale-x-[97%] hover:!bg-opacity-20 active:!bg-opacity-10`}
 		"
 >
-	<span class="transition duration-75 font-medium {disabled ? 'opacity-60' : ''}">
+	<div class={disabled ? 'opacity-60' : ''}>
+		<svelte:component this={icon} size={18} />
+	</div>
+	<span class="text-center transition duration-75 font-medium {disabled ? 'opacity-60' : ''}">
 		{label}
 	</span>
 </button>

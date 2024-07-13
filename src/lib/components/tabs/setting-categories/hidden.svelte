@@ -1,21 +1,17 @@
 <script lang="ts">
 	import { config } from '$lib/stores/config.persistent'
-	import FieldSwitch from '$lib/panel-secondary/ui/field-switch.svelte'
-	import FieldGroup from '$lib/panel-secondary/ui/field-group.svelte'
-	import FieldSlider from '$lib/panel-secondary/ui/field-slider.svelte'
-	import FieldSliderDuo from '$lib/panel-secondary/ui/field-slider-duo.svelte'
+	import UI from '$lib/components/ui'
 </script>
 
-<!-- <FieldSwitch label="Auto Record" description="Record calls automatically." /> -->
-<FieldSwitch
+<UI.Field.Switch
 	label="Auto Redial"
 	description="Add an auto redial toggle to each call."
 	bind:value={$config.auto_redial_enabled}
 />
 
 {#if $config.auto_redial_enabled}
-	<FieldGroup name="Auto Redial Defaults">
-		<FieldSliderDuo
+	<UI.Field.Group name="Auto Redial Defaults">
+		<UI.Field.SliderDuo
 			label="Delay Min Max"
 			displayValueParser={(n) => String(n / 1000) + 's'}
 			default_value={[2000, 4500]}
@@ -23,7 +19,7 @@
 			max={30000}
 			bind:value={$config.auto_redial_delay_ms_min_max}
 		/>
-		<FieldSlider
+		<UI.Field.Slider
 			label="Max Sequential Failed Calls"
 			description="When a call fails too many times auto redial will stop automatically."
 			displayValueParser={(n) => (n === 0 ? 'Disabled' : String(n))}
@@ -31,7 +27,7 @@
 			default_value={3}
 			bind:value={$config.auto_redial_max_sequential_failed_calls}
 		/>
-		<FieldSlider
+		<UI.Field.Slider
 			label="Short Call Duration"
 			description="Calls with a duration less or equal to this value will be considered failed."
 			displayValueParser={(n) => String(n / 1000) + 's'}
@@ -40,5 +36,5 @@
 			default_value={4000}
 			bind:value={$config.auto_redial_short_call_duration_ms}
 		/>
-	</FieldGroup>
+	</UI.Field.Group>
 {/if}
