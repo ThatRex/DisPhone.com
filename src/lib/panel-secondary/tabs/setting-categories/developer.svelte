@@ -95,8 +95,8 @@
 		default_value={dev}
 	/>
 	<FieldSwitch
-		label="Discord Bot"
-		description="Restart bot to apply."
+		label="Discord Dialer"
+		description="Restart dialer to apply."
 		bind:value={$config.bot_discord_debug_enabled}
 		default_value={dev}
 	/>
