@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import schema from '$lib/schemas'
 	import { dev } from '$app/environment'
 	import { IconCheck, IconCopy, IconX, IconFileDownload } from '@tabler/icons-svelte'

@@ -8,7 +8,7 @@
 		<a
 			target="_blank"
 			class="opacity-90 hover:opacity-100 hover:text-lime-500 transition"
-			href="https://github.com/ThatRex/DisPhone.com/blob/master/CHANGELOG.md"
+			href="https://github.com/ThatRex/DisPhone.com/blob/main/CHANGELOG.md"
 		>
 			v{version}
 		</a>
@@ -25,7 +25,7 @@
 		<a
 			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
-			title="Looking to get started? Start here!"
+			title="Get started here."
 			href="https://github.com/ThatRex/DisPhone.com/wiki"
 		>
 			Wiki
@@ -34,7 +34,7 @@
 		<a
 			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-blue-500 transition"
-			title="Looking to get started? Start here!"
+			title="Come talk!"
 			href="https://github.com/ThatRex/DisPhone.com/discussions"
 		>
 			Discuss
@@ -44,7 +44,7 @@
 			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-yellow-500 transition"
 			title="Your support is appreciated & motivates further development."
-			href="http://donate.disphone.com"
+			href="https://ko-fi.com/thatrex"
 		>
 			Donate
 		</a>
@@ -60,7 +60,7 @@
 		<a
 			target="_blank"
 			class="opacity-70 hover:opacity-100 hover:text-emerald-500 transition"
-			href="http://status.disphone.com"
+			href="https://www.vercel-status.com/"
 		>
 			Status
 		</a>

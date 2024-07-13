@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Call from './call.svelte'
-	import { calls } from '$lib/stores/calls.volitile'
+	import { calls } from '$lib/stores/calls.svelte'
 	import { flip } from 'svelte/animate'
 	import { fly } from 'svelte/transition'
 	import { cubicIn, cubicOut } from 'svelte/easing'

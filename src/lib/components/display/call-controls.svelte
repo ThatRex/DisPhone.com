@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Client as PhoneClient } from '$lib/client-phone'
-	import { removeCall, type CallItem } from '$lib/stores/calls.volitile'
-	import { dial_string } from '$lib/stores/dial.volitile'
+	import { removeCall, type CallItem } from '$lib/stores/calls.svelte'
+	import { dial_string } from '$lib/stores/dial.svelte'
 	import { getContext } from 'svelte'
 	import CallButton from './call-button.svelte'
 	import {
@@ -19,7 +19,7 @@
 		IconTransfer,
 		IconX
 	} from '@tabler/icons-svelte'
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 
 	$: ({
 		auto_redial_delay_ms_min_max: delay_ms_min_max,

@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { config } from '$lib/stores/config.persistent'
-	import { type CallItem } from '$lib/stores/calls.volitile'
+	import { config } from '$lib/stores/config.svelte'
+	import { type CallItem } from '$lib/stores/calls.svelte'
 	import CallControls from './call-controls.svelte'
 
 	export let time: string
@@ -27,7 +27,12 @@
 			<svelte:component this={style.icon} size={18} />
 		</div>
 		<div class="font-medium text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
-			{call.selected && call.identity ? call.identity : call.destination || ''}
+			<span class="hidden @sm:inline">
+				{call.identity ? call.identity : call.destination || ''}
+			</span>
+			<span class="@sm:hidden">
+				{call.selected && call.identity ? call.identity : call.destination || ''}
+			</span>
 		</div>
 		<div class="text-right grow mr-1 font-medium whitespace-nowrap text-nowrap">
 			{time}
@@ -36,6 +41,9 @@
 	<div class="flex grow justify-between items-center gap-x-1 w-full">
 		<div class="ml-1 text-left overflow-hidden whitespace-nowrap overflow-ellipsis">
 			{call.on_hold && call.progress === 'CONNECTED' ? 'Hold' : call.reason || style.default_text}
+			<span class="hidden @sm:inline">
+				{call.identity ? (call.destination ? ` • ${call.destination}` : '') : ''}
+			</span>
 		</div>
 		<CallControls bind:call />
 	</div>

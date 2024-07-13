@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { active_dialpad_keys } from '$lib/stores/dial.volitile'
+	import { active_dialpad_keys } from '$lib/stores/dial.svelte'
 	import { createEventDispatcher } from 'svelte'
 
 	const dispatch = createEventDispatcher()

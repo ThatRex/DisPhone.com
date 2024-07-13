@@ -20,10 +20,10 @@
 	import Display from './display/display.svelte'
 	import DialPanel from './dial-panel.svelte'
 	import Dialpad from './dialpad/dialpad.svelte'
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import ToggleMulti from './ui/toggle-multi.svelte'
 	import { DTMFSimulator, subscribeKey } from '$lib/utils'
-	import { onMount, setContext } from 'svelte'
+	import { getContext, onMount, setContext } from 'svelte'
 	import {
 		calls,
 		call_ids_active,
@@ -34,8 +34,8 @@
 		call_ids_connecting_i,
 		call_ids_has_media,
 		removeCall
-	} from '$lib/stores/calls.volitile'
-	import { addActiveKey, redial_string } from '$lib/stores/dial.volitile'
+	} from '$lib/stores/calls.svelte'
+	import { addActiveKey, redial_string } from '$lib/stores/dial.svelte'
 	import UI from '$lib/components/ui'
 	import type { ColorsBtn } from '$lib/components/ui/colors'
 	import PhoneClient from '$lib/client-phone'
@@ -75,7 +75,7 @@
 		level_selected
 	} = $config)
 
-	const ac = new AudioContext()
+	const ac = getContext<AudioContext>('ac')
 
 	const dst_i_browser = ac.createMediaStreamDestination()
 	const src_i_browser = ac.createMediaStreamSource(dst_i_browser.stream)
@@ -245,7 +245,7 @@
 	}
 
 	// Phone
-	const phone = new PhoneClient({ ac, debug: $config.sip_debug_enabled })
+	const phone = getContext<PhoneClient>('phone')
 	src_i_phone.connect(phone.dst)
 	phone.src.connect(dst_o_phone)
 	setContext('phone', phone)
@@ -508,8 +508,7 @@
 
 		loadSounds()
 
-		const profile_sip = sip_profiles[0]
-		phone.addProfile(profile_sip)
+		for (const p of sip_profiles) phone.addProfile(p)
 
 		const profile_bot = bot_discord_profiles[0]
 		if (profile_bot.bot_token && bot_discord_autostart_enabled) {

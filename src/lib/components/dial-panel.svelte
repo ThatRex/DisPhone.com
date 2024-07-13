@@ -1,14 +1,14 @@
 <script lang="ts">
 	import Button from './ui/button.svelte'
 	import type PhoneClient from '$lib/client-phone'
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import {
 		calls,
 		call_ids_dtmf_receptible,
 		call_ids_selected,
 		call_ids_answerable
-	} from '$lib/stores/calls.volitile'
-	import { dial_string, redial_string, addActiveKey, dropText } from '$lib/stores/dial.volitile'
+	} from '$lib/stores/calls.svelte'
+	import { dial_string, redial_string, addActiveKey, dropText } from '$lib/stores/dial.svelte'
 	import { uppercaseLetterToNumber, type DTMFSimulator, wait } from '$lib/utils'
 	import { IconPhone, IconPhoneX, IconArrowBackUp, IconTrashX } from '@tabler/icons-svelte'
 	import { getContext } from 'svelte'

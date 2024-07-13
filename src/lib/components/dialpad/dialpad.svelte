@@ -1,8 +1,8 @@
 <script lang="ts">
 	import type PhoneClient from '$lib/client-phone'
-	import { config } from '$lib/stores/config.persistent'
-	import { call_ids_dtmf_receptible } from '$lib/stores/calls.volitile'
-	import { dial_string } from '$lib/stores/dial.volitile'
+	import { config } from '$lib/stores/config.svelte'
+	import { call_ids_dtmf_receptible } from '$lib/stores/calls.svelte'
+	import { dial_string } from '$lib/stores/dial.svelte'
 	import type { DTMFSimulator } from '$lib/utils'
 	import { getContext } from 'svelte'
 	import Key from './key.svelte'

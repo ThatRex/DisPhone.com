@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createTabs, melt, createSync } from '@melt-ui/svelte'
 	import { IconBook2, IconInfoCircle, IconSettings2, IconUsers } from '@tabler/icons-svelte'
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import UI from './ui'
 	import Tab from './tabs/'
 

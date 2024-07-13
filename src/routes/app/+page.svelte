@@ -1,8 +1,16 @@
 <script lang="ts">
 	import PanelSecondary from '$lib/components/panel-secondary.svelte'
 	import PanelMain from '$lib/components/panel-main.svelte'
-	import { config } from '$lib/stores/config.persistent'
-	import { dropText } from '$lib/stores/dial.volitile'
+	import { config } from '$lib/stores/config.svelte'
+	import { dropText } from '$lib/stores/dial.svelte'
+	import { setContext } from 'svelte'
+	import PhoneClient from '$lib/client-phone'
+
+	const ac = new AudioContext()
+	const phone = new PhoneClient({ ac, debug: $config.sip_debug_enabled })
+
+	setContext('ac', ac)
+	setContext('phone', phone)
 
 	$: ({ haptics_disabled, secondary_panel_enabled } = $config)
 

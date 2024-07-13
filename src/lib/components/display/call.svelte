@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type CallItem, calls, call_ids_selected } from '$lib/stores/calls.volitile'
+	import { type CallItem, calls, call_ids_selected } from '$lib/stores/calls.svelte'
 	import {
 		IconBellRinging2,
 		IconPhoneCalling,
@@ -8,7 +8,7 @@
 		IconPlugConnected
 	} from '@tabler/icons-svelte'
 	import { getContext, onDestroy, onMount } from 'svelte'
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import CallItemDefault from './call-item-default.svelte'
 	import CallItemSlim from './call-item-slim.svelte'
 	import type Manager from '$lib/client-phone'
@@ -138,7 +138,7 @@
 </script>
 
 <button
-	class="group ring-0 outline-none w-full"
+	class="@container group ring-0 outline-none w-full"
 	type="button"
 	aria-pressed={call.selected}
 	id="call-item-{call.id}"
@@ -147,17 +147,17 @@
 	on:mouseup={handleMouseUp}
 	on:keydown={handleKeydown}
 >
-	<div class="flex {not_slim ? 'hidden' : 'call-slim'}">
+	<div class={not_slim ? 'hidden' : 'hidden @[480px]:flex'}>
 		<CallItemSlim bind:call bind:time bind:style />
 	</div>
-	<div class="flex {not_slim ? '' : 'call-default'} ">
+	<div class={not_slim ? '' : 'flex @[480px]:hidden'}>
 		<CallItemDefault bind:call bind:time bind:style />
 	</div>
 	<div
 		class="
-				h-0 relative bottom-0.5 flex justify-center transition duration-75
-				{call.selected ? '' : 'opacity-70'}
-				"
+			{call.selected ? '' : 'opacity-70'}
+			h-0 relative bottom-0.5 flex justify-center transition duration-75
+			"
 	>
 		<div
 			style="opacity: {level * 1.9}%; width: {level}%;"
@@ -165,17 +165,3 @@
 		/>
 	</div>
 </button>
-
-<style>
-	@container (width <= 480px) {
-		.call-slim {
-			display: none;
-		}
-	}
-
-	@container (width > 480px) {
-		.call-default {
-			display: none;
-		}
-	}
-</style>

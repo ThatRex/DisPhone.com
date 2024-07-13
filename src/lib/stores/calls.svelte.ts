@@ -1,6 +1,6 @@
 import type { CallDetail } from '$lib/client-phone/call'
 import { derived, get, writable } from 'svelte/store'
-import { config } from './config.persistent'
+import { config } from './config.svelte'
 
 export type CallItem = { id: string; selected: boolean } & CallDetail
 

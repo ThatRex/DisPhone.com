@@ -1,6 +1,6 @@
 <script lang="ts">
 	import PhoneClient from '$lib/client-phone'
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import { createSelect, melt, type SelectOption } from '@melt-ui/svelte'
 	import {
 		IconChevronDown,

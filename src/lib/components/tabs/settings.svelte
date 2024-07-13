@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { config } from '$lib/stores/config.persistent'
+	import { config } from '$lib/stores/config.svelte'
 	import { createAccordion, melt } from '@melt-ui/svelte'
 	import {
 		IconAccessible,

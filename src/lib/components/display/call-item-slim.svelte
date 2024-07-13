@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type CallItem } from '$lib/stores/calls.volitile'
+	import { type CallItem } from '$lib/stores/calls.svelte'
 	import {
 		IconHeadphonesOff,
 		IconMicrophoneOff,
@@ -11,11 +11,13 @@
 	export let time: string
 	export let call: CallItem
 	export let style: { default_text: string; icon: Component; classes: string }
+
+	$: display_dest = call.identity ? call.destination || '' : ''
 </script>
 
 <div
 	class="
-        min-w-[480px] grow
+        min-w-[480px] grow text-left
         flex items-center gap-x-2 pl-0.5 py-0.5 h-7 border-2 border-opacity-0
         rounded-[3px] transition duration-[50ms] bg-opacity-20 hover:bg-opacity-30 group-focus:bg-opacity-30
 		{call.selected ? '!bg-opacity-30 !border-opacity-80' : ''} {style.classes}
@@ -24,12 +26,25 @@
 	<div class="min-w-[24px] flex justify-center">
 		<svelte:component this={style.icon} size={18} />
 	</div>
-	<div
-		class="grow w-full text-left font-medium overflow-hidden whitespace-nowrap overflow-ellipsis"
-	>
-		{call.selected && call.identity ? call.identity : call.destination || ''}
+	<div class="basis-full font-medium grid {display_dest ? '@[620px]:grid-cols-2' : ''}">
+		<span class="overflow-hidden overflow-ellipsis whitespace-nowrap">
+			<span class="hidden @[620px]:inline">
+				{call.identity ? call.identity : call.destination || ''}
+			</span>
+			<span class="@[620px]:hidden">
+				{call.selected && call.identity ? call.identity : call.destination || ''}
+			</span>
+		</span>
+		<span
+			class="
+				overflow-hidden overflow-ellipsis whitespace-nowrap
+				hidden {display_dest ? '@[620px]:inline' : ''}
+				"
+		>
+			{display_dest}
+		</span>
 	</div>
-	<div class="min-w-[62px] text-left">{time}</div>
+	<div class="min-w-[62px]">{time}</div>
 	<div
 		class="
 			w-full max-w-44 flex items-center gap-2 justify-end grow
