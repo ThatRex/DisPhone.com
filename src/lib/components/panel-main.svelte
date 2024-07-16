@@ -20,6 +20,7 @@
 	import Display from './display/display.svelte'
 	import DialPanel from './dial-panel.svelte'
 	import Dialpad from './dialpad/dialpad.svelte'
+	import { state } from '$lib/stores/state.svelte'
 	import { config } from '$lib/stores/config.svelte'
 	import ToggleMulti from './ui/toggle-multi.svelte'
 	import { DTMFSimulator, subscribeKey } from '$lib/utils'
@@ -49,8 +50,6 @@
 		sound_level_ring_out,
 		sound_level_ring_in,
 		conference_play_sounds,
-		conference_enabled,
-		inbound_call_mode,
 		after_dial_call_selection_mode,
 		auto_answer_delay_ms,
 		disconnected_timeout_ms,
@@ -67,13 +66,18 @@
 		bot_discord_debug_enabled,
 		close_confirmation_mode,
 		hold_unselected_calls,
+		dialpad_enabled
+	} = $config)
+
+	$: ({
+		conference_enabled,
+		inbound_call_mode,
 		muted_in,
 		muted_out,
 		level_in,
 		level_out,
-		dialpad_enabled,
 		level_selected
-	} = $config)
+	} = $state)
 
 	const ac = getContext<AudioContext>('ac')
 
@@ -111,17 +115,15 @@
 
 	$: gin_i_browser.gain.value = !muted_in && !bot_connected ? level_in / 100 : 0
 	$: lvl_out_browser = !muted_out && !bot_connected ? level_out / 100 : 0
-	$: gin_o_browser.gain.linearRampToValueAtTime(
-		lvl_out_browser === 0 ? 0.0001 : lvl_out_browser,
-		ac.currentTime + 0.02
-	)
+	$: !lvl_out_browser
+		? gin_o_browser.gain.linearRampToValueAtTime(0, ac.currentTime + 0.05)
+		: gin_o_browser.gain.exponentialRampToValueAtTime(lvl_out_browser, ac.currentTime + 0.05)
 
 	$: gin_i_bot.gain.value = !muted_in && bot_connected ? level_in / 100 : 0
 	$: lvl_out_bot = !muted_out && bot_connected ? level_out / 100 : 0
-	$: gin_o_bot.gain.linearRampToValueAtTime(
-		lvl_out_bot === 0 ? 0.0001 : lvl_out_bot,
-		ac.currentTime + 0.02
-	)
+	$: !lvl_out_bot
+		? gin_o_bot.gain.linearRampToValueAtTime(0, ac.currentTime + 0.05)
+		: gin_o_bot.gain.exponentialRampToValueAtTime(lvl_out_bot, ac.currentTime + 0.05)
 
 	// Browser Audio
 	const audio_browser = new Audio()
@@ -470,25 +472,20 @@
 	async function loadSounds() {
 		console.info('Loading Sounds')
 
-		const loaded_sounds = await SoundPlayer.load({
-			connected: sound_connected,
-			disconnected: sound_disconnected,
-			auto_answered: sound_auto_answered,
-			done: sound_done
-		})
+		const { ring_in, ring_out, connected, disconnected, auto_answered, done } =
+			await SoundPlayer.load({
+				ring_in: sound_ring_in,
+				ring_out: sound_ring_out,
+				connected: sound_connected,
+				disconnected: sound_disconnected,
+				auto_answered: sound_auto_answered,
+				done: sound_done
+			})
 
-		const loaded_sounds_conf = await SoundPlayer.load({
-			connected: sound_connected,
-			disconnected: sound_disconnected
-		})
-
-		const loaded_sounds_ring_in = await SoundPlayer.load({ ring_in: sound_ring_in })
-		const loaded_sounds_ring_out = await SoundPlayer.load({ ring_out: sound_ring_out })
-
-		player.loadSounds(loaded_sounds)
-		player_conf.loadSounds(loaded_sounds_conf)
-		player_ring_in.loadSounds(loaded_sounds_ring_in)
-		player_ring_out.loadSounds(loaded_sounds_ring_out)
+		player.loadSounds({ connected, disconnected, auto_answered, done })
+		player_conf.loadSounds({ connected, disconnected })
+		player_ring_in.loadSounds({ ring_in })
+		player_ring_out.loadSounds({ ring_out })
 	}
 
 	async function init() {
@@ -506,7 +503,7 @@
 		const got_media = await getMedia()
 		if (!got_media) return
 
-		loadSounds()
+		await loadSounds()
 
 		for (const p of sip_profiles) phone.addProfile(p)
 
@@ -536,7 +533,7 @@
 	// users often try enabling DND to stop inbound ringing
 	$: inbound_call_mode !== 'DND' || stopRingIn?.()
 
-	subscribeKey(config, 'conference_enabled', (v) => {
+	subscribeKey(state, 'conference_enabled', (v) => {
 		const ids = !v ? [] : $calls.map((c) => c.id)
 		phone.conference({ ids })
 		if (hold_unselected_calls) phone.setHold({ ids, value: false })
@@ -548,25 +545,25 @@
 		phone.setHold({ ids: $call_ids_unselected, value: true })
 	}
 
-	let muted_in_previously = $config.muted_in
+	let muted_in_previously = $state.muted_in
 	subscribeKey(config, 'mute_on_deafen', () => {
-		if (!$config.muted_out) return
-		muted_in_previously = $config.muted_in
-		$config.muted_in = true
+		if (!$state.muted_out) return
+		muted_in_previously = $state.muted_in
+		$state.muted_in = true
 	})
-	subscribeKey(config, 'muted_in', () => {
+	subscribeKey(state, 'muted_in', () => {
 		if (!$config.mute_on_deafen) return
-		if ($config.muted_in) return
+		if ($state.muted_in) return
 		muted_in_previously = false
-		$config.muted_out = false
+		$state.muted_out = false
 	})
-	subscribeKey(config, 'muted_out', () => {
+	subscribeKey(state, 'muted_out', () => {
 		if (!$config.mute_on_deafen) return
-		if ($config.muted_out) {
-			muted_in_previously = $config.muted_in
-			$config.muted_in = true
+		if ($state.muted_out) {
+			muted_in_previously = $state.muted_in
+			$state.muted_in = true
 		} else {
-			$config.muted_in = muted_in_previously
+			$state.muted_in = muted_in_previously
 		}
 	})
 </script>
@@ -602,7 +599,7 @@
 		<div class="flex gap-2 flex-wrap max-xs:flex-wrap-reverse">
 			<div class="flex gap-2 flex-wrap max-xs:grow">
 				<Toggle
-					bind:value={$config.secondary_panel_enabled}
+					bind:value={$state.secondary_panel_enabled}
 					tip={{ on: 'Hide Subpanel', off: 'Show Subpanel' }}
 					icon={{ on: IconChevronUp, off: IconChevronDown }}
 				/>
@@ -641,7 +638,7 @@
 					/>
 				{/if}
 				<ToggleMulti
-					bind:value={$config.inbound_call_mode}
+					bind:value={$state.inbound_call_mode}
 					modes={[
 						{
 							icon: IconBellRinging,
@@ -665,7 +662,7 @@
 					]}
 				/>
 				<Toggle
-					bind:value={$config.conference_enabled}
+					bind:value={$state.conference_enabled}
 					tip="Conference"
 					icon={IconUsersGroup}
 					color={{ on: 'yellow', off: 'mono' }}
@@ -686,8 +683,8 @@
 				{#if bot_connected}
 					<div class="flex {level_selected === 'IN' ? 'max-xs:hidden' : ''}">
 						<UI.Level
-							bind:state={$config.muted_in}
-							bind:value={$config.level_in}
+							bind:state={$state.muted_in}
+							bind:value={$state.level_in}
 							label="Level In"
 							tip={{ on: 'Undeafen', off: 'Deafen' }}
 							icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
@@ -696,8 +693,8 @@
 					</div>
 					<div class="flex {level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
 						<UI.Level
-							bind:state={$config.muted_out}
-							bind:value={$config.level_out}
+							bind:state={$state.muted_out}
+							bind:value={$state.level_out}
 							label="Level Out"
 							tip={{ on: 'Unmute', off: 'Mute' }}
 							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
@@ -707,8 +704,8 @@
 				{:else}
 					<div class="flex {level_selected === 'IN' ? 'max-xs:hidden' : ''}">
 						<UI.Level
-							bind:state={$config.muted_in}
-							bind:value={$config.level_in}
+							bind:state={$state.muted_in}
+							bind:value={$state.level_in}
 							label="Level In"
 							tip={{ on: 'Unmute', off: 'Mute' }}
 							icon={{ on: IconMicrophoneOff, off: IconMicrophone }}
@@ -716,8 +713,8 @@
 					</div>
 					<div class="flex {level_selected === 'OUT' ? 'max-xs:hidden' : ''}">
 						<UI.Level
-							bind:state={$config.muted_out}
-							bind:value={$config.level_out}
+							bind:state={$state.muted_out}
+							bind:value={$state.level_out}
 							label="Level Out"
 							tip={{ on: 'Undeafen', off: 'Deafen' }}
 							icon={{ on: IconHeadphonesOff, off: IconHeadphones }}
@@ -727,9 +724,9 @@
 			</div>
 			<div class="max-xs:flex hidden grow">
 				<Toggle
-					on:toggle={() => ($config.level_selected = level_selected === 'IN' ? 'OUT' : 'IN')}
+					on:toggle={() => ($state.level_selected = level_selected === 'IN' ? 'OUT' : 'IN')}
 					tip="Switch Level"
-					value={$config.level_selected === 'IN'}
+					value={$state.level_selected === 'IN'}
 					icon={IconSwitchHorizontal}
 				/>
 			</div>

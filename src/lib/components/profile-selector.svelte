@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PhoneClient from '$lib/client-phone'
+	import { state } from '$lib/stores/state.svelte'
 	import { config } from '$lib/stores/config.svelte'
 	import { createSelect, melt, type SelectOption } from '@melt-ui/svelte'
 	import {
@@ -18,7 +19,7 @@
 	const phone = getContext<PhoneClient>('phone')
 
 	let color: keyof typeof color_classes = 'red'
-	let state = ''
+	let profile_state = ''
 
 	const color_classes = {
 		red: 'bg-gradient-to-r from-red-500/60 to-rose-500/60',
@@ -27,7 +28,7 @@
 	} as const
 
 	phone.on('profile-update', (pu) => {
-		state = pu.state
+		profile_state = pu.state
 		switch (pu.state) {
 			case 'CONNECTING':
 			case 'RECONNECTING':
@@ -64,8 +65,8 @@
 		if (v?.value === '__add_new__') {
 			selected.set(last_selected_value)
 			open.set(false)
-			$config.secondary_panel_tab = 'settings'
-			$config.secondary_panel_enabled = true
+			$state.secondary_panel_tab = 'settings'
+			$state.secondary_panel_enabled = true
 		}
 		last_selected_value = v
 	})
@@ -88,7 +89,7 @@
 		{$config.sip_profiles[0].username}@{$config.sip_profiles[0].server_sip}
 	</div>
 	<div class="flex items-center gap-x-4 justify-end">
-		<div class="max-sm:hidden font-semibold capitalize">{state.toLowerCase()}</div>
+		<div class="max-sm:hidden font-semibold capitalize">{profile_state.toLowerCase()}</div>
 		{#if $open}<IconChevronUp />
 		{:else}<IconChevronDown />
 		{/if}

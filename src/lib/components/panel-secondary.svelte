@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createTabs, melt, createSync } from '@melt-ui/svelte'
 	import { IconBook2, IconInfoCircle, IconSettings2, IconUsers } from '@tabler/icons-svelte'
-	import { config } from '$lib/stores/config.svelte'
+	import { state } from '$lib/stores/state.svelte'
 	import UI from './ui'
 	import Tab from './tabs/'
 
@@ -13,13 +13,13 @@
 	} = createTabs({
 		loop: true,
 		orientation: 'vertical',
-		defaultValue: $config.secondary_panel_tab
+		defaultValue: $state.secondary_panel_tab
 	})
 
 	const sync = createSync(states)
 	$: sync.value(
-		$config.secondary_panel_tab,
-		(v) => ($config.secondary_panel_tab = v as typeof $config.secondary_panel_tab)
+		$state.secondary_panel_tab,
+		(v) => ($state.secondary_panel_tab = v as typeof $state.secondary_panel_tab)
 	)
 
 	const triggers = [
@@ -47,7 +47,7 @@
 		<div use:melt={$list} class="flex flex-col gap-2">
 			{#each triggers as t}
 				<div use:melt={$trigger(t.id)} class="!outline-none">
-					<UI.ButtonTab tip={t.title} icon={t.icon} value={$config.secondary_panel_tab === t.id} />
+					<UI.ButtonTab tip={t.title} icon={t.icon} value={$state.secondary_panel_tab === t.id} />
 				</div>
 			{/each}
 		</div>

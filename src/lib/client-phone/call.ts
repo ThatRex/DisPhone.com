@@ -130,10 +130,8 @@ class Call extends EventEmitter {
 		this.debug?.('Session State Update:', state)
 		switch (state) {
 			case SessionState.Establishing: {
-				const identity = this.session.assertedIdentity?.friendlyName
 				this.updateDetail({
 					progress: 'CONNECTING',
-					identity,
 					start_time: Date.now(),
 					hungup: false
 				})
@@ -141,9 +139,12 @@ class Call extends EventEmitter {
 			}
 
 			case SessionState.Established: {
+				let identity = this.session.assertedIdentity?.friendlyName
+				if (identity === this.detail.destination) identity = undefined
+
 				this.updateDetail({
 					progress: 'CONNECTED',
-					identity: this.session.assertedIdentity?.friendlyName,
+					identity,
 					start_time: Date.now(),
 					dtmf_receptible: true
 				})
@@ -443,7 +444,7 @@ class Call extends EventEmitter {
 		const key = value.replace(/[^0-9A-D#*]/g, '')
 		this.debug?.('Sending DTMF:', key)
 		const sent = this.session.sessionDescriptionHandler?.sendDtmf(key, {
-			duration: 150,
+			duration: 100,
 			interToneGap: 0
 		})
 		if (sent) this.emit('dtmf', key)

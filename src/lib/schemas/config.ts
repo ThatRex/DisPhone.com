@@ -4,16 +4,6 @@ import { profile_sip } from './profile-sip'
 import { profile_bot_discord } from './profile-bot-discord'
 
 export const config = z.object({
-	conference_enabled: z.boolean().catch(false),
-	inbound_call_mode: z.enum(['R', 'DND', 'AA']).catch('R'),
-	level_selected: z.enum(['IN', 'OUT']).catch('OUT'),
-	level_in: z.number().catch(100),
-	level_out: z.number().catch(100),
-	muted_in: z.boolean().catch(false),
-	muted_out: z.boolean().catch(false),
-	// Secondary Panel
-	secondary_panel_enabled: z.boolean().catch(true),
-	secondary_panel_tab: z.enum(['logs', 'contacts', 'settings', 'about']).catch('about'),
 	// Softphone
 	sip_expert_settings_enabled: z.boolean().catch(false),
 	sip_selected_profile_id: z.string().catch('default'),

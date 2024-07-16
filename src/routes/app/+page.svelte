@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PanelSecondary from '$lib/components/panel-secondary.svelte'
 	import PanelMain from '$lib/components/panel-main.svelte'
+	import { state } from '$lib/stores/state.svelte'
 	import { config } from '$lib/stores/config.svelte'
 	import { dropText } from '$lib/stores/dial.svelte'
 	import { setContext } from 'svelte'
@@ -12,7 +13,8 @@
 	setContext('ac', ac)
 	setContext('phone', phone)
 
-	$: ({ haptics_disabled, secondary_panel_enabled } = $config)
+	$: ({ haptics_disabled } = $config)
+	$: ({ secondary_panel_enabled } = $state)
 
 	const vibrate = navigator.vibrate
 	$: navigator.vibrate = haptics_disabled ? undefined : vibrate

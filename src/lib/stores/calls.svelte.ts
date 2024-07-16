@@ -1,8 +1,8 @@
-import type { CallDetail } from '$lib/client-phone/call'
+import type { UpdateCall } from '$lib/client-phone/manager'
 import { derived, get, writable } from 'svelte/store'
 import { config } from './config.svelte'
 
-export type CallItem = { id: string; selected: boolean } & CallDetail
+export type CallItem = { selected: boolean } & UpdateCall
 
 export const calls = writable<CallItem[]>([])
 

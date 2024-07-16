@@ -99,9 +99,7 @@
 		}
 	}
 	const handleKeydown = (e: KeyboardEvent) => {
-		if (e.repeat) return
-
-		const { key, shiftKey, ctrlKey } = e
+		const { key, shiftKey, ctrlKey, repeat } = e
 
 		switch (true) {
 			case key === 'ArrowUp' || key === 'ArrowDown': {
@@ -135,9 +133,10 @@
 				break
 			}
 
-			case constants.KEYS_DTMF.includes(key): {
+			case !repeat && constants.KEYS_DTMF.includes(key): {
 				e.preventDefault()
 				phone.sendDTMF({ ids: [call.id], dtmf: key })
+				break
 			}
 		}
 	}
