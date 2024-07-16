@@ -19,13 +19,16 @@
 		IconTransfer,
 		IconX
 	} from '@tabler/icons-svelte'
+	import { state } from '$lib/stores/state.svelte'
 	import { config } from '$lib/stores/config.svelte'
 
 	$: ({
 		auto_redial_delay_ms_min_max: delay_ms_min_max,
 		auto_redial_max_sequential_failed_calls: max_sequential_failed_calls,
-		auto_redial_short_call_duration_ms: short_call_duration_ms
+		auto_redial_short_call_duration_ms: short_call_duration_ms,
+		hold_unselected_calls
 	} = $config)
+	$: ({ conference_enabled } = $state)
 
 	export let call: CallItem
 	const phone = getContext<PhoneClient>('phone')
@@ -54,7 +57,7 @@
 			tip={call.on_hold ? 'Unhold' : 'Hold'}
 			icon={call.on_hold ? IconPlayerPause : IconPlayerPlay}
 			on:trigger={() => phone.setHold({ ids: [call.id], value: !call.on_hold })}
-			disabled={!$config.conference_enabled && $config.hold_unselected_calls}
+			disabled={!conference_enabled && hold_unselected_calls}
 		/>
 	{/if}
 	{#if !(call.type === 'INBOUND' && call.progress === 'CONNECTING') && call.progress !== 'DISCONNECTED' && (call.auto_redialing || $config.auto_redial_enabled)}
