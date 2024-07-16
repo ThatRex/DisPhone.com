@@ -233,7 +233,7 @@ export class Profile extends EventEmitter {
 			if (peerConnection.signalingState !== 'closed') peerConnection.close()
 		}
 
-		return Promise.resolve(generateDummyStream())
+		return Promise.resolve(generateDummyStream(this.ac))
 	}
 
 	private attemptReconnection(reconnection_attempt = 1) {

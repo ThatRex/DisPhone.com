@@ -503,7 +503,7 @@
 		const got_media = await getMedia()
 		if (!got_media) return
 
-		await loadSounds()
+		loadSounds()
 
 		for (const p of sip_profiles) phone.addProfile(p)
 

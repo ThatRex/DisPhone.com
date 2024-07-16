@@ -1,6 +1,6 @@
-import { noop } from '.'
+import { generateDummyStream, noop } from '.'
 
-class SoundPlayer<T extends Record<string, AudioBuffer>> {
+class SoundPlayer<T extends { [key: string]: AudioBuffer }> {
 	private readonly ac: AudioContext
 	private readonly dst: MediaStreamAudioDestinationNode
 	private readonly gin: GainNode
@@ -9,7 +9,10 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 	private audio_buffers!: T
 
 	set gain(gain: number) {
-		this.gin.gain.linearRampToValueAtTime(gain / 100, this.ac.currentTime + 0.02)
+		const g = gain / 100
+		!g
+			? this.gin.gain.linearRampToValueAtTime(0, this.ac.currentTime + 0.05)
+			: this.gin.gain.exponentialRampToValueAtTime(g, this.ac.currentTime + 0.05)
 	}
 
 	/** Use `SoundPlayer.load` to load audio. */
@@ -36,8 +39,11 @@ class SoundPlayer<T extends Record<string, AudioBuffer>> {
 	}) {
 		const { name, loop, onstarted, onended } = params
 
-		const buffer = this.audio_buffers?.[name]
-		if (!buffer) throw Error('Sound not loaded.')
+		let buffer: AudioBuffer = this.audio_buffers?.[name]
+		if (!buffer) {
+			buffer = this.ac.createBuffer(2, this.ac.sampleRate, this.ac.sampleRate)
+			console.warn(`Sound, ${String(name)}, not loaded. Playing silence.`)
+		}
 
 		const buffer_source = this.ac.createBufferSource()
 

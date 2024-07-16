@@ -100,7 +100,7 @@ export class VoiceRTC extends EventEmitter {
 		this.debug?.('Initiating')
 
 		this.audio_settings = params.audio_settings
-		const [dummy_track] = generateDummyStream().getAudioTracks()
+		const [dummy_track] = generateDummyStream(this.ac).getAudioTracks()
 		const transceiver = this.pc.addTransceiver(dummy_track, { direction: 'sendonly' })
 		const [track_i] = this.dst_i.stream.getAudioTracks()
 		transceiver.sender.replaceTrack(track_i)
