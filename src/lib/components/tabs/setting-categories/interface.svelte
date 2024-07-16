@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { config } from '$lib/stores/config.svelte'
 	import UI from '$lib/components/ui'
-	
 </script>
 
 <UI.Field.Group
@@ -30,6 +29,14 @@
 </UI.Field.Group>
 
 <UI.Field.Group name="Behaviour">
+	{#if 'chrome' in window}
+		<UI.Field.Switch
+			label="Audio Interaction Request"
+			description="Not hearing Audio? Enable this, then refresh."
+			bind:value={$config.audio_request_interaction}
+			default_value={false}
+		/>
+	{/if}
 	<UI.Field.Switch
 		label="Hold Unselected Calls"
 		description="When not in conference mode unselected calls will be put on hold."

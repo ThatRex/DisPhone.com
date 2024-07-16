@@ -496,7 +496,7 @@
 
 		alert_dialog_issue = undefined
 
-		if (audio_request_interaction && !interaction) {
+		if (!interaction && 'chrome' in window && audio_request_interaction) {
 			alert_dialog_issue = 'interaction'
 			return
 		}
@@ -582,7 +582,7 @@
 			{:else if alert_dialog_issue === 'media'}
 				DisPhone requires media access to function. Please clear permissions and try again.
 			{:else if alert_dialog_issue === 'interaction'}
-				Audio Interaction Request.
+				You have audio interaction requests enabled.
 			{/if}
 		</span>
 		<UI.ButtonText

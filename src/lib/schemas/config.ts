@@ -42,15 +42,16 @@ export const config = z.object({
 			}
 		]),
 	// Interface
-	auto_answer_delay_ms: z.number().catch(0),
-	disconnected_timeout_ms: z.number().catch(2500),
-	hold_unselected_calls: z.boolean().catch(true),
-	after_dial_call_selection_mode: z.enum(['always', 'non-selected', 'never']).catch('always'),
-	close_confirmation_mode: z.enum(['always', 'calls-active', 'never']).catch('calls-active'),
 	dialpad_enabled: z.boolean().catch(true),
 	dialpad_extended: z.boolean().catch(false),
 	dialpad_numeric: z.boolean().catch(false),
 	dialpad_touchscreen_mode: z.boolean().catch(false),
+	audio_request_interaction: z.boolean().catch(false),
+	hold_unselected_calls: z.boolean().catch(true),
+	disconnected_timeout_ms: z.number().catch(2500),
+	auto_answer_delay_ms: z.number().catch(0),
+	after_dial_call_selection_mode: z.enum(['always', 'non-selected', 'never']).catch('always'),
+	close_confirmation_mode: z.enum(['always', 'calls-active', 'never']).catch('calls-active'),
 	// Sound
 	conference_play_sounds: z.boolean().catch(true),
 	sound_level_simulated_dtmf: z.number().default(10),
@@ -74,6 +75,5 @@ export const config = z.object({
 	auto_redial_short_call_duration_ms: z.number().catch(4000),
 	// Developer
 	sip_debug_enabled: z.boolean().catch(dev),
-	bot_discord_debug_enabled: z.boolean().catch(dev),
-	audio_request_interaction: z.boolean().catch(false)
+	bot_discord_debug_enabled: z.boolean().catch(dev)
 })
