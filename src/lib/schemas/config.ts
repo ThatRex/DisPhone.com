@@ -74,5 +74,6 @@ export const config = z.object({
 	auto_redial_short_call_duration_ms: z.number().catch(4000),
 	// Developer
 	sip_debug_enabled: z.boolean().catch(dev),
-	bot_discord_debug_enabled: z.boolean().catch(dev)
+	bot_discord_debug_enabled: z.boolean().catch(dev),
+	audio_request_interaction: z.boolean().catch(false)
 })

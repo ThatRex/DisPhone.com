@@ -99,3 +99,11 @@
 		default_value={dev}
 	/>
 </UI.Field.Group>
+
+<UI.Field.Group name="Testing">
+	<UI.Field.Switch
+		label="Audio Interaction Request"
+		bind:value={$config.audio_request_interaction}
+		default_value={false}
+	/>
+</UI.Field.Group>

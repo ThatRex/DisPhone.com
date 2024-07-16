@@ -66,7 +66,8 @@
 		bot_discord_debug_enabled,
 		close_confirmation_mode,
 		hold_unselected_calls,
-		dialpad_enabled
+		dialpad_enabled,
+		audio_request_interaction
 	} = $config)
 
 	$: ({
@@ -495,6 +496,11 @@
 
 		alert_dialog_issue = undefined
 
+		if (audio_request_interaction && !interaction) {
+			alert_dialog_issue = 'interaction'
+			return
+		}
+
 		if (!window.RTCPeerConnection) {
 			alert_dialog_issue = 'webrtc'
 			return
@@ -575,6 +581,8 @@
 				DisPhone requires WebRTC to function. Please enable WebRTC and try again.
 			{:else if alert_dialog_issue === 'media'}
 				DisPhone requires media access to function. Please clear permissions and try again.
+			{:else if alert_dialog_issue === 'interaction'}
+				Audio Interaction Request.
 			{/if}
 		</span>
 		<UI.ButtonText
