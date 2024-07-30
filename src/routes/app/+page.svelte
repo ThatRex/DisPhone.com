@@ -18,15 +18,7 @@
 
 	const vibrate = navigator.vibrate
 	$: navigator.vibrate = haptics_disabled ? undefined : vibrate
-
-	$: switch (theme_mode) {
-		case 'device':
-			document.documentElement.removeAttribute('data-theme-mode')
-			break
-		case 'light':
-		case 'dark':
-			document.documentElement.setAttribute('data-theme-mode', theme_mode)
-	}
+	$: document.documentElement.setAttribute('data-theme-mode', theme_mode)
 
 	// stops firefox setting the document location to dropped text
 	document.documentElement.addEventListener('dragover', (e) => {
