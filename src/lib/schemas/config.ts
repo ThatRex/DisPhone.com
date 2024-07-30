@@ -42,6 +42,7 @@ export const config = z.object({
 			}
 		]),
 	// Interface
+	theme_mode: z.enum(['device', 'dark', 'light']).catch('device'),
 	dialpad_enabled: z.boolean().catch(true),
 	dialpad_extended: z.boolean().catch(false),
 	dialpad_numeric: z.boolean().catch(false),

@@ -13,11 +13,20 @@
 	setContext('ac', ac)
 	setContext('phone', phone)
 
-	$: ({ haptics_disabled } = $config)
+	$: ({ haptics_disabled, theme_mode } = $config)
 	$: ({ secondary_panel_enabled } = $state)
 
 	const vibrate = navigator.vibrate
 	$: navigator.vibrate = haptics_disabled ? undefined : vibrate
+
+	$: switch (theme_mode) {
+		case 'device':
+			document.documentElement.removeAttribute('data-theme-mode')
+			break
+		case 'light':
+		case 'dark':
+			document.documentElement.setAttribute('data-theme-mode', theme_mode)
+	}
 
 	// stops firefox setting the document location to dropped text
 	document.documentElement.addEventListener('dragover', (e) => {

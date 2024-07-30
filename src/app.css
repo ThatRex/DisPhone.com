@@ -14,7 +14,22 @@
 	}
 }
 
-html,
+html {
+	color-scheme: dark light;
+}
+
+[data-theme-mode='light'] {
+	color-scheme: light;
+	--color-bg: #ffffff;
+	--color-base-100: #ffffff;
+}
+
+[data-theme-mode='dark'] {
+	color-scheme: dark;
+	--color-bg: #121212;
+	--color-base-100: #1e1d1d;
+}
+
 body {
 	overscroll-behavior-y: contain;
 }

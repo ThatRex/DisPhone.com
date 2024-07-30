@@ -3,6 +3,16 @@
 	import UI from '$lib/components/ui'
 </script>
 
+<UI.Field.RadioGroup
+	name="Theme"
+	bind:value={$config.theme_mode}
+	options={[
+		{ label: 'Sync with device', value: 'device', default: true },
+		{ label: 'Dark', value: 'dark' },
+		{ label: 'Light', value: 'light' }
+	]}
+/>
+
 <UI.Field.Group
 	name="Dialpad"
 	description="Dialpad will always be hidden in views narrower than 640px."
