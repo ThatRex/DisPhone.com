@@ -1,6 +1,6 @@
 {
 	"name": "disphone.com",
-	"version": "0.10.0",
+	"version": "0.next",
 	"private": true,
 	"scripts": {
 		"dev": "vite dev",

@@ -135,6 +135,12 @@ class Call extends EventEmitter {
 		return this._session
 	}
 
+	private updateIdentity = () => {
+		let identity = this.session.assertedIdentity?.friendlyName
+		if (identity === this.detail.destination) identity = undefined
+		this.updateDetail({ identity })
+	}
+
 	private sessionStateListener = async (state: SessionState) => {
 		this.debug?.('Session State Update:', state)
 		switch (state) {
@@ -153,6 +159,8 @@ class Call extends EventEmitter {
 					start_time: Date.now(),
 					dtmf_receptible: true
 				})
+
+				this.updateIdentity()
 
 				if (this.detail.on_hold) {
 					if (this.detail.type === 'INBOUND') await wait(200) // less time always results in fail
@@ -235,11 +243,7 @@ class Call extends EventEmitter {
 	}
 
 	private session_delegate: SessionDelegate = {
-		onInvite: () => {
-			let identity = this.session.assertedIdentity?.friendlyName
-			if (identity === this.detail.destination) identity = undefined
-			this.updateDetail({ identity })
-		}
+		onInvite: () => this.updateIdentity()
 	}
 
 	/* audio */
@@ -307,6 +311,7 @@ class Call extends EventEmitter {
 			case CallType.INBOUND: {
 				this._session = params.invitation
 				this.session.stateChange.addListener(this.sessionStateListener)
+				this.session.delegate = this.session_delegate
 				this.uri = this.session.remoteIdentity.uri
 				this.sequence = ['DEST']
 				break
@@ -442,9 +447,8 @@ class Call extends EventEmitter {
 		this.debug?.('Initiating')
 		switch (this.detail.type) {
 			case 'INBOUND': {
-				let identity = this.session.assertedIdentity?.displayName
-				if (identity === this.detail.destination) identity = undefined
-				this.updateDetail({ progress: 'CONNECTING', identity, start_time: Date.now() })
+				this.updateDetail({ progress: 'CONNECTING', start_time: Date.now() })
+				this.updateIdentity()
 				break
 			}
 			case 'OUTBOUND': {

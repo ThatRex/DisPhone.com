@@ -1,4 +1,4 @@
-# 0.10.0 [XX-05-2024]
+# 0.next
 
 _sooo much stuff_
 
@@ -138,10 +138,6 @@ An update! Finally...
 # 0.9.0 [17-02-2024]
 
 The first version of the complete overhaul of the UI & phone. The version name is also arbitrary. Going forward version numbers will work as follows:
-
-- 0.0.X - Minor features, changes &or bug fixes.
-- 0.X.0 - Substantial new features.
-- X.0.0 - New major version.
 
 # 0.5.0 [27-12-2023]
 
