@@ -1,4 +1,4 @@
-import { generateDummyStream, noop } from '.'
+import { noop } from '.'
 
 class SoundPlayer<T extends { [key: string]: AudioBuffer }> {
 	private readonly ac: AudioContext

@@ -15,7 +15,7 @@
 		IconSwitchHorizontal,
 		IconBrandDiscord,
 		IconChevronDown,
-		IconChevronUp
+		IconChevronRight
 	} from '@tabler/icons-svelte'
 	import Display from './display/display.svelte'
 	import DialPanel from './dial-panel.svelte'
@@ -609,7 +609,7 @@
 				<Toggle
 					bind:value={$state.secondary_panel_enabled}
 					tip={{ on: 'Hide Subpanel', off: 'Show Subpanel' }}
-					icon={{ on: IconChevronUp, off: IconChevronDown }}
+					icon={{ on: IconChevronDown, off: IconChevronRight }}
 				/>
 				<Button
 					tip="{vm_qty} {vm_qty === 1 ? 'Voicemail' : 'Voicemails'}"

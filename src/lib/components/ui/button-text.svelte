@@ -25,9 +25,11 @@
 		: `active:scale-y-95 active:scale-x-[97%] hover:!bg-opacity-20 active:!bg-opacity-10`}
 		"
 >
-	<div class={disabled ? 'opacity-60' : ''}>
-		<svelte:component this={icon} size={18} />
-	</div>
+	{#if icon}
+		<div class={disabled ? 'opacity-60' : ''}>
+			<svelte:component this={icon} size={18} />
+		</div>
+	{/if}
 	<span class="text-center transition duration-75 font-medium {disabled ? 'opacity-60' : ''}">
 		{label}
 	</span>

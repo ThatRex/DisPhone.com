@@ -38,7 +38,7 @@
 	{/if}
 </UI.Field.Group>
 
-<UI.Field.Group name="Behaviour">
+<UI.Field.Group name="Behavior">
 	{#if 'chrome' in window}
 		<UI.Field.Switch
 			label="Audio Interaction Request"
@@ -82,7 +82,6 @@
 			value: 'always',
 			default: true
 		},
-
 		{
 			label: 'No Calls Selected',
 			value: 'non-selected'
@@ -103,7 +102,6 @@
 			label: 'Always',
 			value: 'always'
 		},
-
 		{
 			label: 'Calls Active',
 			value: 'calls-active',

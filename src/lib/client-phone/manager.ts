@@ -290,7 +290,7 @@ export class Manager extends EventEmitter {
 	}) {
 		for (const call of this.calls) {
 			if (!!params.ids && !params.ids.includes(call.id)) continue
-			call.setAutoRedial(params)
+			call.setAutoRedial(structuredClone(params))
 		}
 	}
 

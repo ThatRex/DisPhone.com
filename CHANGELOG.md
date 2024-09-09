@@ -1,9 +1,10 @@
 # 0.10.0 [XX-05-2024]
 
-_multi sip account support, early media and more_
+_sooo much stuff_
 
 ## Changes
 
+- added: theme mode option
 - added: TODO: multi sip account support
 - added: auto redial config
 - added: call item transition and animation
@@ -23,6 +24,7 @@ _multi sip account support, early media and more_
 - fixed: toggling mute or deafen after bot has left channel results in bot re-joining
 - fixed: failing to reconnect after PC sleeping
 - fixed: chrome keyboard overlays page on chrome and safari
+- fixed: connected line updates not showing
 - changed: calls always disappear immediately when disconnected by user
 - changed: disabled pull down to refresh on mobile
 - changed: refined secondary panel settings

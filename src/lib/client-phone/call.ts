@@ -1,7 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import EventEmitter from 'eventemitter3'
-import { UserAgentState, Session, Inviter, Invitation, URI, SessionState, Web } from 'sip.js'
+import {
+	UserAgentState,
+	Session,
+	Inviter,
+	Invitation,
+	URI,
+	SessionState,
+	Web,
+	type SessionDelegate
+} from 'sip.js'
 import { makeURI } from './utils'
 import { Profile } from './profile'
 import { startMediaFlow, wait } from '$lib/utils'
@@ -139,12 +148,8 @@ class Call extends EventEmitter {
 			}
 
 			case SessionState.Established: {
-				let identity = this.session.assertedIdentity?.friendlyName
-				if (identity === this.detail.destination) identity = undefined
-
 				this.updateDetail({
 					progress: 'CONNECTED',
-					identity,
 					start_time: Date.now(),
 					dtmf_receptible: true
 				})
@@ -226,6 +231,14 @@ class Call extends EventEmitter {
 				this.updateDetail({ progress: 'DISCONNECTED' })
 				break
 			}
+		}
+	}
+
+	private session_delegate: SessionDelegate = {
+		onInvite: () => {
+			let identity = this.session.assertedIdentity?.friendlyName
+			if (identity === this.detail.destination) identity = undefined
+			this.updateDetail({ identity })
 		}
 	}
 
@@ -399,6 +412,7 @@ class Call extends EventEmitter {
 		})
 		const session_out = this.session as Inviter
 		session_out.stateChange.addListener(this.sessionStateListener)
+		session_out.delegate = this.session_delegate
 
 		await session_out.invite({
 			requestDelegate: {
@@ -428,7 +442,8 @@ class Call extends EventEmitter {
 		this.debug?.('Initiating')
 		switch (this.detail.type) {
 			case 'INBOUND': {
-				const identity = this.session.assertedIdentity?.friendlyName
+				let identity = this.session.assertedIdentity?.displayName
+				if (identity === this.detail.destination) identity = undefined
 				this.updateDetail({ progress: 'CONNECTING', identity, start_time: Date.now() })
 				break
 			}
