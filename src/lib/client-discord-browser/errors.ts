@@ -56,26 +56,26 @@ export class VoiceManagerConnectionError extends VoiceManagerError {
 VOICE SOCKET
 */
 
-export class VocieSocketError extends Error {
+export class VoiceSocketError extends Error {
 	constructor(message: string) {
 		super(message)
-		this.name = 'VocieSocketError'
+		this.name = 'VoiceSocketError'
 	}
 }
 
-export class VocieSocketNotReadyError extends VocieSocketError {
+export class VoiceSocketNotReadyError extends VoiceSocketError {
 	/** Something that required the socket to be ready occurred when the socket was not. */
 	constructor(message: string) {
 		super(message)
-		this.name = 'VocieSocketNotReadyError'
+		this.name = 'VoiceSocketNotReadyError'
 	}
 }
 
-export class VocieSocketResumeError extends VocieSocketError {
+export class VoiceSocketResumeError extends VoiceSocketError {
 	/** Something went wrong when resuming with the voice socket. */
 	constructor(message: string) {
 		super(message)
-		this.name = 'VocieSocketResumeError'
+		this.name = 'VoiceSocketResumeError'
 	}
 }
 

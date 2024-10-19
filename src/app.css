@@ -14,8 +14,33 @@
 	}
 }
 
+html {
+	color-scheme: dark light;
+}
+
+[data-theme-mode='light'] {
+	color-scheme: light;
+	--color-bg: #ffffff;
+	--color-base-100: #ffffff;
+}
+
+[data-theme-mode='dark'] {
+	color-scheme: dark;
+	--color-bg: #121212;
+	--color-base-100: #1e1d1d;
+}
+
+body {
+	overscroll-behavior-y: contain;
+}
+
 .tooltip {
 	@apply z-10 px-1.5 rounded-[4px]
         bg-zinc-50 dark:bg-zinc-800 text-black dark:text-white 
         border border-black/20 dark:border-white/20;
+}
+
+.screenreader {
+	position: absolute;
+	left: -9999px;
 }

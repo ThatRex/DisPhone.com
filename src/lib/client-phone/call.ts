@@ -9,10 +9,10 @@ import {
 	URI,
 	SessionState,
 	Web,
-	type SessionInviteOptions
+	type SessionDelegate
 } from 'sip.js'
 import { makeURI } from './utils'
-import { type Profile } from './profile'
+import { Profile } from './profile'
 import { startMediaFlow, wait } from '$lib/utils'
 
 export type CallType = keyof typeof CallType
@@ -34,13 +34,14 @@ export type OutboundCallDetail = { sequence: string[]; destination: URI }
 
 export type CallDetail = {
 	type: CallType
-
 	progress: CallProgress
-	reason?: string
-
 	start_time: number
 	next_sequence_idx: number
-	sequential_short_calls: number
+	sequential_failed_calls: number
+	auto_redialed_count: number
+	media: boolean
+	dtmf_receptible: boolean
+	hungup: boolean
 
 	on_hold: boolean
 	auto_redialing: boolean
@@ -49,13 +50,21 @@ export type CallDetail = {
 
 	destination?: string
 	identity?: string
+	reason?: string
+
+	auto_redial_limit: number
+	auto_redial_delay_ms_min_max: [number, number]
+	auto_redial_max_sequential_failed_calls: number
+	auto_redial_short_call_duration_ms: number
 }
 
 interface Call extends EventEmitter {
 	on(event: 'detail', listener: (detail: CallDetail) => void): this
 	on(event: 'dtmf', listener: (dtmf: string) => void): this
+	on(event: 'level', listener: (level: number) => void): this
 	emit(event: 'detail', detail: CallDetail): boolean
 	emit(event: 'dtmf', dtmf: string): boolean
+	emit(event: 'level', level: number): boolean
 }
 
 class Call extends EventEmitter {
@@ -80,7 +89,11 @@ class Call extends EventEmitter {
 		progress: 'INITIAL',
 		start_time: 0,
 		next_sequence_idx: 0,
-		sequential_short_calls: 0,
+		sequential_failed_calls: 0,
+		auto_redialed_count: 0,
+		media: false,
+		dtmf_receptible: false,
+		hungup: false,
 
 		on_hold: false,
 		auto_redialing: false,
@@ -89,17 +102,31 @@ class Call extends EventEmitter {
 
 		destination: undefined,
 		identity: undefined,
-		reason: undefined
-	}
+		reason: undefined,
 
-	private settings = {
-		auto_redial_short_call_time_ms: 4000,
-		auto_redial_max_sequential_short_calls: 3,
-		auto_redial_delay_ms_min: 2000,
-		auto_redial_delay_ms_max: 4500
+		auto_redial_limit: 0,
+		auto_redial_delay_ms_min_max: [2000, 4500],
+		auto_redial_max_sequential_failed_calls: 3,
+		auto_redial_short_call_duration_ms: 4000
 	}
 
 	/* session */
+
+	private initMedia() {
+		if (this.detail.media) return
+
+		const { remoteMediaStream, peerConnection } = this.session
+			.sessionDescriptionHandler as Web.SessionDescriptionHandler
+
+		if (!remoteMediaStream.getAudioTracks().length) return
+
+		const [track_in] = this.dst_i.stream.getAudioTracks()
+		peerConnection!.getSenders()[0].replaceTrack(track_in)
+		this.ac.createMediaStreamSource(remoteMediaStream).connect(this.gin_o)
+		startMediaFlow(remoteMediaStream)
+
+		this.updateDetail({ media: true })
+	}
 
 	private _session?: Session
 
@@ -108,88 +135,115 @@ class Call extends EventEmitter {
 		return this._session
 	}
 
-	private sessionStateListener = (state: SessionState) => {
+	private updateIdentity = () => {
+		let identity = this.session.assertedIdentity?.displayName
+		if (identity === this.detail.destination) identity = undefined
+		this.updateDetail({ identity })
+	}
+
+	private sessionStateListener = async (state: SessionState) => {
 		this.debug?.('Session State Update:', state)
 		switch (state) {
 			case SessionState.Establishing: {
-				const identity = this.session.assertedIdentity?.friendlyName
-				this.updateState({ progress: 'CONNECTING', identity, start_time: Date.now() })
+				this.updateDetail({
+					progress: 'CONNECTING',
+					start_time: Date.now(),
+					hungup: false
+				})
 				break
 			}
 
 			case SessionState.Established: {
-				const [track_in] = this.dst_i.stream.getAudioTracks()
-				const { remoteMediaStream, peerConnection } = this.session
-					.sessionDescriptionHandler as Web.SessionDescriptionHandler
-				peerConnection!.getSenders()[0].replaceTrack(track_in)
-				this.ac.createMediaStreamSource(remoteMediaStream).connect(this.gin_o)
-				startMediaFlow(remoteMediaStream)
-
-				this.updateState({
+				this.updateDetail({
 					progress: 'CONNECTED',
-					identity: this.session.assertedIdentity?.friendlyName,
-					start_time: Date.now()
+					start_time: Date.now(),
+					dtmf_receptible: true
 				})
 
+				this.updateIdentity()
+
+				if (this.detail.on_hold) {
+					if (this.detail.type === 'INBOUND') await wait(200) // less time always results in fail
+					await this._setHold(true)
+				}
+
+				this.initMedia()
 				this.runSequence()
 				break
 			}
 
 			case SessionState.Terminated: {
-				this.updateState({
+				this.updateDetail({
 					next_sequence_idx: 0,
-					on_hold: false,
-					identity: undefined
+					identity: undefined,
+					media: false,
+					dtmf_receptible: false,
+					on_hold: false
 				})
+				;(() => {
+					if (!this.detail.auto_redialing || !this.detail.start_time) return
 
-				if (this.detail.auto_redialing && this.detail.start_time) {
-					const sequential_short_calls = this.detail.sequential_short_calls
+					if (
+						this.detail.auto_redial_limit &&
+						this.detail.auto_redialed_count + 1 < this.detail.auto_redial_limit
+					) {
+						this.updateDetail({
+							auto_redialing: false,
+							sequential_failed_calls: 0,
+							auto_redialed_count: 0
+						})
+						return
+					}
 
 					if (
 						this.detail.progress === 'CONNECTED' &&
-						Date.now() - this.detail.start_time >= this.settings.auto_redial_short_call_time_ms
+						Date.now() - this.detail.start_time >= this.detail.auto_redial_short_call_duration_ms
 					) {
-						this.updateState({ sequential_short_calls: 0 })
-					} else {
-						this.updateState({ sequential_short_calls: sequential_short_calls + 1 })
-						if (
-							this.detail.sequential_short_calls ===
-							this.settings.auto_redial_max_sequential_short_calls
-						) {
-							this.updateState({ auto_redialing: false, sequential_short_calls: 0 })
-						}
+						this.updateDetail({ sequential_failed_calls: 0 })
+						return
 					}
-				}
+
+					const sequential_failed_calls = this.detail.sequential_failed_calls
+
+					if (sequential_failed_calls + 1 === this.detail.auto_redial_max_sequential_failed_calls) {
+						this.updateDetail({ auto_redialing: false, sequential_failed_calls: 0 })
+					} else {
+						this.updateDetail({ sequential_failed_calls: sequential_failed_calls + 1 })
+					}
+				})()
 
 				if (this.detail.auto_redialing) {
-					const { auto_redial_delay_ms_max, auto_redial_delay_ms_min } = this.settings
-					const ms =
-						Math.floor(Math.random() * (auto_redial_delay_ms_max - auto_redial_delay_ms_min + 1)) +
-						auto_redial_delay_ms_min
+					const [min, max] = this.detail.auto_redial_delay_ms_min_max
+					const ms = Math.floor(Math.random() * (max - min + 1)) + min
 
-					this.updateState({
+					this.updateDetail({
 						type: 'OUTBOUND',
 						progress: 'WAITING',
 						start_time: Date.now() + ms
 					})
 
 					setTimeout(() => {
-						if (!this.detail.auto_redialing) {
-							if (this.detail.progress !== 'DISCONNECTED')
-								this.updateState({ progress: 'DISCONNECTED' })
-							return
-						}
-						this.updateState({ progress: 'INITIAL' })
+						if (this.detail.progress === 'DISCONNECTED') return
+						this.updateDetail({
+							progress: 'INITIAL',
+							auto_redialed_count: this.detail.auto_redial_limit
+								? this.detail.auto_redialed_count + 1
+								: 0
+						})
 						this.init()
 					}, ms)
 
 					return
 				}
 
-				this.updateState({ progress: 'DISCONNECTED' })
+				this.updateDetail({ progress: 'DISCONNECTED' })
 				break
 			}
 		}
+	}
+
+	private session_delegate: SessionDelegate = {
+		onInvite: () => this.updateIdentity()
 	}
 
 	/* audio */
@@ -238,10 +292,26 @@ class Call extends EventEmitter {
 		this.gin_o.connect(this.dst_o)
 		this.src_o = this.ac.createMediaStreamSource(this.dst_o.stream)
 
+		const analyser = this.ac.createAnalyser()
+		analyser.fftSize = 256
+		const frequency_data = new Uint8Array(analyser.frequencyBinCount)
+		this.src_o.connect(analyser)
+
+		const updateLevel = () => {
+			if (this.detail.progress !== 'DISCONNECTED') requestAnimationFrame(updateLevel)
+			analyser.getByteFrequencyData(frequency_data)
+			let sum = 0
+			for (const f of frequency_data) sum += f * f
+			const rms = Math.sqrt(sum / frequency_data.length)
+			this.emit('level', rms)
+		}
+		updateLevel()
+
 		switch (params.type) {
 			case CallType.INBOUND: {
 				this._session = params.invitation
 				this.session.stateChange.addListener(this.sessionStateListener)
+				this.session.delegate = this.session_delegate
 				this.uri = this.session.remoteIdentity.uri
 				this.sequence = ['DEST']
 				break
@@ -260,28 +330,35 @@ class Call extends EventEmitter {
 		this.profile.ua.stateChange.addListener((state) => {
 			switch (state) {
 				case UserAgentState.Stopped: {
-					this.updateState({ auto_redialing: false })
+					this.updateDetail({ auto_redialing: false })
 					break
 				}
 			}
 		})
 	}
 
-	private updateState(state: Partial<CallDetail>) {
-		// always clear existing reason on state change
-		if (!state.reason && state.progress !== this.detail.progress) {
-			this.emit('detail', { ...this.detail, ...state, reason: undefined })
-			return
+	private updateDetail(detail: Partial<CallDetail>, update_undefined = true) {
+		if (!update_undefined) {
+			for (const k of Object.keys(detail)) {
+				const key = k as keyof typeof detail
+				const val = detail[key]
+				if (val === undefined) delete detail[key]
+			}
 		}
 
-		this.emit('detail', { ...this.detail, ...state })
+		// always clear existing reason on state change
+		if (!detail.reason && detail.progress !== this.detail.progress) {
+			this.emit('detail', { ...this.detail, ...detail, reason: undefined })
+			return
+		}
+		this.emit('detail', { ...this.detail, ...detail })
 	}
 
 	private async runSequence() {
 		if (this.detail.type === 'INBOUND') return
 		if (this.detail.progress === 'DISCONNECTED') return
 
-		const next = () => this.updateState({ next_sequence_idx: this.detail.next_sequence_idx + 1 })
+		const next = () => this.updateDetail({ next_sequence_idx: this.detail.next_sequence_idx + 1 })
 
 		const item = this.sequence[this.detail.next_sequence_idx]
 		if (!item) return
@@ -295,13 +372,13 @@ class Call extends EventEmitter {
 				return
 			}
 			case ';': {
-				if (this.detail.progress === 'INITIAL') this.updateState({ progress: 'WAITING' })
+				if (this.detail.progress === 'INITIAL') this.updateDetail({ progress: 'WAITING' })
 				await wait(1000)
 				next()
 				break
 			}
 			case ',': {
-				if (this.detail.progress === 'INITIAL') this.updateState({ progress: 'WAITING' })
+				if (this.detail.progress === 'INITIAL') this.updateDetail({ progress: 'WAITING' })
 				await wait(200)
 				next()
 				break
@@ -329,18 +406,34 @@ class Call extends EventEmitter {
 		this.debug?.('Invite')
 
 		const sessionDescriptionHandlerOptions: Web.SessionDescriptionHandlerOptions = {
-			constraints: { audio: true }
+			constraints: { audio: true },
+			hold: this.detail.on_hold
 		}
 
-		this._session = new Inviter(this.profile.ua, this.uri, { sessionDescriptionHandlerOptions })
+		this._session = new Inviter(this.profile.ua, this.uri, {
+			earlyMedia: this.profile.early_media,
+			sessionDescriptionHandlerOptions
+			// extraHeaders: [`P-Preferred-Identity: <sip:0123456789@${this.profile.ua.configuration.uri.host}>`], // future feature maybe
+		})
 		const session_out = this.session as Inviter
 		session_out.stateChange.addListener(this.sessionStateListener)
+		session_out.delegate = this.session_delegate
+
 		await session_out.invite({
 			requestDelegate: {
 				onReject: ({ message: { reasonPhrase, statusCode } }) =>
-					this.updateState({ reason: `${statusCode} ${reasonPhrase}` }),
-				onProgress: (response) => this.updateState({ reason: response.message.reasonPhrase }),
-				onTrying: (response) => this.updateState({ reason: response.message.reasonPhrase })
+					this.updateDetail({ reason: `${statusCode} ${reasonPhrase}` }),
+				onProgress: ({ message: { reasonPhrase, statusCode } }) => {
+					this.initMedia()
+					this.updateDetail(
+						{
+							reason: reasonPhrase,
+							dtmf_receptible: statusCode === 183 || undefined
+						},
+						false
+					)
+				},
+				onTrying: (response) => this.updateDetail({ reason: response.message.reasonPhrase })
 			}
 		})
 	}
@@ -354,11 +447,12 @@ class Call extends EventEmitter {
 		this.debug?.('Initiating')
 		switch (this.detail.type) {
 			case 'INBOUND': {
-				const identity = this.session.assertedIdentity?.friendlyName
-				this.updateState({ progress: 'CONNECTING', identity, start_time: Date.now() })
+				this.updateDetail({ progress: 'CONNECTING', start_time: Date.now() })
+				this.updateIdentity()
 				break
 			}
 			case 'OUTBOUND': {
+				this.updateDetail({ progress: 'WAITING', start_time: Date.now() })
 				this.runSequence()
 				break
 			}
@@ -369,45 +463,79 @@ class Call extends EventEmitter {
 		const key = value.replace(/[^0-9A-D#*]/g, '')
 		this.debug?.('Sending DTMF:', key)
 		const sent = this.session.sessionDescriptionHandler?.sendDtmf(key, {
-			duration: 150,
+			duration: 100,
 			interToneGap: 0
 		})
 		if (sent) this.emit('dtmf', key)
 		return sent ?? false
 	}
 
-	public async setHold(value: boolean) {
-		if (value === this.detail.on_hold) return
+	private async _setHold(value: boolean) {
+		if (this.session.state !== SessionState.Established) {
+			this.updateDetail({ on_hold: value })
+			return
+		}
 
-		const sessionDescriptionHandlerOptions: Web.SessionDescriptionHandlerOptions = {
+		this.session.sessionDescriptionHandlerOptionsReInvite = {
 			hold: value
-		}
-		this.session.sessionDescriptionHandlerOptionsReInvite = sessionDescriptionHandlerOptions
+		} as Web.SessionDescriptionHandlerOptions
 
-		const options: SessionInviteOptions = {
-			requestDelegate: {
-				onAccept: () => this.updateState({ on_hold: value })
-			}
+		try {
+			await new Promise((resolve, reject) => {
+				this.session.invite({
+					requestDelegate: {
+						onAccept: resolve,
+						onReject: reject
+					}
+				})
+			})
+		} catch {
+			this.updateDetail({ on_hold: !value })
+			return
 		}
 
-		await this.session.invite(options)
+		if (!value) this.initMedia()
+		this.updateDetail({ on_hold: value })
+	}
+
+	public setHold(value: boolean) {
+		if (value === this.detail.on_hold) return
+		this._setHold(value)
 	}
 
 	public setDeaf(value: boolean) {
 		if (value === this.detail.deafened) return
 		this.gin_i.gain.value = value ? 0 : 1
-		this.updateState({ deafened: value })
+		this.updateDetail({ deafened: value })
 	}
 
 	public setMute(value: boolean) {
 		if (value === this.detail.muted) return
 		this.gin_o.gain.value = value ? 0 : 1
-		this.updateState({ muted: value })
+		this.updateDetail({ muted: value })
 	}
 
-	public setAutoRedial(value: boolean) {
-		if (value === this.detail.auto_redialing) return
-		this.updateState({ auto_redialing: value })
+	public setAutoRedial(params: {
+		value?: boolean
+		limit?: number
+		delay_ms_min_max?: [number, number]
+		max_sequential_failed_calls?: number
+		short_call_duration_ms?: number
+	}) {
+		this.updateDetail(
+			{
+				auto_redialing: params.value,
+
+				auto_redialed_count: params.value === false ? 0 : undefined,
+				sequential_failed_calls: params.value === false ? 0 : undefined,
+
+				auto_redial_limit: params.limit,
+				auto_redial_delay_ms_min_max: params.delay_ms_min_max,
+				auto_redial_max_sequential_failed_calls: params.max_sequential_failed_calls,
+				auto_redial_short_call_duration_ms: params.short_call_duration_ms
+			},
+			false
+		)
 	}
 
 	public async transfer(destination: string) {
@@ -415,22 +543,23 @@ class Call extends EventEmitter {
 		if (!uri) return
 		this.debug?.('Transfer:', uri.toString())
 		if (this.detail.progress === 'CONNECTING' && this.detail.type === 'INBOUND') {
-			this.setDeaf(true)
-			this.setMute(true)
 			await this.answer()
 			await wait(100)
 		}
 		await this.session.refer(uri)
 		await this.session.bye()
-		this.updateState({ reason: 'Transferred' })
+		this.updateDetail({ reason: 'Transferred' })
 	}
 
 	public async hangup(hard = false) {
 		this.debug?.('Hangup')
-		this.updateState({ next_sequence_idx: 0 })
 
-		if (hard || this.detail.progress === 'WAITING') {
-			this.updateState({ auto_redialing: false, progress: 'DISCONNECTED' })
+		const { progress, auto_redialing } = this.detail
+
+		this.updateDetail({ next_sequence_idx: 0, hungup: progress === 'WAITING' || !auto_redialing })
+
+		if (hard || progress === 'WAITING') {
+			this.updateDetail({ auto_redialing: false, progress: 'DISCONNECTED' })
 			return
 		}
 

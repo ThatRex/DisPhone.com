@@ -4,7 +4,7 @@ import EventEmitter from 'eventemitter3'
 import { UserAgent, Registerer, Web, Invitation, RegistererState, type LogConnector } from 'sip.js'
 import Call, { type OutboundCallDetail } from './call'
 import { makeURI } from './utils'
-import { generateDummyStream } from '../utils'
+import { generateDummyStream, noop } from '../utils'
 import type { SessionDescriptionHandlerConfiguration } from 'sip.js/lib/platform/web'
 
 export type ProfileState = keyof typeof ProfileState
@@ -38,18 +38,19 @@ export class Profile extends EventEmitter {
 	public readonly id: string
 	public readonly ua: UserAgent
 
-	public get server() {
-		const { host, port } = this.ua.configuration.uri
-		return port ? `${host}:${port}` : host
-	}
+	public readonly register: boolean
+	public readonly early_media: boolean
 
 	private readonly registerer: Registerer
-	private register = false
-
 	private readonly reconnection_attempts = 3
 	private readonly reconnection_delay = 4
 	private attempting_reconnection = false
 	private should_be_connected = true
+
+	public get server() {
+		const { host, port } = this.ua.configuration.uri
+		return port ? `${host}:${port}` : host
+	}
 
 	private detail: ProfileDetail = {
 		state: 'INITIAL',
@@ -63,13 +64,30 @@ export class Profile extends EventEmitter {
 		username: string
 		login?: string
 		password?: string
-		sip_server: string
-		ws_server?: string
-		stun_server?: string
+		server_sip: string
+		server_ws?: string
+		server_stun?: string
+		register?: boolean
+		early_media?: boolean
 		debug?: boolean
 	}) {
 		super()
-		const { ac, id, username, login, password, sip_server, ws_server, stun_server, debug } = params
+		const {
+			ac,
+			id,
+			username,
+			login,
+			password,
+			server_sip,
+			server_ws,
+			server_stun,
+			register,
+			early_media,
+			debug
+		} = params
+
+		this.early_media = early_media ?? true
+		this.register = register ?? true
 
 		this.debug = !debug ? undefined : (...args) => console.debug(`[Profile ${this.id}]`, ...args)
 
@@ -77,9 +95,6 @@ export class Profile extends EventEmitter {
 
 		this.ac = ac
 		this.id = id
-
-		const uri = makeURI(username, sip_server)
-		if (!uri) throw new Error('Error creating URI.')
 
 		const sessionDescriptionHandlerFactory = Web.defaultSessionDescriptionHandlerFactory(
 			this.mediaStreamFactory
@@ -106,16 +121,16 @@ export class Profile extends EventEmitter {
 		const sessionDescriptionHandlerFactoryOptions: SessionDescriptionHandlerConfiguration = {
 			iceGatheringTimeout: 500,
 			peerConnectionConfiguration: {
-				iceServers: stun_server ? [{ urls: `stun:${stun_server}` }] : undefined
+				iceServers: server_stun ? [{ urls: `stun:${server_stun}` }] : undefined
 			}
 		}
 
 		this.ua = new UserAgent({
-			uri,
-			authorizationUsername: login ?? username,
+			uri: makeURI(username, server_sip),
+			authorizationUsername: login || username,
 			authorizationPassword: password,
 			transportOptions: {
-				server: ws_server ? `wss://${ws_server}` : `wss://${sip_server}:8089/ws`
+				server: server_ws ? `wss://${server_ws}` : `wss://${server_sip.split(':')[0]}:8089/ws`
 			},
 			sessionDescriptionHandlerFactoryOptions,
 			sessionDescriptionHandlerFactory,
@@ -132,13 +147,13 @@ export class Profile extends EventEmitter {
 		this.ua.delegate = {
 			onInvite: async (invitation) => this.initCall({ type: 'INBOUND', invitation }),
 			onConnect: async () => {
-				if (this.register) await this.registerer.register()
 				this.updateDetail({ state: 'CONNECTED' })
+				if (this.register) this.registerer.register().catch(noop)
 			},
-			onDisconnect: async (error?: Error) => {
-				if (this.register) await this.registerer.unregister()
+			onDisconnect: async (error) => {
+				this.updateDetail({ state: 'DISCONNECTED' })
+				this.registerer.unregister().catch(noop)
 				if (error) this.attemptReconnection()
-				else this.updateDetail({ state: 'DISCONNECTED' })
 			},
 			onNotify: ({ request: { body } }) => {
 				const regex_dest = /Message-Account: sip:(\S+)@/
@@ -156,24 +171,19 @@ export class Profile extends EventEmitter {
 		this.emit('detail', { ...this.detail, ...detail })
 	}
 
-	public async start(register = false) {
-		this.register = register
+	public async start() {
 		this.should_be_connected = true
 		this.updateDetail({ state: 'CONNECTING' })
-		await this.ua.start()
+		try {
+			await this.ua.start()
+		} catch {
+			this.updateDetail({ state: 'FAILED' })
+		}
 	}
 
 	public async stop() {
 		this.should_be_connected = false
-		await this.ua.start()
-		if (this.registerer.state === RegistererState.Registered) await this.registerer.unregister()
-	}
-
-	public async setRegister(value: boolean) {
-		if (this.register === value) return
-		if (value) await this.registerer.register()
-		else await this.registerer.unregister()
-		this.register = value
+		await this.ua.stop()
 	}
 
 	public initCall(
@@ -223,7 +233,7 @@ export class Profile extends EventEmitter {
 			if (peerConnection.signalingState !== 'closed') peerConnection.close()
 		}
 
-		return Promise.resolve(generateDummyStream())
+		return Promise.resolve(generateDummyStream(this.ac))
 	}
 
 	private attemptReconnection(reconnection_attempt = 1) {

@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-declaration-merging */
 import Client from '$lib/client-discord-browser'
 import type { VoiceManager } from '$lib/client-discord-browser/voice-manager'
+import { noop } from '$lib/utils'
 import {
 	ActivityType,
 	GatewayDispatchEvents,
@@ -125,6 +126,8 @@ class BotButtonClient extends EventEmitter {
 	}
 
 	public async init(params: { token: string; debug?: boolean }) {
+		this._state = 'INITIAL'
+
 		this.bot = new Client({
 			token: params.token,
 			debug: params.debug,
@@ -219,12 +222,19 @@ class BotButtonClient extends EventEmitter {
 	}
 
 	private move(params: { guild_id: string | null; channel_id: string | null }) {
-		this.voice?.update({
-			speaking: this.speaking,
-			self_deaf: this.self_deaf,
-			self_mute: this.self_mute,
-			...params
-		})
+		try {
+			this.voice?.update({
+				speaking: this.speaking,
+				self_deaf: this.self_deaf,
+				self_mute: this.self_mute,
+				...params,
+				// TODO: Remove after VoiceManager FIXME fixed
+				channel_id: this.usr_channel_id,
+				guild_id: this.usr_guild_id
+			})
+		} catch {
+			noop()
+		}
 	}
 
 	public update(params: { speaking?: boolean; self_mute?: boolean; self_deaf?: boolean }) {
@@ -232,7 +242,16 @@ class BotButtonClient extends EventEmitter {
 		this.speaking = speaking !== undefined ? speaking : this.speaking
 		this.self_deaf = self_deaf !== undefined ? self_deaf : this.self_deaf
 		this.self_mute = self_mute !== undefined ? self_mute : this.self_mute
-		this.voice?.update(params)
+		try {
+			this.voice?.update({
+				...params,
+				// TODO: Remove after VoiceManager FIXME fixed
+				channel_id: this.usr_channel_id,
+				guild_id: this.usr_guild_id
+			})
+		} catch {
+			noop()
+		}
 	}
 
 	public shutdown() {
@@ -242,7 +261,6 @@ class BotButtonClient extends EventEmitter {
 		this.usr_channel_id = null
 		this.usr_guild_id = null
 		this.bot_channel_id = null
-		this._state === 'INITIAL'
 	}
 }
 

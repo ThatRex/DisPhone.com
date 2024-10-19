@@ -108,6 +108,7 @@ export class VoiceManager extends EventEmitter {
 		})
 	}
 
+	// FIXME: When moving/moved between channels _disconnect is called resulting in channel and guild IDs being nulled
 	/** Update voice state. This can be used to connect/move channels, set speaking and update audio settings. Audio Settings will apply on reconnect. */
 	public update(params: {
 		guild_id?: string | null
@@ -320,6 +321,9 @@ export class VoiceManager extends EventEmitter {
 
 		this.rtc = undefined
 		this.voice = undefined
+
+		this.guild_id = null
+		this.channel_id = null
 
 		this.emit('state', failed ? VoiceManagerState.FAILED : VoiceManagerState.DISCONNECTED)
 	}

@@ -1,3 +1,34 @@
+# 0.9.9 [19-10-2024]
+
+_sooo much stuff_
+
+## Changes
+
+- added: theme mode option
+- added: auto redial config
+- added: call item transition and animation
+- added: ability to copy paste settings
+- added: early media support
+- added: hold unselected calls option
+- added: auto answer delay option
+- added: disconnected call visibility option
+- added: close confirmation option
+- added: after dial selection option
+- added: invisible (bot) option
+- added: websocket server field
+- added: per call level indicator
+- fixed: holding enter spams redial
+- fixed: delay when using STUN server
+- fixed: using sip server with custom port results in an invalid websocket url
+- fixed: toggling mute or deafen after bot has left channel results in bot re-joining
+- fixed: failing to reconnect after PC sleeping
+- fixed: chrome keyboard overlays page on chrome and safari
+- fixed: connected line updates not showing
+- changed: calls always disappear immediately when disconnected by user
+- changed: disabled pull down to refresh on mobile
+- changed: refined secondary panel settings
+- other minor changes
+
 # 0.9.8 [13-05-2024]
 
 _the updated mobile experience is here_
@@ -107,10 +138,6 @@ An update! Finally...
 
 The first version of the complete overhaul of the UI & phone. The version name is also arbitrary. Going forward version numbers will work as follows:
 
-- 0.0.X - Minor features, changes &or bug fixes.
-- 0.X.0 - Substantial new features.
-- X.0.0 - New major version.
-
 # 0.5.0 [27-12-2023]
 
-The last version of the ugly discord dialler Proof of Concept phase. The version name is arbitrary.
+The last version of the ugly discord dialer Proof of Concept phase. The version name is arbitrary.
