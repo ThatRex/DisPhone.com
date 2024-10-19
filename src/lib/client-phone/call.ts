@@ -136,7 +136,7 @@ class Call extends EventEmitter {
 	}
 
 	private updateIdentity = () => {
-		let identity = this.session.assertedIdentity?.friendlyName
+		let identity = this.session.assertedIdentity?.displayName
 		if (identity === this.detail.destination) identity = undefined
 		this.updateDetail({ identity })
 	}

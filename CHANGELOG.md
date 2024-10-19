@@ -1,11 +1,10 @@
-# 0.next
+# 0.9.9 [19-10-2024]
 
 _sooo much stuff_
 
 ## Changes
 
 - added: theme mode option
-- added: TODO: multi sip account support
 - added: auto redial config
 - added: call item transition and animation
 - added: ability to copy paste settings
