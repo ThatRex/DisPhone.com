@@ -122,7 +122,9 @@ class Call extends EventEmitter {
 
 		const [track_in] = this.dst_i.stream.getAudioTracks()
 		peerConnection!.getSenders()[0].replaceTrack(track_in)
-		this.ac.createMediaStreamSource(remoteMediaStream).connect(this.gin_o)
+		const rms = this.ac.createMediaStreamSource(remoteMediaStream)
+		rms.connect(this.gin_o)
+		rms.connect(this.lvl_dst)
 		startMediaFlow(remoteMediaStream)
 
 		this.updateDetail({ media: true })
@@ -254,6 +256,7 @@ class Call extends EventEmitter {
 	private readonly dst_o: MediaStreamAudioDestinationNode
 	private readonly gin_o: GainNode
 	private readonly src_o: MediaStreamAudioSourceNode
+	private readonly lvl_dst: MediaStreamAudioDestinationNode
 
 	public get dst() {
 		return this.gin_i
@@ -292,13 +295,19 @@ class Call extends EventEmitter {
 		this.gin_o.connect(this.dst_o)
 		this.src_o = this.ac.createMediaStreamSource(this.dst_o.stream)
 
+		this.lvl_dst = this.ac.createMediaStreamDestination()
+
 		const analyser = this.ac.createAnalyser()
 		analyser.fftSize = 256
 		const frequency_data = new Uint8Array(analyser.frequencyBinCount)
-		this.src_o.connect(analyser)
+		this.ac.createMediaStreamSource(this.lvl_dst.stream).connect(analyser)
 
 		const updateLevel = () => {
-			if (this.detail.progress !== 'DISCONNECTED') requestAnimationFrame(updateLevel)
+			if (this.detail.progress === 'DISCONNECTED') {
+				this.emit('level', 0)
+				return
+			}
+			requestAnimationFrame(updateLevel)
 			analyser.getByteFrequencyData(frequency_data)
 			let sum = 0
 			for (const f of frequency_data) sum += f * f
