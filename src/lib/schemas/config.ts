@@ -55,7 +55,7 @@ export const config = z.object({
 	close_confirmation_mode: z.enum(['always', 'calls-active', 'never']).catch('calls-active'),
 	// Sound
 	conference_play_sounds: z.boolean().catch(true),
-	sound_level_simulated_dtmf: z.number().default(10),
+	sound_level_simulated_dtmf: z.number().catch(10),
 	sound_level_ring_in: z.number().catch(50),
 	sound_level_ring_out: z.number().catch(50),
 	sound_ring_in: z.string().catch('/sounds/ring-in.mp3'),
@@ -71,7 +71,7 @@ export const config = z.object({
 	hidden_settings_enabled: z.boolean().catch(false),
 	auto_record_enabled: z.boolean().catch(false),
 	auto_redial_enabled: z.boolean().catch(false),
-	auto_redial_delay_ms_min_max: z.tuple([z.number(), z.number()]).catch([2000, 4500]),
+	auto_redial_delay_ms_min_max: z.tuple([z.number(), z.number()]).catch([6000, 12000]),
 	auto_redial_max_sequential_failed_calls: z.number().catch(3),
 	auto_redial_short_call_duration_ms: z.number().catch(4000),
 	// Developer

@@ -7,6 +7,17 @@ import type { OutboundCallDetail, CallDetail } from './call'
 import { noop } from '$lib/utils'
 import { makeURI } from './utils'
 
+export type ParamsProfile = {
+	id: string
+	username: string
+	login?: string
+	password?: string
+	server_sip: string
+	server_ws?: string
+	server_stun?: string
+	register?: boolean
+	early_media?: boolean
+}
 export type UpdateProfile = { id: string } & ProfileDetail
 export type UpdateCall = { id: string } & CallDetail
 export type UpdateDTMF = { id: string; value: string }
@@ -180,17 +191,7 @@ export class Manager extends EventEmitter {
 	Profile
 	*/
 
-	public async addProfile(params: {
-		id: string
-		username: string
-		login?: string
-		password?: string
-		server_sip: string
-		server_ws?: string
-		server_stun?: string
-		register?: boolean
-		early_media?: boolean
-	}) {
+	public async addProfile(params: ParamsProfile) {
 		const profile = new Profile({
 			ac: this.ac,
 			debug: !!this.debug,
