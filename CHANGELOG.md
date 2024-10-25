@@ -1,3 +1,14 @@
+# 0.9.10 [25-10-2024]
+
+_basically nothing_
+
+## Changes
+
+- fixed: incorrect time on `,` key
+- changed: updated dependencies
+- changed: muting call no longer mutes call level indicator
+- other minor changes
+
 # 0.9.9 [19-10-2024]
 
 _sooo much stuff_
