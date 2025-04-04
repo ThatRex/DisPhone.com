@@ -233,7 +233,7 @@ export class VoiceRTC extends EventEmitter {
 			const section = new SDP(i === 0 ? s : `m=${s}`)
 			const parsed_section = new SDP()
 
-			const [, fingerprint, in_ip4, rtcp, ice_ufrag, ice_pwd, , candidate] = discord_sdp
+			const [, in_ip4, rtcp, ice_ufrag, ice_pwd, fingerprint, candidate] = discord_sdp
 				.replaceAll('\n\r', '\n')
 				.split('\n')
 				.map((line) => line.split('=')[1])
